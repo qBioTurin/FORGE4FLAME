@@ -1,0 +1,30 @@
+Package: F4F
+Title: F4F: Forge 4 Flame.
+Version: 1.0
+Authors@R: 
+    c(person("Simone", "Pernice", , "simone.pernice@unito.it", role = c("cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+           )
+Description: F4F, a Shiny application to build a customised environment wit different rooms for flame ABM simulations.
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+  shinydashboard,
+  shinyjs,
+  jsonlite,
+  dplyr,
+  shinythemes,
+  colourpicker,
+  glue,
+  readr,
+  zip,
+  EBImageExtra,
+  sortable,
+  shinyalert,
+  shinybusy,
+  shinyBS,
+  stringr,
+  ggplot2,
+  tidyr

@@ -1,0 +1,11 @@
+The SIRDS model is an extension of the SIRD model, it inlcudes four compartments:
+
+Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with infected individuals or share a closed space with infected individuals, he/she can contract the disease and move to the infected compartment.
+
+Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
+
+Recovered (R): Encompasses individuals who have recovered from the infection and gained immunity.
+
+Dead (D): Represents the individuals who have died from the disease.
+
+The difference between SIRDS and SIRD is that individuals in the SIRDS model lose their immunity after a certain period of time, and become susceptible again.

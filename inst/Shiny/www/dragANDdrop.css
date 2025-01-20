@@ -1,0 +1,22 @@
+#canvasContainer {
+  width: 89;
+  height: 79vh;
+  overflow: scroll;
+  position: relative;
+}
+
+canvas{
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid hsl(259, 100%, 65%)
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.info {
+  text-align: center;
+}

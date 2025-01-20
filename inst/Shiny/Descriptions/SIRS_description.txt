@@ -1,0 +1,8 @@
+The SIRS model is an extension of the SIR model, it inlcudes three compartments:
+Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with an infected individual, he/she can contract the disease and move to the infected compartment.
+
+Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
+
+Resistant (R): Encompasses individuals who have recovered from the infection and gained immunity.
+
+The difference between SIRS and SIR is that individuals in the SIRS model lose their immunity after a certain period of time, and become susceptible again.

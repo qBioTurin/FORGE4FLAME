@@ -1,0 +1,3 @@
+[submodule "FLAMEGPU-FORGE4FLAME"]
+	path = FLAMEGPU-FORGE4FLAME
+	url = git@github.com:qBioTurin/FLAMEGPU-FORGE4FLAME.git
