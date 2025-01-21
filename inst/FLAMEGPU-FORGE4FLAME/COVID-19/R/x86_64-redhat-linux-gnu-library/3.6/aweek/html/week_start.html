@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Get and set the global week_start variable</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for set_week_start {aweek}"><tr><td>set_week_start {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Get and set the global week_start variable</h2>
+
+<h3>Description</h3>
+
+<p>This is a convenience wrapper around <code><a href="../../base/html/options.html">options()</a></code> and <code><a href="../../base/html/options.html">getOption()</a></code>, which
+allows users to input both numeric and character week start values
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+set_week_start(x = 1L)
+
+get_week_start(w = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>a character or integer specifying the day of the week for conversion
+between dates and weeks.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>if <code>NULL</code>, the global option &quot;aweek.week_start&quot; is returned. If <code>w</code>
+is an aweek object, then the &quot;week_start&quot; attribute is returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>for <code>set_week_start</code>, the old value of <code>week_start</code> is returned,
+invisibly. For <code>get_week_start</code>, the current value of <code>week_start</code> is
+returned.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="change_week_start.html">change_week_start()</a></code> for changing the week_start attribute of an
+aweek object, <code><a href="date2week.html">date2week()</a></code>, <code><a href="date2week.html">week2date()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+# get the current definition of the week start
+get_week_start() # defaults to Monday (1)
+getOption("aweek.week_start", 1L) # identical to above
+
+# set the week start
+mon &lt;- set_week_start("Sunday") # set week start to Sunday (7)
+get_week_start()
+print(set_week_start(mon)) # reset the default
+get_week_start()
+
+# Get the week_start of a specific aweek object.
+w &lt;- date2week("2019-05-04", week_start = "Sunday")
+get_week_start(w)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

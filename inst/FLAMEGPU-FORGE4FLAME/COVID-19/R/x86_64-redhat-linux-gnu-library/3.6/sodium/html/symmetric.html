@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Symmetric Encryption and Tagging</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Symmetric encryption {sodium}"><tr><td>Symmetric encryption {sodium}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Symmetric Encryption and Tagging</h2>
+
+<h3>Description</h3>
+
+<p>Encryption with authentication using a 256 bit shared secret. Mainly useful for
+encrypting local data. For secure communication use public-key encryption
+(<a href="simple.html">simple_encrypt</a> and <a href="messaging.html">auth_encrypt</a>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+data_encrypt(msg, key, nonce = random(24))
+
+data_decrypt(bin, key, nonce = attr(bin, "nonce"))
+
+data_tag(msg, key)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>msg</code></td>
+<td>
+<p>message to be encrypted</p>
+</td></tr>
+<tr valign="top"><td><code>key</code></td>
+<td>
+<p>shared secret key used for both encryption and decryption</p>
+</td></tr>
+<tr valign="top"><td><code>nonce</code></td>
+<td>
+<p>non-secret unique data to randomize the cipher</p>
+</td></tr>
+<tr valign="top"><td><code>bin</code></td>
+<td>
+<p>encrypted ciphertext</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Symmetric encryption uses a secret key to encode and decode a message. This can be
+used to encrypt local data on disk, or as a building block for more complex methods.
+</p>
+<p>Because the same <code>secret</code> is used for both encryption and decryption, symmetric
+encryption by itself is impractical for communication. For exchanging secure messages
+with other parties, use assymetric (public-key) methods (see <a href="simple.html">simple_encrypt</a> or
+<a href="messaging.html">auth_encrypt</a>).
+</p>
+<p>The <code>nonce</code> is not confidential but required for decryption, and should be
+stored or sent along with the ciphertext. The purpose of the <code>nonce</code> is to
+randomize the cipher to protect gainst re-use attacks. This way you can use one
+and the same secret for encrypting multiple messages.
+</p>
+<p>The <a href="symmetric.html">data_tag</a> function generates an authenticated hash that can be stored
+alongside the data to be able to verify the integrity of the data later on. For
+public key signatures see <code>sig_sign</code> instead.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html">https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# 256-bit key
+key &lt;- sha256(charToRaw("This is a secret passphrase"))
+msg &lt;- serialize(iris, NULL)
+
+# Encrypts with random nonce
+cipher &lt;- data_encrypt(msg, key)
+orig &lt;- data_decrypt(cipher, key)
+stopifnot(identical(msg, orig))
+
+# Tag the message with your key (HMAC)
+tag &lt;- data_tag(msg, key)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>sodium</em> version 1.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

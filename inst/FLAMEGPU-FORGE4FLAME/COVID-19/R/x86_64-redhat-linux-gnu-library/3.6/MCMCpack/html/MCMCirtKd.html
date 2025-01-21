@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for K-Dimensional Item Response...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMCirtKd {MCMCpack}"><tr><td>MCMCirtKd {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for K-Dimensional Item Response Theory Model</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of a
+K-dimensional item response theory (IRT) model, with standard normal priors
+on the subject abilities (ideal points), and normal priors on the item
+parameters.  The user supplies data and priors, and a sample from the
+posterior distribution is returned as an mcmc object, which can be
+subsequently analyzed with functions provided in the coda package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMCirtKd(datamatrix, dimensions, item.constraints = list(),
+  burnin = 1000, mcmc = 10000, thin = 1, verbose = 0, seed = NA,
+  alphabeta.start = NA, b0 = 0, B0 = 0, store.item = FALSE,
+  store.ability = TRUE, drop.constant.items = TRUE, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>datamatrix</code></td>
+<td>
+<p>The matrix of data.  Must be 0, 1, or missing values.  It
+is of dimensionality subjects by items.</p>
+</td></tr>
+<tr valign="top"><td><code>dimensions</code></td>
+<td>
+<p>The number of dimensions in the latent space.</p>
+</td></tr>
+<tr valign="top"><td><code>item.constraints</code></td>
+<td>
+<p>List of lists specifying possible equality
+or simple inequality constraints on the item parameters. A
+typical entry in the list has one of three forms:
+<code>rowname=list(d,c)</code> which will constrain the dth item
+parameter for the item named rowname to be equal to c,
+<code>rowname=list(d,"+")</code> which will constrain the dth item
+parameter for the item named rowname to be positive,
+and<code>rowname=list(d, "-")</code> which will constrain the dth item
+parameter for the item named rowname to be negative. If x is a
+matrix without row names defaults names of &ldquo;V1&quot;, &ldquo;V2&quot;, ... ,
+etc will be used. In a K dimensional model, the first item
+parameter for item <i>i</i> is the difficulty parameter
+(<i>&alpha;_i</i>), the second item parameter is the discrimation
+parameter on dimension 1 (<i>&beta;_{i,1}</i>), the third item
+parameter is the discrimation parameter on dimension 2
+(<i>&beta;_{i,2}</i>), ..., and the (K+1)th item parameter is the
+discrimation parameter on dimension K (<i>&beta;_{i,1}</i>).  The
+item difficulty parameters (<i>&alpha;</i>) should generally not be
+constrained.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 then
+every <code>verbose</code>th iteration will be printed to the screen.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>alphabeta.start</code></td>
+<td>
+<p>The starting values for the <i>&alpha;</i> and
+<i>&beta;</i> difficulty and discrimination parameters. If
+<code>alphabeta.start</code> is set to a scalar the starting value for all
+unconstrained item parameters will be set to that scalar. If
+<code>alphabeta.start</code> is a matrix of dimension <i>(K+1) \times
+items</i> then the <code>alphabeta.start</code> matrix is used as the
+starting values (except for equality-constrained elements). If
+<code>alphabeta.start</code> is set to <code>NA</code> (the default) then starting
+values for unconstrained elements are set to values generated from a series
+of proportional odds logistic regression fits, and starting values for
+inequality constrained elements are set to either 1.0 or -1.0 depending on
+the nature of the constraints.</p>
+</td></tr>
+<tr valign="top"><td><code>b0</code></td>
+<td>
+<p>The prior means of the <i>&alpha;</i> and <i>&beta;</i>
+difficulty and discrimination parameters, stacked for all items.  If a
+scalar is passed, it is used as the prior mean for all items.</p>
+</td></tr>
+<tr valign="top"><td><code>B0</code></td>
+<td>
+<p>The prior precisions (inverse variances) of the independent normal
+prior on the item parameters.  Can be either a scalar or a matrix of
+dimension <i>(K+1) \times items</i>.</p>
+</td></tr>
+<tr valign="top"><td><code>store.item</code></td>
+<td>
+<p>A switch that determines whether or not to store the item
+parameters for posterior analysis.  <em>NOTE: In applications with many
+items this takes an enormous amount of memory. If you have many items and
+want to want to store the item parameters you may want to thin the chain
+heavily</em>.  By default, the item parameters are not stored.</p>
+</td></tr>
+<tr valign="top"><td><code>store.ability</code></td>
+<td>
+<p>A switch that determines whether or not to store the
+subject abilities for posterior analysis. <em>NOTE: In applications with
+many subjects this takes an enormous amount of memory. If you have many
+subjects and want to want to store the ability parameters you may want to
+thin the chain heavily</em>. By default, the ability parameters are all stored.</p>
+</td></tr>
+<tr valign="top"><td><code>drop.constant.items</code></td>
+<td>
+<p>A switch that determines whether or not items
+that have no variation should be deleted before fitting the model. Default =
+TRUE.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>MCMCirtKd</code> simulates from the posterior distribution using standard
+Gibbs sampling using data augmentation (a normal draw for the subject
+abilities, a multivariate normal draw for the item parameters, and a
+truncated normal draw for the latent utilities). The simulation proper is
+done in compiled C++ code to maximize efficiency.  Please consult the coda
+documentation for a comprehensive list of functions that can be used to
+analyze the posterior sample.
+</p>
+<p>The default number of burnin and mcmc iterations is much smaller than the
+typical default values in MCMCpack.  This is because fitting this model is
+extremely computationally expensive.  It does not mean that this small of a
+number of scans will yield good estimates.  The priors of this model need to
+be proper for identification purposes.  The user is asked to provide prior
+means and precisions <em>(not variances)</em> for the item parameters and the
+subject parameters.
+</p>
+<p>The model takes the following form.  We assume that each subject
+has an ability (ideal point) denoted <i>&theta;_j</i> <i>(K \times
+1)</i>, and that each item has a difficulty parameter <i>&alpha;_i</i>
+and discrimination parameter <i>&beta;_i</i> <i>(K \times 1)</i>.  The
+observed choice by subject <i>j</i> on item <i>i</i> is the observed
+data matrix which is <i>(I \times J)</i>.  We assume that the choice
+is dictated by an unobserved utility:
+</p>
+<p style="text-align: center;"><i>z_{i,j} = - &alpha;_i + &beta;_i'&theta;_j + \varepsilon_{i,j}</i></p>
+
+<p>Where the <i>\varepsilon_{i,j}</i>s are assumed to be distributed
+standard normal.  The parameters of interest are the subject
+abilities (ideal points) and the item parameters.
+</p>
+<p>We assume the following priors.  For the subject abilities (ideal points) we
+assume independent standard normal priors:
+</p>
+<p style="text-align: center;"><i>&theta;_{j,k} \sim \mathcal{N}(0,1)</i></p>
+
+<p>These cannot be changed by the user.
+For each item parameter, we assume independent normal priors:
+</p>
+<p style="text-align: center;"><i>&le;ft[&alpha;_i, &beta;_i \right]' \sim \mathcal{N}_{(K+1)} (b_{0,i},B_{0,i})</i></p>
+
+<p>Where <i>B_{0,i}</i> is a diagonal matrix.  One can specify a
+separate prior mean and precision for each item parameter.
+</p>
+<p>The model is identified by the constraints on the item parameters (see
+Jackman 2001).  The user cannot place constraints on the subject abilities.
+This identification scheme differs from that in <code>MCMCirt1d</code>, which uses
+constraints on the subject abilities to identify the model.  In our
+experience, using subject ability constraints for models in greater than one
+dimension does not work particularly well.
+</p>
+<p>As is the case with all measurement models, make sure that you have plenty
+of free memory, especially when storing the item parameters.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>James H. Albert. 1992. &ldquo;Bayesian Estimation of Normal Ogive
+Item Response Curves Using Gibbs Sampling.&quot; <em>Journal of Educational
+Statistics</em>.  17: 251-269.
+</p>
+<p>Joshua Clinton, Simon Jackman, and Douglas Rivers. 2004. &ldquo;The Statistical
+Analysis of Roll Call Data.&quot;  <em>American Political Science Review</em>.  98:
+355-370.
+</p>
+<p>Simon Jackman. 2001. &ldquo;Multidimensional Analysis of Roll Call Data via
+Bayesian Simulation.&rdquo; <em>Political Analysis.</em> 9: 227-241.
+</p>
+<p>Valen E. Johnson and James H. Albert. 1999. <em>Ordinal Data Modeling</em>.
+Springer: New York.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  &ldquo;MCMCpack:
+Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  &ldquo;Output
+Analysis and Diagnostics for MCMC (CODA)&rdquo;, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+<p>Douglas Rivers.  2004.  &ldquo;Identification of Multidimensional Item-Response
+Models.&quot;  Stanford University, typescript.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>,<code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>,
+<code><a href="MCMCirt1d.html">MCMCirt1d</a></code>, <code><a href="MCMCordfactanal.html">MCMCordfactanal</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+   ## Not run: 
+   data(SupremeCourt)
+   # note that the rownames (the item names) are "1", "2", etc
+   posterior1 &lt;- MCMCirtKd(t(SupremeCourt), dimensions=1,
+                   burnin=5000, mcmc=50000, thin=10,
+                   B0=.25, store.item=TRUE,
+                   item.constraints=list("1"=list(2,"-")))
+   plot(posterior1)
+   summary(posterior1)
+
+
+   data(Senate)
+   Sen.rollcalls &lt;- Senate[,6:677]
+   posterior2 &lt;- MCMCirtKd(Sen.rollcalls, dimensions=2,
+                   burnin=5000, mcmc=50000, thin=10,
+                   item.constraints=list(rc2=list(2,"-"), rc2=c(3,0),
+                                         rc3=list(3,"-")),
+                   B0=.25)
+   plot(posterior2)
+   summary(posterior2)
+   
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

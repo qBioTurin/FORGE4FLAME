@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>R: Compute, Handle, Plot and Model Incidence of Dated Events</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+<h1> Compute, Handle, Plot and Model Incidence of Dated Events
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;incidence&rsquo; version 1.7.1</h2>
+
+<ul><li><a href="../DESCRIPTION">DESCRIPTION file</a>.</li>
+<li><a href="../doc/index.html">User guides, package vignettes and other documentation.</a></li>
+<li><a href="../demo">Code demos</a>.  Use <a href="../../utils/help/demo">demo()</a> to run them.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table width="100%">
+<tr><td style="width: 25%;"><a href="subset.html">"subset.incidence"</a></td>
+<td>Subsetting 'incidence' objects</td></tr>
+<tr><td style="width: 25%;"><a href="subset.html">"[.incidence"</a></td>
+<td>Subsetting 'incidence' objects</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">add_incidence_fit</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="conversions.html">as.data.frame.incidence</a></td>
+<td>Conversion of incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="conversions.html">as.incidence</a></td>
+<td>Conversion of incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="conversions.html">as.incidence.data.frame</a></td>
+<td>Conversion of incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="conversions.html">as.incidence.matrix</a></td>
+<td>Conversion of incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="conversions.html">as.incidence.numeric</a></td>
+<td>Conversion of incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="bootstrap.html">bootstrap</a></td>
+<td>Bootstrap incidence time series</td></tr>
+<tr><td style="width: 25%;"><a href="cumulate.html">cumulate</a></td>
+<td>Compute cumulative 'incidence'</td></tr>
+<tr><td style="width: 25%;"><a href="cumulate.html">cumulate.default</a></td>
+<td>Compute cumulative 'incidence'</td></tr>
+<tr><td style="width: 25%;"><a href="cumulate.html">cumulate.incidence</a></td>
+<td>Compute cumulative 'incidence'</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">dim.incidence</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="estimate_peak.html">estimate_peak</a></td>
+<td>Estimate the peak date of an incidence curve using bootstrap</td></tr>
+<tr><td style="width: 25%;"><a href="find_peak.html">find_peak</a></td>
+<td>Find the peak date of an incidence curve</td></tr>
+<tr><td style="width: 25%;"><a href="fit.html">fit</a></td>
+<td>Fit exponential models to incidence data</td></tr>
+<tr><td style="width: 25%;"><a href="fit.html">fit_optim_split</a></td>
+<td>Fit exponential models to incidence data</td></tr>
+<tr><td style="width: 25%;"><a href="get_counts.html">get_counts</a></td>
+<td>Get counts from an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="get_counts.html">get_counts.incidence</a></td>
+<td>Get counts from an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="get_dates.html">get_dates</a></td>
+<td>Retrieve dates from an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="get_dates.html">get_dates.default</a></td>
+<td>Retrieve dates from an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="get_dates.html">get_dates.incidence</a></td>
+<td>Retrieve dates from an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_fit</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_fit.incidence_fit</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_fit.incidence_fit_list</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_info</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_info.incidence_fit</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="get_fit.html">get_info.incidence_fit_list</a></td>
+<td>Accessors for 'incidence_fit' objects</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_interval</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_interval.default</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_interval.incidence</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_n</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_n.default</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_n.incidence</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_timespan</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_timespan.default</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="accessors.html">get_timespan.incidence</a></td>
+<td>Access various elements of an incidence object</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names.default</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names.incidence</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names&lt;-</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names&lt;-.default</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">group_names&lt;-.incidence</a></td>
+<td>extract and set group names</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.character</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.Date</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.default</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.integer</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.numeric</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">incidence.POSIXt</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="palettes.html">incidence_pal1</a></td>
+<td>Color palettes used in incidence</td></tr>
+<tr><td style="width: 25%;"><a href="palettes.html">incidence_pal1_dark</a></td>
+<td>Color palettes used in incidence</td></tr>
+<tr><td style="width: 25%;"><a href="palettes.html">incidence_pal1_light</a></td>
+<td>Color palettes used in incidence</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">make_breaks</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="palettes.html">palettes</a></td>
+<td>Color palettes used in incidence</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">plot.incidence</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">plot.incidence_fit</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">plot.incidence_fit_list</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="pool.html">pool</a></td>
+<td>Pool 'incidence' across groups</td></tr>
+<tr><td style="width: 25%;"><a href="incidence.html">print.incidence</a></td>
+<td>Compute incidence of events from a vector of dates.</td></tr>
+<tr><td style="width: 25%;"><a href="fit.html">print.incidence_fit</a></td>
+<td>Fit exponential models to incidence data</td></tr>
+<tr><td style="width: 25%;"><a href="fit.html">print.incidence_fit_list</a></td>
+<td>Fit exponential models to incidence data</td></tr>
+<tr><td style="width: 25%;"><a href="plot.incidence.html">scale_x_incidence</a></td>
+<td>Plot function for incidence objects</td></tr>
+<tr><td style="width: 25%;"><a href="subset.html">subset.incidence</a></td>
+<td>Subsetting 'incidence' objects</td></tr>
+<tr><td style="width: 25%;"><a href="subset.html">[.incidence</a></td>
+<td>Subsetting 'incidence' objects</td></tr>
+<tr><td style="width: 25%;"><a href="group_names.html">`group_names&lt;-`.default</a></td>
+<td>extract and set group names</td></tr>
+</table>
+</body></html>

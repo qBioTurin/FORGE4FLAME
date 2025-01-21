@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Add a completely blank area</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plot_spacer {patchwork}"><tr><td>plot_spacer {patchwork}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Add a completely blank area</h2>
+
+<h3>Description</h3>
+
+<p>This simple wrapper creates an empty transparant patch that can be added to
+push your other plots apart. The patch responds to adding
+<a href="../../ggplot2/html/theme.html">theme()</a> specifications, but only <code>plot.background</code> will
+have an effect.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+plot_spacer()
+</pre>
+
+
+<h3>Value</h3>
+
+<p>A <code>ggplot</code> object containing an empty plot
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+library(ggplot2)
+
+p1 &lt;- ggplot(mtcars) + geom_point(aes(mpg, disp))
+p2 &lt;- ggplot(mtcars) + geom_boxplot(aes(gear, disp, group = gear))
+
+p1 + plot_spacer() + p2
+
+
+# To have more control over spacing, you can use the `plot.margin`
+# parameter for `theme()` on each individual plot.
+
+(p1 + theme(plot.margin = unit(c(0,30,0,0), "pt"))) +
+(p2 + theme(plot.margin = unit(c(0,0,0,30), "pt")))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>patchwork</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

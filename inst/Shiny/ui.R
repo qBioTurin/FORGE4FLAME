@@ -1,3 +1,4 @@
+library(shiny)
 library(shinydashboard)
 library(shinyjs)
 library(jsonlite)
@@ -142,7 +143,7 @@ ui <- dashboardPage(
                 </h2>
                 <h2>
                   <ul>
-                    
+
                     <li class='home'>
                       <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
                       <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
@@ -256,7 +257,7 @@ ui <- dashboardPage(
                                 actionButton("add_room", "Add room")
                          )
                        ),
-                       fluidRow( 
+                       fluidRow(
                          column(9, offset =1,
                                 uiOutput(outputId = "Text_SpaceAvailable")
                          )
@@ -437,7 +438,7 @@ ui <- dashboardPage(
                   title = h3("Set resources"),
                   width = 12,
                   collapsible = T,
-                  
+
                   fluidRow(
                     column(4,
                            selectInput(inputId = "selectInput_resources_type",
@@ -468,7 +469,7 @@ ui <- dashboardPage(
                   fluidRow(
                     # column(4,offset = 1,
                     #        radioButtons("WhereWaitingButton",label = "Where to wait?",
-                    #                     choices = c("Same room","Skip room","Waiting room","Other room"), 
+                    #                     choices = c("Same room","Skip room","Waiting room","Other room"),
                     #                     selected = "Same room")
                     # ),
                     column(10,offset = 1,
@@ -480,7 +481,7 @@ ui <- dashboardPage(
                   )
                 )
               )
-      ), 
+      ),
       ## Tab agents ####
       tabItem(
         tabName = "agents",
@@ -499,7 +500,7 @@ ui <- dashboardPage(
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
-                                    options = list(create = TRUE), 
+                                    options = list(create = TRUE),
                                     choices=c(""))
               ),
               column(1,
@@ -516,7 +517,7 @@ ui <- dashboardPage(
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_class_agent", label = "Agent class:",
-                                    options = list(create = TRUE), 
+                                    options = list(create = TRUE),
                                     choices=c(""))
               ),
               column(3,offset=1,
@@ -600,7 +601,7 @@ ui <- dashboardPage(
               )
             ),
             fluidRow(
-              column(10, offset=1, 
+              column(10, offset=1,
                      div(id="rand_description", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
               )
             ),
@@ -628,10 +629,10 @@ ui <- dashboardPage(
                        )
                      )
               ),
-              column(6, 
+              column(6,
                      conditionalPanel(
                        condition="input.ckbox_entranceFlow== 'Daily Rate'",
-                       
+
                        fluidRow(
                          tabsetPanel(id = "Rate_tabs",
                                      tabPanel(paste0(1," slot"),
@@ -658,7 +659,7 @@ ui <- dashboardPage(
                      ),
                      conditionalPanel(
                        condition="input.ckbox_entranceFlow== 'Time window' ",
-                       
+
                        fluidRow(
                          tabsetPanel(id = "Time_tabs",
                                      tabPanel(paste0(1," slot"),
@@ -674,7 +675,7 @@ ui <- dashboardPage(
                                                                         choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                                         selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
                                                      )
-                                                     
+
                                               )
                                      )
                          )
@@ -1780,7 +1781,7 @@ ui <- dashboardPage(
                                                 selected = "None",
                                                 choices = c("None","Name", "Type", "Area","Agent ID"))
                             )
-                            
+
                           )
                       )
                     ),

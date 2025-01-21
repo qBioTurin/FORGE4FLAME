@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Monte Carlo Simulation from a Normal Likelihood (with known...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCnormalnormal {MCMCpack}"><tr><td>MCnormalnormal {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Monte Carlo Simulation from a Normal Likelihood (with known variance) with a
+Normal Prior</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of a Normal
+likelihood (with known variance) with a Normal prior.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCnormalnormal(y, sigma2, mu0, tau20, mc = 1000, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>y</code></td>
+<td>
+<p>The data.</p>
+</td></tr>
+<tr valign="top"><td><code>sigma2</code></td>
+<td>
+<p>The known variance of y.</p>
+</td></tr>
+<tr valign="top"><td><code>mu0</code></td>
+<td>
+<p>The prior mean of mu.</p>
+</td></tr>
+<tr valign="top"><td><code>tau20</code></td>
+<td>
+<p>The prior variance of mu.</p>
+</td></tr>
+<tr valign="top"><td><code>mc</code></td>
+<td>
+<p>The number of Monte Carlo draws to make.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>MCnormalnormal</code> directly simulates from the posterior distribution.
+This model is designed primarily for instructional use.  <i>&mu;</i> is
+the parameter of interest of the Normal distribution.  We assume a conjugate
+normal prior:
+</p>
+<p style="text-align: center;"><i>&mu; \sim \mathcal{N}(&mu;_0, &tau;^2_0)</i></p>
+
+<p><i>y</i> is a vector of observed data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>, <code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Not run: 
+y &lt;- c(2.65, 1.80, 2.29, 2.11, 2.27, 2.61, 2.49, 0.96, 1.72, 2.40)
+posterior &lt;- MCMCpack:::MCnormalnormal(y, 1, 0, 1, 5000)
+summary(posterior)
+plot(posterior)
+grid &lt;- seq(-3,3,0.01)
+plot(grid, dnorm(grid, 0, 1), type="l", col="red", lwd=3, ylim=c(0,1.4),
+   xlab="mu", ylab="density")
+lines(density(posterior), col="blue", lwd=3)
+legend(-3, 1.4, c("prior", "posterior"), lwd=3, col=c("red", "blue"))
+
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

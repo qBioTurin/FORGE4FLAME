@@ -1,0 +1,50 @@
+DiscrSI                 Function to ensure compatibility with EpiEstim
+                        versions <2.0
+EstimateR               Function to ensure compatibility with EpiEstim
+                        versions <2.0
+Flu1918                 Data on the 1918 H1N1 influenza pandemic in
+                        Baltimore.
+Flu2009                 Data on the 2009 H1N1 influenza pandemic in a
+                        school in Pennsylvania.
+Measles1861             Data on the 1861 measles epidemic in Hagelloch,
+                        Germany.
+MockRotavirus           Mock data on a rotavirus epidemic.
+OverallInfectivity      Function to ensure compatibility with EpiEstim
+                        versions <2.0
+SARS2003                Data on the 2003 SARS epidemic in Hong Kong.
+Smallpox1972            Data on the 1972 smallpox epidemic in Kosovo
+WT                      Function to ensure compatibility with EpiEstim
+                        versions <2.0
+check_cdt_samples_convergence
+                        Checking convergence of an MCMC chain by using
+                        the Gelman-Rubin algorithm
+coarse2estim            Link coarseDataTools and EpiEstim
+discr_si                Discretized Generation Time Distribution
+                        Assuming A Shifted Gamma Distribution
+estimate_R              Estimated Instantaneous Reproduction Number
+                        'estimate_R' estimates the reproduction number
+                        of an epidemic, given the incidence time series
+                        and the serial interval distribution.
+estimate_R_plots        Wrapper for plot.estimate_R
+flu_2009_NYC_school     Data on the 2009 H1N1 influenza pandemic in a
+                        school in New York city
+init_mcmc_params        init_mcmc_params Finds clever starting points
+                        for the MCMC to be used to estimate the serial
+                        interval, e.g. when using option 'si_from_data'
+                        in 'estimate_R'
+make_config             Set and check parameter settings of estimate_R
+make_mcmc_control       make_mcmc_control Creates a list of mcmc
+                        control parameters to be used in
+                        'config$mcmc_control', where 'config' is an
+                        argument of the 'estimate_R' function. This is
+                        used to configure the MCMC chain used to
+                        estimate the serial interval within
+                        'estimate_R' (with method "si_from_data").
+mers_2014_15            Data on Middle East Respiratory Syndrome (MERS)
+                        in Saudi Arabia.
+overall_infectivity     Overall Infectivity Due To Previously Infected
+                        Individuals
+plot.estimate_R         Plot outputs of estimate_r
+sample_posterior_R      sample from the posterior R distribution
+wallinga_teunis         Estimation of the case reproduction number
+                        using the Wallinga and Teunis method

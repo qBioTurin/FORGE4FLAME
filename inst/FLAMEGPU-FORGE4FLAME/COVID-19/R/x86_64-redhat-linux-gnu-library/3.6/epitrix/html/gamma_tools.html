@@ -1,0 +1,142 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Reparameterise Gamma distributions</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for gamma_shapescale2mucv {epitrix}"><tr><td>gamma_shapescale2mucv {epitrix}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Reparameterise Gamma distributions</h2>
+
+<h3>Description</h3>
+
+<p>These functions permit to use alternate parametrisations for Gamma
+distributions, from 'shape and scale' to 'mean (mu) and coefficient of
+variation (cv), and back. <code>gamma_shapescale2mucv</code> does the first
+conversion, while <code>gamma_mucv2shapescale</code> does the second. The function
+<code>gamma_log_likelihood</code> is a shortcut for computing Gamma log-likelihood
+with the alternative parametrisation (mean, cv). See 'details' for a guide of
+which parametrisation to use.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+gamma_shapescale2mucv(shape, scale)
+
+gamma_mucv2shapescale(mu, cv)
+
+gamma_log_likelihood(x, mu, cv, discrete = TRUE, interval = 1, w = 0,
+  anchor = 0.5)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>shape</code></td>
+<td>
+<p>The shape parameter of the Gamma distribution.</p>
+</td></tr>
+<tr valign="top"><td><code>scale</code></td>
+<td>
+<p>The scale parameter of the Gamma distribution.</p>
+</td></tr>
+<tr valign="top"><td><code>mu</code></td>
+<td>
+<p>The mean of the Gamma distribution.</p>
+</td></tr>
+<tr valign="top"><td><code>cv</code></td>
+<td>
+<p>The coefficient of variation of the Gamma distribution, i.e. the
+standard deviation divided by the mean.</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A vector of data treated as observations drawn from a Gamma
+distribution, for which the likelihood is to be computed.</p>
+</td></tr>
+<tr valign="top"><td><code>discrete</code></td>
+<td>
+<p>A logical indicating if the distribution should be
+discretised; TRUE by default.</p>
+</td></tr>
+<tr valign="top"><td><code>interval</code></td>
+<td>
+<p>The interval used for discretisation; see
+<code><a href="../../distcrete/html/distcrete.html">distcrete</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>The centering of the interval used for discretisation, defaulting to
+0; see <code><a href="../../distcrete/html/distcrete.html">distcrete</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>anchor</code></td>
+<td>
+<p>The anchor used for discretisation, i.e. starting point of the
+discretisation process; defaults to 0; see <code><a href="../../distcrete/html/distcrete.html">distcrete</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The gamma distribution is described in <code>?dgamma</code> is
+parametrised using shape and scale (or rate). However, these parameters are
+naturally correlated, which make them poor choices whenever trying to fit
+data to a Gamma distribution. Their interpretation is also less clear than
+the traditional mean and variance. When fitting the data, or reporting
+results, it is best to use the alternative parametrisation using the mean
+(<code>mu</code>) and the coefficient of variation (<code>cv</code>), i.e. the standard
+deviation divided by the mean.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named list containing 'shape' and 'scale', or mean ('mean') and
+coefficient of variation ('cv').
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Code by Anne Cori <a href="mailto:a.cori@imperial.ac.uk">a.cori@imperial.ac.uk</a>, packaging by
+Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## set up some parameters
+
+mu &lt;- 10
+cv &lt;- 1
+
+
+## transform into shape scale
+
+tmp &lt;- gamma_mucv2shapescale (mu, cv)
+shape &lt;- tmp$shape
+scale &lt;- tmp$scale
+
+
+## recover original parameters when applying the revert function
+
+gamma_shapescale2mucv(shape, scale) # compare with mu, cv
+
+
+## empirical validation:
+## check mean / cv of a sample derived using rgamma with
+## shape and scale computed from mu and cv
+
+gamma_sample &lt;- rgamma(n = 10000, shape = shape, scale = scale)
+mean(gamma_sample) # compare to mu
+sd(gamma_sample) / mean(gamma_sample) # compare to cv
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>epitrix</em> version 0.2.2 <a href="00Index.html">Index</a>]</div>
+</body></html>

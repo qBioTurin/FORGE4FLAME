@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Species Sensitivity Distribution (SSD) for endosulfan</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for endosulfan {fitdistrplus}"><tr><td>endosulfan {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Species Sensitivity Distribution (SSD) for endosulfan </h2>
+
+<h3>Description</h3>
+
+<p>Summary of 48- to 96-hour acute toxicity values (LC50 and EC50 values)
+for exposure of Australian an Non-Australian taxa to endosulfan. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+data(endosulfan)
+</pre>
+
+
+<h3>Format</h3>
+
+ 
+<p><code>endosulfan</code> is a data frame with 3 columns, named ATV for Acute Toxicity Value
+(geometric mean of LC50 ou EC50 values in micrograms per liter),
+Australian (coding for Australian or another origin) and group 
+(arthropods, fish or non-arthropod invertebrates).
+</p>
+
+
+<h3>Source</h3>
+
+ 
+<p>Hose, G.C., Van den Brink, P.J. 2004. Confirming the Species-Sensitivity Distribution Concept
+for Endosulfan Using Laboratory, Mesocosms, and Field Data. <em>Archives of Environmental 
+Contamination and Toxicology</em>,
+<b>47</b>, 511-520.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# (1) load of data
+#
+data(endosulfan)
+
+# (2) plot and description of data for non Australian fish in decimal logarithm
+#
+log10ATV &lt;-log10(subset(endosulfan,(Australian == "no") &amp; (group == "Fish"))$ATV)
+plotdist(log10ATV)
+descdist(log10ATV,boot=1000)
+
+# (3) fit of a normal and a logistic distribution to data in log10
+# (classical distributions used for SSD)
+# and visual comparison of the fits
+#
+fln &lt;- fitdist(log10ATV,"norm")
+summary(fln)
+
+fll &lt;- fitdist(log10ATV,"logis")
+summary(fll)
+
+cdfcomp(list(fln,fll),legendtext=c("normal","logistic"),
+xlab="log10ATV")
+
+denscomp(list(fln,fll),legendtext=c("normal","logistic"),
+xlab="log10ATV")
+
+qqcomp(list(fln,fll),legendtext=c("normal","logistic"))
+ppcomp(list(fln,fll),legendtext=c("normal","logistic"))
+
+gofstat(list(fln,fll), fitnames = c("lognormal", "loglogistic"))
+
+# (4) estimation of the 5 percent quantile value of 
+# logistic fitted distribution (5 percent hazardous concentration  : HC5)
+# with its two-sided 95 percent confidence interval calculated by 
+# parametric bootstrap 
+# with a small number of iterations to satisfy CRAN running times constraint.
+# For practical applications, we recommend to use at least niter=501 or niter=1001.
+#
+# in log10(ATV)
+bll &lt;- bootdist(fll,niter=101)
+HC5ll &lt;- quantile(bll,probs = 0.05)
+# in ATV
+10^(HC5ll$quantiles)
+10^(HC5ll$quantCI)
+
+# (5) estimation of the 5 percent quantile value of 
+# the fitted logistic distribution (5 percent hazardous concentration  : HC5)
+# with its one-sided 95 percent confidence interval (type "greater")
+# calculated by 
+# nonparametric bootstrap 
+# with a small number of iterations to satisfy CRAN running times constraint.
+# For practical applications, we recommend to use at least niter=501 or niter=1001.
+# 
+# in log10(ATV)
+bllnonpar &lt;- bootdist(fll,niter=101,bootmethod = "nonparam")
+HC5llgreater &lt;- quantile(bllnonpar,probs = 0.05, CI.type="greater")
+# in ATV
+10^(HC5llgreater$quantiles)
+10^(HC5llgreater$quantCI)
+
+# (6) fit of a logistic distribution 
+# by minimizing the modified Anderson-Darling AD2L distance
+# cf. ?mgedist for definition of this distance
+#
+
+fllAD2L &lt;- fitdist(log10ATV,"logis",method="mge",gof="AD2L")
+summary(fllAD2L)
+plot(fllAD2L)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

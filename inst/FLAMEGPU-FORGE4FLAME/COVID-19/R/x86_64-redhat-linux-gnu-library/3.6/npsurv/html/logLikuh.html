@@ -1,0 +1,80 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Computes the Log-likelihood Value of a U-shaped Hazard...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for logLikuh {npsurv}"><tr><td>logLikuh {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Computes the Log-likelihood Value of a U-shaped Hazard Function</h2>
+
+<h3>Description</h3>
+
+<p><code>logLikuh</code> returns the log-likelihood value of a U-shaped hazard
+function, given a data set.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+
+logLikuh(h, data)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>h</code></td>
+<td>
+<p>an object of class <code>uh</code>. </p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>numeric vector or matrix for exact or interval-censored
+observations, or an object of class <code>icendata</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Log-likelihood value evaluated at <code>h</code>, given <code>data</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Wang, Y. and Fani, S. (2017). Nonparametric maximum likelihood
+computation of a U-shaped hazard function. <em>Statistics and
+Computing</em>, (in print).
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="Uhaz.html">Uhaz</a></code>, <code><a href="icendata.html">icendata</a></code>, <code><a href="plot.Uhaz.html">plot.uh</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(ap)
+(h0 = uh(.2, NULL, NULL, NULL, NULL, 15, 1))   # Uniform hazard
+plot(h0, ylim=c(0,.3))
+logLikuh(h0, ap)
+
+r = Uhaz(ap, deg=2)
+r$ll
+logLikuh(r$h, ap)
+plot(r$h, add=TRUE, col="red3")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

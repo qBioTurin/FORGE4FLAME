@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Bootstrap incidence time series</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for bootstrap {incidence}"><tr><td>bootstrap {incidence}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Bootstrap incidence time series</h2>
+
+<h3>Description</h3>
+
+<p>This function can be used to bootstrap <code>incidence</code> objects. Bootstrapping is
+done by sampling with replacement the original input dates. See <code>details</code> for
+more information on how this is implemented.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+bootstrap(x, randomise_groups = FALSE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>An <code>incidence</code> object.</p>
+</td></tr>
+<tr valign="top"><td><code>randomise_groups</code></td>
+<td>
+<p>A <code>logical</code> indicating whether groups should be
+randomised as well in the resampling procedure; respective group sizes will
+be preserved, but this can be used to remove any group-specific temporal
+dynamics. If <code>FALSE</code> (default), data are resampled within groups.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>As original data are not stored in <code>incidence</code> objects, the
+bootstrapping is achieved by multinomial sampling of date bins weighted by
+their relative incidence.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <code>incidence</code> object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="find_peak.html">incidence::find_peak</a> to use estimate peak date using bootstrap
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+if (require(outbreaks) &amp;&amp; require(ggplot2)) { withAutoprint({
+  i &lt;- incidence(fluH7N9_china_2013$date_of_onset)
+  i
+  plot(i)
+
+  ## one simple bootstrap
+  x &lt;- bootstrap(i)
+  x
+  plot(x)
+
+})}
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>incidence</em> version 1.7.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

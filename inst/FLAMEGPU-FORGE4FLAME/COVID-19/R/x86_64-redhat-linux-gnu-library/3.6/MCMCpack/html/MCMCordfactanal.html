@@ -1,0 +1,277 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for Ordinal Data Factor Analysis...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMCordfactanal {MCMCpack}"><tr><td>MCMCordfactanal {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for Ordinal Data Factor Analysis Model</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of an
+ordinal data factor analysis model. Normal priors are assumed on the factor
+loadings and factor scores while improper uniform priors are assumed on the
+cutpoints. The user supplies data and parameters for the prior
+distributions, and a sample from the posterior distribution is returned as
+an mcmc object, which can be subsequently analyzed with functions provided
+in the coda package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMCordfactanal(x, factors, lambda.constraints = list(),
+  data = parent.frame(), burnin = 1000, mcmc = 20000, thin = 1,
+  tune = NA, verbose = 0, seed = NA, lambda.start = NA, l0 = 0,
+  L0 = 0, store.lambda = TRUE, store.scores = FALSE,
+  drop.constantvars = TRUE, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>Either a formula or a numeric matrix containing the manifest
+variables.</p>
+</td></tr>
+<tr valign="top"><td><code>factors</code></td>
+<td>
+<p>The number of factors to be fitted.</p>
+</td></tr>
+<tr valign="top"><td><code>lambda.constraints</code></td>
+<td>
+<p>List of lists specifying possible equality or
+simple inequality constraints on the factor loadings. A typical entry in the
+list has one of three forms: <code>varname=list(d,c)</code> which will constrain
+the dth loading for the variable named varname to be equal to c,
+<code>varname=list(d,"+")</code> which will constrain the dth loading for the
+variable named varname to be positive, and <code>varname=list(d, "-")</code> which
+will constrain the dth loading for the variable named varname to be
+negative. If x is a matrix without column names defaults names of &ldquo;V1&quot;,
+&ldquo;V2&quot;, ... , etc will be used. Note that, unlike <code>MCMCfactanal</code>, the
+<i>&Lambda;</i> matrix used here has <code>factors</code>+1 columns. The
+first column of <i>&Lambda;</i> corresponds to negative item
+difficulty parameters and should generally not be constrained.</p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>A data frame.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>tune</code></td>
+<td>
+<p>The tuning parameter for the Metropolis-Hastings sampling. Can
+be either a scalar or a <i>k</i>-vector. Must be strictly positive.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 the
+iteration number and the Metropolis-Hastings acceptance rate are printed to
+the screen every <code>verbose</code>th iteration.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>lambda.start</code></td>
+<td>
+<p>Starting values for the factor loading matrix Lambda. If
+<code>lambda.start</code> is set to a scalar the starting value for all
+unconstrained loadings will be set to that scalar. If <code>lambda.start</code> is
+a matrix of the same dimensions as Lambda then the <code>lambda.start</code>
+matrix is used as the starting values (except for equality-constrained
+elements). If <code>lambda.start</code> is set to <code>NA</code> (the default) then
+starting values for unconstrained elements in the first column of Lambda are
+based on the observed response pattern, the remaining unconstrained elements
+of Lambda are set to , and starting values for inequality constrained
+elements are set to either 1.0 or -1.0 depending on the nature of the
+constraints.</p>
+</td></tr>
+<tr valign="top"><td><code>l0</code></td>
+<td>
+<p>The means of the independent Normal prior on the factor loadings.
+Can be either a scalar or a matrix with the same dimensions as
+<code>Lambda</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>L0</code></td>
+<td>
+<p>The precisions (inverse variances) of the independent Normal prior
+on the factor loadings. Can be either a scalar or a matrix with the same
+dimensions as <code>Lambda</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>store.lambda</code></td>
+<td>
+<p>A switch that determines whether or not to store the
+factor loadings for posterior analysis. By default, the factor loadings are
+all stored.</p>
+</td></tr>
+<tr valign="top"><td><code>store.scores</code></td>
+<td>
+<p>A switch that determines whether or not to store the
+factor scores for posterior analysis.  <em>NOTE: This takes an enormous
+amount of memory, so should only be used if the chain is thinned heavily, or
+for applications with a small number of observations</em>.  By default, the
+factor scores are not stored.</p>
+</td></tr>
+<tr valign="top"><td><code>drop.constantvars</code></td>
+<td>
+<p>A switch that determines whether or not manifest
+variables that have no variation should be deleted before fitting the model.
+Default = TRUE.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The model takes the following form:
+</p>
+<p>Let <i>i=1,&hellip;,N</i> index observations and <i>j=1,&hellip;,K</i>
+index response variables within an observation. The typical
+observed variable <i>x_{ij}</i> is ordinal with a total of <i>C_j</i>
+categories. The distribution of <i>X</i> is governed by a <i>N
+\times K</i> matrix of latent variables <i>X^*</i> and a series of
+cutpoints <i>&gamma;</i>.  <i>X^*</i> is assumed to be generated
+according to:
+</p>
+<p style="text-align: center;"><i>x^*_i = &Lambda; &phi;_i + &epsilon;_i</i></p>
+
+<p style="text-align: center;"><i>&epsilon;_i \sim \mathcal{N}(0,I)</i></p>
+
+<p>where <i>x^*_i</i> is the <i>k</i>-vector of latent variables
+specific to observation <i>i</i>, <i>&Lambda;</i> is the <i>k \times
+d</i> matrix of factor loadings, and <i>&phi;_i</i> is the
+<i>d</i>-vector of latent factor scores. It is assumed that the
+first element of <i>&phi;_i</i> is equal to 1 for all <i>i</i>.
+</p>
+<p>The probability that the <i>j</i>th variable in observation <i>i</i>
+takes the value <i>c</i> is:
+</p>
+<p style="text-align: center;"><i>&pi;_{ijc} = &Phi;(&gamma;_{jc} - &Lambda;'_j&phi;_i) - &Phi;(&gamma;_{j(c-1)} - &Lambda;'_j&phi;_i) </i></p>
+
+<p>The implementation used here assumes independent conjugate priors
+for each element of <i>&Lambda;</i> and each <i>&phi;_i</i>. More
+specifically we assume:
+</p>
+<p style="text-align: center;"><i>&Lambda;_{ij} \sim \mathcal{N}(l_{0_{ij}}, L_{0_{ij}}^{-1}),
+i=1,&hellip;,k, j=1,&hellip;,d</i></p>
+
+<p style="text-align: center;"><i>&phi;_{i(2:d)} \sim \mathcal{N}(0, I), i=1,&hellip;,n</i></p>
+
+<p>The standard two-parameter item response theory model with probit link is a
+special case of the model sketched above.
+</p>
+<p><code>MCMCordfactanal</code> simulates from the posterior distribution using a
+Metropolis-Hastings within Gibbs sampling algorithm. The algorithm employed
+is based on work by Cowles (1996).  Note that the first element of
+<i>&phi;_i</i> is a 1. As a result, the first column of
+<i>&Lambda;</i> can be interpretated as item difficulty parameters.
+Further, the first element <i>&gamma;_1</i> is normalized to zero,
+and thus not returned in the mcmc object.  The simulation proper is done in
+compiled C++ code to maximize efficiency.  Please consult the coda
+documentation for a comprehensive list of functions that can be used to
+analyze the posterior sample.
+</p>
+<p>As is the case with all measurement models, make sure that you have plenty
+of free memory, especially when storing the scores.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Shawn Treier and Simon Jackman. 2008. &ldquo;Democracy as a Latent
+Variable.&quot;  <em>American Journal of Political Science</em>. 52: 201-217.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  &ldquo;MCMCpack:
+Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>M. K. Cowles. 1996. &ldquo;Accelerating Monte Carlo Markov Chain Convergence for
+Cumulative-link Generalized Linear Models.&quot; <em>Statistics and Computing.</em>
+6: 101-110.
+</p>
+<p>Valen E. Johnson and James H. Albert. 1999. &ldquo;Ordinal Data Modeling.&quot;
+Springer: New York.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  &ldquo;Output
+Analysis and Diagnostics for MCMC (CODA)&rdquo;, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>, <code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>,
+<code><a href="../../stats/html/factanal.html">factanal</a></code>, <code><a href="MCMCfactanal.html">MCMCfactanal</a></code>,
+<code><a href="MCMCirt1d.html">MCMCirt1d</a></code>, <code><a href="MCMCirtKd.html">MCMCirtKd</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+   ## Not run: 
+   data(painters)
+   new.painters &lt;- painters[,1:4]
+   cuts &lt;- apply(new.painters, 2, quantile, c(.25, .50, .75))
+   for (i in 1:4){
+      new.painters[new.painters[,i]&lt;cuts[1,i],i] &lt;- 100
+     new.painters[new.painters[,i]&lt;cuts[2,i],i] &lt;- 200
+     new.painters[new.painters[,i]&lt;cuts[3,i],i] &lt;- 300
+     new.painters[new.painters[,i]&lt;100,i] &lt;- 400
+   }
+
+   posterior &lt;- MCMCordfactanal(~Composition+Drawing+Colour+Expression,
+                        data=new.painters, factors=1,
+                        lambda.constraints=list(Drawing=list(2,"+")),
+                        burnin=5000, mcmc=500000, thin=200, verbose=500,
+                        L0=0.5, store.lambda=TRUE,
+                        store.scores=TRUE, tune=1.2)
+   plot(posterior)
+   summary(posterior)
+   
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Data on Middle East Respiratory Syndrome (MERS) in Saudi...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for mers_2014_15 {EpiEstim}"><tr><td>mers_2014_15 {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Data on Middle East Respiratory Syndrome (MERS) in Saudi Arabia.</h2>
+
+<h3>Description</h3>
+
+<p>This data set gives:
+</p>
+
+<ol>
+<li><p> the daily incidence of onset of symptoms of laboratory confirmed human
+infections with MERS-CoV in Saudi Arabia between the beginning of July
+2014 and the end of December 2015, and
+</p>
+</li>
+<li><p> estimates of the mean and standrad deviation of the serial interval for
+MERS.
+</p>
+</li></ol>
+
+
+
+<h3>Format</h3>
+
+<p>A list of two elements:
+</p>
+
+<ul>
+<li> <p><strong>incidence:</strong> a dataframe containing 495 days of observations with dates
+in the first column, and number of local (2nd column) and imported (3rd
+column) cases of MERS,
+</p>
+</li>
+<li> <p><strong>si:</strong> a list of estimates of the mean (mean_si) and standard deviation
+(std_si) of the serial interval for MERS.
+</p>
+</li></ul>
+
+
+<h3>Source</h3>
+
+<p>The incidence data was extracted from the EMPRES I system from FAO
+(Global Animal Disease Information System - Food and Agriculture Organization
+of the United Nations, 2017). Note incidence on the first day was originally
+made of one local case and zero imported cases; this has been modified to
+zero local cases and one imported case in the dataset shown here so the
+reproduction number can be estimated from the start using the function
+<code><a href="estimate_R.html">estimate_R()</a></code>. The serial interval parameters were those
+estimated by Cauchemez et al. (2016).
+</p>
+
+
+<h3>References</h3>
+
+<p>Global Animal Disease Information System - Food and Agriculture Organization
+of the United Nations, 2017
+</p>
+<p>Cauchemez S, Nouvellet P, Cori A, Jombart T, Garske T, Clapham H, Moore S,
+Linden Mills H, Salje H, Collins C, et al. 2016.
+Unraveling the drivers of MERS-CoV transmission.
+Proc Natl Acad Sci 113: 9081-9086.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## load data
+data("mers_2014_15")
+
+## estimate the reproduction number (method "parametric_si")
+bimonthly_R &lt;- estimate_R(mers_2014_15$incidence[,c("local", "imported")],
+                          method = "parametric_si",
+                          config = make_config(
+                          mean_si = mers_2014_15$si$mean_si,
+                          std_si = mers_2014_15$si$std_si,
+                          t_start = 2:(nrow(mers_2014_15$incidence)-8*7),
+                          t_end = (2:(nrow(mers_2014_15$incidence)-8*7)) + 8*7))
+
+plot(bimonthly_R, legend = FALSE, add_imported_cases = TRUE,
+                          options_I = list(col = c("local" = "black", 
+                             "imported" = "red"),
+                             interval = 7, # show weekly incidence
+                             ylab = "Weekly incidence"),
+                          options_R = list(ylab = "Bimonthly R")) 
+# The first plot shows the weekly incidence, 
+# with imported cases shown in red and local cases in black
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

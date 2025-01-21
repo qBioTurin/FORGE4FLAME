@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: A convenient rounding function</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for txtRound {htmlTable}"><tr><td>txtRound {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>A convenient rounding function</h2>
+
+<h3>Description</h3>
+
+<p>If you provide a string value in X the function will try to round this if
+a numeric text is present. If you want to skip certain rows/columns then
+use the excl.* arguments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+txtRound(x, ...)
+
+## Default S3 method:
+txtRound(
+  x,
+  digits = 0,
+  digits.nonzero = NA,
+  txt.NA = "",
+  dec = ".",
+  scientific,
+  ...
+)
+
+## S3 method for class 'data.frame'
+txtRound(x, ...)
+
+## S3 method for class 'table'
+txtRound(x, ...)
+
+## S3 method for class 'matrix'
+txtRound(x, digits = 0, excl.cols, excl.rows, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>The value/vector/data.frame/matrix to be rounded</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Passed to next method</p>
+</td></tr>
+<tr valign="top"><td><code>digits</code></td>
+<td>
+<p>The number of digits to round each element to.
+If you provide a vector each element will apply to the corresponding columns.</p>
+</td></tr>
+<tr valign="top"><td><code>digits.nonzero</code></td>
+<td>
+<p>The number of digits to keep if the result is close to
+zero. Sometimes we have an entire table with large numbers only to have a
+few but interesting observation that are really interesting</p>
+</td></tr>
+<tr valign="top"><td><code>txt.NA</code></td>
+<td>
+<p>The string to exchange NA with</p>
+</td></tr>
+<tr valign="top"><td><code>dec</code></td>
+<td>
+<p>The decimal marker. If the text is in non-english decimal
+and string formatted you need to change this to the apropriate decimal
+indicator.</p>
+</td></tr>
+<tr valign="top"><td><code>scientific</code></td>
+<td>
+<p>If the value should be in scientific format.</p>
+</td></tr>
+<tr valign="top"><td><code>excl.cols</code></td>
+<td>
+<p>Columns to exclude from the rounding procedure.
+This can be either a number or regular expression. Skipped if x is a vector.</p>
+</td></tr>
+<tr valign="top"><td><code>excl.rows</code></td>
+<td>
+<p>Rows to exclude from the rounding procedure.
+This can be either a number or regular expression.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>matrix/data.frame</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other text formatters: 
+<code><a href="txtMergeLines.html">txtMergeLines</a>()</code>,
+<code><a href="txtPval.html">txtPval</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+mx &lt;- matrix(c(1, 1.11, 1.25,
+               2.50, 2.55, 2.45,
+               3.2313, 3, pi),
+             ncol = 3, byrow=TRUE)
+txtRound(mx, 1)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

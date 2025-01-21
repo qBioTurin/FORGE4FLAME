@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Angina Pectoris Survival Data</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for ap {npsurv}"><tr><td>ap {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>
+Angina Pectoris Survival Data
+</h2>
+
+<h3>Description</h3>
+
+<p> Contains the survival times in years from the time of
+diagnosis for 2418 male patients with angina pectoris. Some patients
+are lost to follow-up, hence giving right-censored observations. Each
+integer-valued survival time is treated as being censored within a
+one-year interval. </p>
+
+
+<h3>Usage</h3>
+
+<pre>ap</pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 30 observations and 3 variables:
+</p>
+<p><code>L</code>: left-end point of an interval-censored retraction time;
+</p>
+<p><code>R</code>: right-end point of an interval-censored retraction time;
+</p>
+<p><code>count</code>: number of patients in the interval.
+</p>
+
+
+<h3>Source</h3>
+
+<p> Lee and Wang (2003), page 92. </p>
+
+
+<h3>References</h3>
+
+<p> Lee, E. T. and Wang, J. W. (2003). <em>Statistical Methods for
+Survival Data Analysis</em>. Wiley. </p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="npsurv.html">npsurv</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(ap)
+r = Uhaz(ap, deg=2)           # smooth U-shaped hazard
+plot(r$h, fn="h")             # hazard
+plot(r$h, fn="d")             # density
+
+# NPMLE and shape-restricted estimation
+plot(npsurv(ap), fn="s")      # survival under no shape restriction
+plot(r$h, fn="s", add=TRUE)   # survival with smooth U-shaped hazard
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

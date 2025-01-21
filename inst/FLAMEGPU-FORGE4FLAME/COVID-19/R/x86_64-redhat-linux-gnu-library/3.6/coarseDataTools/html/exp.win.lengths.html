@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Exposure window lengths from an influenza outbreak at a NYC...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for exp.win.lengths {coarseDataTools}"><tr><td>exp.win.lengths {coarseDataTools}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Exposure window lengths from an influenza outbreak at a NYC school</h2>
+
+<h3>Description</h3>
+
+<p>A numeric vector of exposure window lengths taken from a dataset of doubly interval-censored incubation period observations.  All observations came from a NYC public school.  The outbreak has been described in full in Lessler et al. (see citation below).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+data(exp.win.lengths)
+</pre>
+
+
+<h3>Format</h3>
+
+<p>A numeric vector with 134 positive values.  Each value represents an exposure window length from an observation of the incubation period for that individual.  The exposure window length is the length of time during which exposure could have occurred.  For example, if an individual could have been exposed anytime between 6am on Monday to 6am on Wednesday, her exposure window length would be 2 days.</p>
+
+
+<h3>Source</h3>
+
+<p>Lessler J et al.  New England Journal of Medicine. Outbreak of 2009 Pandemic Influenza A (H1N1) at a New York City School. 2009. 361(27):2628-2636. <a href="http://content.nejm.org/cgi/content/full/361/27/2628">http://content.nejm.org/cgi/content/full/361/27/2628</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(exp.win.lengths)
+summary(exp.win.lengths)
+hist(exp.win.lengths)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>coarseDataTools</em> version 0.6-5 <a href="00Index.html">Index</a>]</div>
+</body></html>

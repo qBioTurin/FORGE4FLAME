@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Average age in Sweden</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for SCB {htmlTable}"><tr><td>SCB {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Average age in Sweden</h2>
+
+<h3>Description</h3>
+
+<p>For the vignettes there is a dataset downloaded by using the
+<code>get_pxweb_data()</code> call. The data is from
+SCB (<a href="http://scb.se/">Statistics Sweden</a>) and downloaded
+using the <a href="https://github.com/rOpenGov/pxweb">pxweb package</a>:
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Max Gordon <a href="mailto:max@gforge.se">max@gforge.se</a>
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="http://scb.se">http://scb.se</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Not run: 
+# The data was generated through downloading via the API
+library(pxweb)
+
+# Get the last 15 years of data (the data always lags 1 year)
+current_year &lt;- as.integer(format(Sys.Date(), "%Y")) -1
+SCB &lt;- get_pxweb_data(
+  url = "http://api.scb.se/OV0104/v1/doris/en/ssd/BE/BE0101/BE0101B/BefolkningMedelAlder",
+  dims = list(Region = c('00', '01', '03', '25'),
+              Kon = c('1', '2'),
+              ContentsCode = c('BE0101G9'),
+              Tid = (current_year-14):current_year),
+  clean = TRUE)
+
+# Some cleaning was needed before use
+SCB$region &lt;- factor(substring(as.character(SCB$region), 4))
+Swe_ltrs &lt;- c("å" = "&amp;aring;",
+              "Å" = "&amp;Aring;",
+              "ä" = "&amp;auml;",
+              "Ä" = "&amp;Auml;",
+              "ö" = "&amp;ouml;",
+              "Ö" = "&amp;Ouml;")
+for (i in 1:length(Swe_ltrs)){
+  levels(SCB$region) &lt;- gsub(names(Swe_ltrs)[i],
+              Swe_ltrs[i],
+              levels(SCB$region))
+}
+
+save(SCB, file = "data/SCB.rda")
+
+## End(Not run)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

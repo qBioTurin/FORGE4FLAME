@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: (Log)likelihood plot for a fit using maximum likelihood</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for logLikplot {fitdistrplus}"><tr><td>logLikplot {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>(Log)likelihood plot for a fit using maximum likelihood</h2>
+
+<h3>Description</h3>
+
+   
+<p><code>llplot</code> plots the (log)likelihood around the estimation for distributions fitted
+by maximum likelihood.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+llplot(mlefit, loglik = TRUE, expansion = 1, lseq = 50,
+                   back.col = TRUE, nlev = 10, pal.col = terrain.colors(100),
+                   fit.show = FALSE, fit.pch = 4, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>mlefit</code></td>
+<td>
+<p>An object of class <code>"<a href="fitdist.html">fitdist</a>"</code> of <code>"<a href="fitdistcens.html">fitdistcens</a>"</code> obtained by maximum
+likelihood (with <code>method = "mle"</code>)</p>
+</td></tr>
+<tr valign="top"><td><code>loglik</code></td>
+<td>
+<p>a logical to plot log-likelihood or likelihood function.</p>
+</td></tr>
+<tr valign="top"><td><code>expansion</code></td>
+<td>
+<p>a expansion factor to enlarge the default range of values explored 
+for each parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>lseq</code></td>
+<td>
+<p>length of sequences of parameters.</p>
+</td></tr>
+<tr valign="top"><td><code>back.col</code></td>
+<td>
+<p>logical (for llsurface only). Contours are plotted with a background
+gradient of colors if TRUE.</p>
+</td></tr>
+<tr valign="top"><td><code>nlev</code></td>
+<td>
+<p>number of contour levels to plot.</p>
+</td></tr>
+<tr valign="top"><td><code>pal.col</code></td>
+<td>
+<p>Palette of colors. Colors to be used as back (for llsurface only).</p>
+</td></tr>
+<tr valign="top"><td><code>fit.show</code></td>
+<td>
+<p>a logical to plot the mle estimate.</p>
+</td></tr>
+<tr valign="top"><td><code>fit.pch</code></td>
+<td>
+<p>the type of point used to plot the mle estimate.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further graphical arguments passed to graphical functions.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>llplot</code> plots the (log)likelihood surface(s) (or curve if there there is only one 
+estimated parameter) around the maximum likelihood estimation. 
+It internally calls function <code><a href="logLik-surface.html">llsurface</a></code> 
+and <code><a href="logLik-surface.html">llcurve</a></code>. When there is more than two estimated parameters, the
+(log)likehood surface is plotted for each combination of two parameters, fixing
+the other ones to their estimated value.
+For each (log)likelihood surface, when <code>back.col</code> <code><a href="../../graphics/html/image.html">image</a></code> 
+(2D-plot) is used and when <code>nlev &gt; 0</code> <code><a href="../../graphics/html/contour.html">contour</a></code> (2D-plot) is used to add
+<code>nlev</code> contours. By default the range of values explored for each estimated
+parameter is of 2 standard error around the mle estimate but this range can be expanded
+(or contracted) using the argument <code>expansion</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Marie-Laure Delignette-Muller and Christophe Dutang.
+</p>
+
+
+<h3>References</h3>
+
+<p>Delignette-Muller ML and Dutang C (2015), 
+<em>fitdistrplus: An R Package for Fitting Distributions</em>.
+Journal of Statistical Software, 64(4), 1-34.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p>See <code><a href="logLik-surface.html">llsurface</a></code> and <code><a href="logLik-surface.html">llcurve</a></code> 
+for manual (log)likelihood plots (surface ou curve)
+and <code><a href="../../graphics/html/plot.html">plot</a></code>, <code><a href="../../graphics/html/contour.html">contour</a></code>,
+<code><a href="../../graphics/html/image.html">image</a></code> for classic plotting functions.  
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# (1) a distribution with one parameter
+#
+
+x &lt;- rexp(50)
+fite &lt;- fitdist(x, "exp")
+llplot(fite)
+llplot(fite, col = "red", fit.show = TRUE)
+llplot(fite, col = "red", fit.show = TRUE, loglik = FALSE)
+
+
+# (2) a distribution with two parameters
+# 
+
+data(groundbeef)
+serving &lt;- groundbeef$serving
+fitg &lt;- fitdist(serving, "gamma")
+llplot(fitg)
+## Not run: 
+llplot(fitg, expansion = 2)
+llplot(fitg, pal.col = heat.colors(100), fit.show = TRUE)
+llplot(fitg, back.col = FALSE, nlev = 25, fit.show = TRUE)
+
+## End(Not run)
+
+# (3) a distribution with two parameters with one fixed
+# 
+fitg2 &lt;- fitdist(serving, "gamma", fix.arg = list(rate = 0.5))
+llplot(fitg2, fit.show = TRUE)
+
+# (4) a distribution with three parameters
+# 
+
+## Not run: 
+  data(endosulfan)
+  ATV &lt;-endosulfan$ATV
+  library("actuar")
+  fBurr &lt;- fitdist(ATV, "burr", start = list(shape1 = 0.3, shape2 = 1, rate = 1))
+  llplot(fBurr)
+  llplot(fBurr, back.col = FALSE, fit.show = TRUE, fit.pch = 16)
+  llplot(fBurr, nlev = 0, pal.col = rainbow(100), lseq = 100)
+
+## End(Not run)
+
+# (5) a distribution with two parameters fitted on censored data
+# 
+data(salinity)
+fsal &lt;- fitdistcens(salinity, "lnorm")
+llplot(fsal, fit.show = TRUE)
+llplot(fsal, fit.show = TRUE, loglik = FALSE)
+
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

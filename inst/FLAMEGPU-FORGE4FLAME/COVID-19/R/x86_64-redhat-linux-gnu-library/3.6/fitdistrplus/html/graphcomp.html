@@ -1,0 +1,403 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Graphical comparison of multiple fitted distributions (for...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for graphcomp {fitdistrplus}"><tr><td>graphcomp {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Graphical comparison of multiple fitted distributions (for non-censored data)</h2>
+
+<h3>Description</h3>
+
+   
+<p><code>cdfcomp</code> plots the empirical cumulative distribution against fitted distribution functions,
+<code>denscomp</code> plots the histogram against fitted density functions, 
+<code>qqcomp</code> plots theoretical quantiles against empirical ones,
+<code>ppcomp</code> plots theoretical probabilities against empirical ones.
+Only <code>cdfcomp</code> is able to plot fits of a discrete distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+cdfcomp(ft, xlim, ylim, xlogscale = FALSE, ylogscale = FALSE, main, xlab, ylab, 
+    datapch, datacol, fitlty, fitcol, addlegend = TRUE, legendtext, 
+    xlegend = "bottomright", ylegend = NULL, horizontals = TRUE, 
+    verticals = FALSE, do.points = TRUE, use.ppoints = TRUE, a.ppoints = 0.5, 
+    lines01 = FALSE, discrete, add = FALSE, plotstyle = "graphics", 
+    fitnbpts = 101, ...)
+    
+denscomp(ft, xlim, ylim, probability = TRUE, main, xlab, ylab, datacol, fitlty, 
+    fitcol, addlegend = TRUE, legendtext, xlegend = "topright", ylegend = NULL, 
+    demp = FALSE, dempcol = "black", plotstyle = "graphics", 
+    discrete, fitnbpts = 101, fittype="l", ...)
+
+qqcomp(ft, xlim, ylim, xlogscale = FALSE, ylogscale = FALSE, main, xlab, ylab, 
+    fitpch, fitcol, addlegend = TRUE, legendtext, xlegend = "bottomright", 
+    ylegend = NULL, use.ppoints = TRUE, a.ppoints = 0.5, line01 = TRUE, 
+    line01col = "black", line01lty = 1, ynoise = TRUE, plotstyle = "graphics", ...)
+    
+ppcomp(ft, xlim, ylim, xlogscale = FALSE, ylogscale = FALSE, main, xlab, ylab, 
+    fitpch, fitcol, addlegend = TRUE, legendtext, xlegend = "bottomright", 
+    ylegend = NULL, use.ppoints = TRUE, a.ppoints = 0.5, line01 = TRUE, 
+    line01col = "black", line01lty = 1, ynoise = TRUE, plotstyle = "graphics", ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>ft</code></td>
+<td>
+<p>One <code>"fitdist"</code> object or a list of objects of class <code>"fitdist"</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>xlim</code></td>
+<td>
+<p>The <i>x</i>-limits of the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>ylim</code></td>
+<td>
+<p>The <i>y</i>-limits of the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>xlogscale</code></td>
+<td>
+<p>If <code>TRUE</code>, uses a logarithmic scale for the <i>x</i>-axis.</p>
+</td></tr>
+<tr valign="top"><td><code>ylogscale</code></td>
+<td>
+<p>If <code>TRUE</code>, uses a logarithmic scale for the <i>y</i>-axis.</p>
+</td></tr>
+<tr valign="top"><td><code>main</code></td>
+<td>
+<p>A main title for the plot. See also <code><a href="../../graphics/html/title.html">title</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>xlab</code></td>
+<td>
+<p>A label for the <i>x</i>-axis, defaults to a description of <code>x</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>ylab</code></td>
+<td>
+<p>A label for the <i>y</i>-axis, defaults to a description of <code>y</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>datapch</code></td>
+<td>
+<p>An integer specifying a symbol to be used in plotting data points. 
+See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>datacol</code></td>
+<td>
+<p>A specification of the color to be used in plotting data points.
+See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fitcol</code></td>
+<td>
+<p>A (vector of) color(s) to plot fitted distributions. 
+If there are fewer colors than fits they are recycled in the standard fashion.
+See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fitlty</code></td>
+<td>
+<p>A (vector of) line type(s) to plot fitted distributions/densities. 
+If there are fewer colors than fits they are recycled in the standard fashion.
+See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fitpch</code></td>
+<td>
+<p>A (vector of) line type(s) to plot fitted quantiles/probabilities. 
+If there are fewer colors than fits they are recycled in the standard fashion.
+See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fittype</code></td>
+<td>
+<p>The type of plot for fitted probabilities in the case of
+discrete distributions: possible types are <code>"p"</code> for points,
+<code>"l"</code> for lines and <code>"o"</code> for both overplotted 
+(as in <code><a href="../../graphics/html/plot.default.html">plot.default</a></code>).
+<code>fittype</code> is not used for non-discrete distributions.</p>
+</td></tr>  
+<tr valign="top"><td><code>fitnbpts</code></td>
+<td>
+<p>A numeric for the number of points to compute fitted probabilities 
+or cumulative probabilities. Default to <code>101</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>addlegend</code></td>
+<td>
+<p>If <code>TRUE</code>, a legend is added to the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>legendtext</code></td>
+<td>
+<p>A character or expression vector of length <i>&ge; 1</i> to appear
+in the legend. See also <code><a href="../../graphics/html/legend.html">legend</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>xlegend, ylegend</code></td>
+<td>
+<p>The <i>x</i> and <i>y</i> coordinates to be used to position the legend. 
+They can be specified by keyword. 
+If <code>plotstyle = "graphics"</code>, see <code><a href="../../grDevices/html/xy.coords.html">xy.coords</a></code> and <code><a href="../../graphics/html/legend.html">legend</a></code>.
+If <code>plotstyle = "ggplot"</code>, the <code>xlegend</code> keyword must be one of <code>top</code>, <code>bottom</code>, 
+<code>left</code>, or <code>right</code>. See also <code>guide_legend</code> in <code>ggplot2</code></p>
+</td></tr>
+<tr valign="top"><td><code>horizontals</code></td>
+<td>
+<p>If <code>TRUE</code>, draws horizontal lines for the step empirical 
+cumulative distribution function (ecdf). See also <code><a href="../../stats/html/plot.stepfun.html">plot.stepfun</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>do.points</code></td>
+<td>
+<p>If <code>TRUE</code> (by default), draws points at the x-locations. 
+For large dataset (n &gt; 1e4), <code>do.points</code> is ignored and no point is drawn.</p>
+</td></tr>
+<tr valign="top"><td><code>verticals</code></td>
+<td>
+<p>If <code>TRUE</code>, draws vertical lines for the empirical cumulative distribution 
+function (ecdf). Only taken into account if <code>horizontals=TRUE</code>. </p>
+</td></tr>
+<tr valign="top"><td><code>use.ppoints</code></td>
+<td>
+<p>If <code>TRUE</code>, probability points of the empirical distribution
+are defined using function <code><a href="../../stats/html/ppoints.html">ppoints</a></code> as 
+<code>(1:n - a.ppoints)/(n - 2a.ppoints + 1)</code>.
+If <code>FALSE</code>, probability points are simply defined as <code>1:n / n</code>. This argument is ignored 
+for discrete data.</p>
+</td></tr>
+<tr valign="top"><td><code>a.ppoints</code></td>
+<td>
+<p>If <code>use.ppoints=TRUE</code>, this is passed to the <code><a href="../../stats/html/ppoints.html">ppoints</a></code> function.</p>
+</td></tr>
+<tr valign="top"><td><code>lines01</code></td>
+<td>
+<p>A logical to plot two horizontal lines at <code>h=0</code> and <code>h=1</code> for <code>cdfcomp</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>line01</code></td>
+<td>
+<p>A logical to plot an horizontal line <i>y=x</i> for <code>qqcomp</code> and <code>ppcomp</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>line01col, line01lty</code></td>
+<td>
+<p>Color and line type for <code>line01</code>. See also <code><a href="../../graphics/html/par.html">par</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>demp</code></td>
+<td>
+<p>A logical to add the empirical density on the plot, using the 
+<code><a href="../../stats/html/density.html">density</a></code> function.</p>
+</td></tr>
+<tr valign="top"><td><code>dempcol</code></td>
+<td>
+<p>A color for the empirical density in case it is added on the plot (<code>demp=TRUE</code>).</p>
+</td></tr>
+<tr valign="top"><td><code>ynoise</code></td>
+<td>
+<p>A logical to add a small noise when plotting empirical 
+quantiles/probabilities for <code>qqcomp</code> and <code>ppcomp</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>probability</code></td>
+<td>
+<p>A logical to use the probability scale for <code>denscomp</code>. See also <code><a href="../../graphics/html/hist.html">hist</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>discrete</code></td>
+<td>
+<p>If <code>TRUE</code>, the distributions are considered discrete.
+When missing, <code>discrete</code> is set to <code>TRUE</code> if at least one 
+object of the list <code>ft</code> is discrete.</p>
+</td></tr>
+<tr valign="top"><td><code>add</code></td>
+<td>
+<p>If <code>TRUE</code>, adds to an already existing plot. If <code>FALSE</code>, starts a new plot.
+This parameter is not available when <code>plotstyle = "ggplot"</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>plotstyle</code></td>
+<td>
+<p><code>"graphics"</code> or <code>"ggplot"</code>. If <code>"graphics"</code>, the display is built with <code><a href="../../graphics/html/graphics-package.html">graphics</a></code> functions. 
+If <code>"ggplot"</code>, a graphic object output is created with <code>ggplot2</code> functions.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further graphical arguments passed to graphical functions used in <code>cdfcomp</code>, <code>denscomp</code>, <code>ppcomp</code> 
+and <code>qqcomp</code> when <code>plotstyle = "graphics"</code>. 
+When <code>plotstyle = "ggplot"</code>, these arguments are only used by the histogram plot (<code><a href="../../graphics/html/hist.html">hist</a></code>) in the <code>denscomp</code> function.
+When <code>plotstyle = "ggplot"</code>, the graphical output can be customized with relevant <code>ggplot2</code> functions after 
+you store your output.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>cdfcomp</code> provides a plot of the empirical distribution and each fitted 
+distribution in cdf, by default using the Hazen's rule
+for the empirical distribution, with probability points defined as 
+<code>(1:n - 0.5)/n</code>. If <code>discrete</code> is <code>TRUE</code>, probability points 
+are always defined as <code>(1:n)/n</code>. For large dataset (<code>n &gt; 1e4</code>), no 
+point is drawn but the line for <code>ecdf</code> is drawn instead.
+Note that when <code>horizontals, verticals and do.points</code> are <code>FALSE</code>,
+no empirical point is drawn, only the fitted cdf is shown.
+</p>
+<p><code>denscomp</code> provides a density plot of each fitted distribution
+with the histogram of the data for conyinuous data. 
+When <code>discrete=TRUE</code>, distributions are considered as discrete,
+no histogram is plotted but <code>demp</code> is forced to <code>TRUE</code>
+and fitted and empirical probabilities are plotted either with vertical lines
+<code>fittype="l"</code>, with single points <code>fittype="p"</code> or
+both lines and points <code>fittype="o"</code>.
+</p>
+<p><code>ppcomp</code> provides a plot of the probabilities of each fitted distribution
+(<i>x</i>-axis) against the empirical probabilities (<i>y</i>-axis) by default defined as 
+<code>(1:n - 0.5)/n</code> (data are assumed continuous). 
+For large dataset (<code>n &gt; 1e4</code>), lines are drawn instead of pointss and customized with the <code>fitpch</code> parameter.
+</p>
+<p><code>qqcomp</code> provides a plot of the quantiles of each theoretical distribution (<i>x</i>-axis)
+against the empirical quantiles of the data (<i>y</i>-axis), by default defining
+probability points as <code>(1:n - 0.5)/n</code> for theoretical quantile calculation 
+(data are assumed continuous). 
+For large dataset (<code>n &gt; 1e4</code>), lines are drawn instead of points and customized with the <code>fitpch</code> parameter.
+</p>
+<p>By default a legend is added to these plots. Many graphical arguments are optional, 
+dedicated to personalize the plots, and fixed to default values if omitted.
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Christophe Dutang, Marie-Laure Delignette-Muller and Aurelie Siberchicot.
+</p>
+
+
+<h3>References</h3>
+
+<p>Delignette-Muller ML and Dutang C (2015), 
+<em>fitdistrplus: An R Package for Fitting Distributions</em>.
+Journal of Statistical Software, 64(4), 1-34.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p>See <code><a href="../../graphics/html/plot.html">plot</a></code>, <code><a href="../../graphics/html/legend.html">legend</a></code>, <code><a href="../../stats/html/ppoints.html">ppoints</a></code>, 
+<code><a href="../../stats/html/plot.stepfun.html">plot.stepfun</a></code> for classic plotting functions.
+See <code><a href="CIcdfplot.html">CIcdfplot</a></code> and <code><a href="plotdist.html">plotdist</a></code> for other plot functions
+of fitdistrplus.  
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# (1) Plot various distributions fitted to serving size data
+#
+data(groundbeef)
+serving &lt;- groundbeef$serving
+fitW &lt;- fitdist(serving, "weibull")
+fitln &lt;- fitdist(serving, "lnorm")
+fitg &lt;- fitdist(serving, "gamma")
+
+cdfcomp(list(fitW, fitln, fitg), horizontals = FALSE)
+cdfcomp(list(fitW, fitln, fitg), horizontals = TRUE)
+cdfcomp(list(fitW, fitln, fitg), horizontals = TRUE, verticals = TRUE, datacol = "purple")
+cdfcomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+  main = "ground beef fits", xlab = "serving sizes (g)",
+  ylab = "F", xlim = c(0, 250), xlegend = "center", lines01 = TRUE)
+denscomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+  main = "ground beef fits", xlab = "serving sizes (g)", xlim = c(0, 250), xlegend = "topright")
+ppcomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+  main = "ground beef fits", xlegend = "bottomright", line01 = TRUE)
+qqcomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+  main = "ground beef fits", xlegend = "bottomright", line01 = TRUE,
+  xlim = c(0, 300), ylim = c(0, 300), fitpch = 16)
+
+
+# (2) Plot lognormal distributions fitted by 
+# maximum goodness-of-fit estimation
+# using various distances (data plotted in log scale)
+#
+data(endosulfan)
+ATV &lt;- subset(endosulfan, group == "NonArthroInvert")$ATV
+flnMGEKS &lt;- fitdist(ATV, "lnorm", method = "mge", gof = "KS")
+flnMGEAD &lt;- fitdist(ATV, "lnorm", method = "mge", gof = "AD")
+flnMGEADL &lt;- fitdist(ATV, "lnorm", method = "mge", gof = "ADL")
+flnMGEAD2L &lt;- fitdist(ATV, "lnorm", method = "mge", gof = "AD2L")
+
+cdfcomp(list(flnMGEKS, flnMGEAD, flnMGEADL, flnMGEAD2L),
+  xlogscale = TRUE, main = "fits of a lognormal dist. using various GOF dist.",
+  legendtext = c("MGE KS", "MGE AD", "MGE ADL", "MGE AD2L"),
+  verticals = TRUE, xlim = c(10, 100000))
+qqcomp(list(flnMGEKS, flnMGEAD, flnMGEADL, flnMGEAD2L),
+  main = "fits of a lognormal dist. using various GOF dist.",
+  legendtext = c("MGE KS", "MGE AD", "MGE ADL", "MGE AD2L"),
+  xlogscale = TRUE, ylogscale = TRUE)
+ppcomp(list(flnMGEKS, flnMGEAD, flnMGEADL, flnMGEAD2L),
+  main = "fits of a lognormal dist. using various GOF dist.",
+  legendtext = c("MGE KS", "MGE AD", "MGE ADL", "MGE AD2L"))
+
+
+# (3) Plot normal and logistic distributions fitted by 
+# maximum likelihood estimation
+# using various plotting positions in cdf plots
+#
+data(endosulfan)
+log10ATV &lt;-log10(subset(endosulfan, group == "NonArthroInvert")$ATV)
+fln &lt;- fitdist(log10ATV, "norm")
+fll &lt;- fitdist(log10ATV, "logis")
+
+# default plot using Hazen plotting position: (1:n - 0.5)/n
+cdfcomp(list(fln, fll), legendtext = c("normal", "logistic"), xlab = "log10ATV")
+
+# plot using mean plotting position (named also Gumbel plotting position)
+# (1:n)/(n + 1)
+cdfcomp(list(fln, fll),legendtext = c("normal", "logistic"), xlab = "log10ATV",
+  use.ppoints = TRUE, a.ppoints = 0)
+    
+# plot using basic plotting position: (1:n)/n
+cdfcomp(list(fln, fll),legendtext = c("normal", "logistic"), xlab = "log10ATV",
+  use.ppoints = FALSE)
+
+
+# (4) Comparison of fits of two distributions fitted to discrete data
+#
+data(toxocara)
+number &lt;- toxocara$number
+fitp &lt;- fitdist(number, "pois")
+fitnb &lt;- fitdist(number, "nbinom")
+cdfcomp(list(fitp, fitnb), legendtext = c("Poisson", "negative binomial"))
+denscomp(list(fitp, fitnb),demp = TRUE, legendtext = c("Poisson", "negative binomial"))
+denscomp(list(fitp, fitnb),demp = TRUE, fittype = "l", dempcol = "black",
+        legendtext = c("Poisson", "negative binomial"))
+denscomp(list(fitp, fitnb),demp = TRUE, fittype = "p", dempcol = "black",
+        legendtext = c("Poisson", "negative binomial"))
+denscomp(list(fitp, fitnb),demp = TRUE, fittype = "o", dempcol = "black",
+        legendtext = c("Poisson", "negative binomial"))
+
+
+# (5) Customizing of graphical output and use of ggplot2
+#
+data(groundbeef)
+serving &lt;- groundbeef$serving
+fitW &lt;- fitdist(serving, "weibull")
+fitln &lt;- fitdist(serving, "lnorm")
+fitg &lt;- fitdist(serving, "gamma")
+if (requireNamespace ("ggplot2", quietly = TRUE)) {
+denscomp(list(fitW, fitln, fitg), plotstyle = "ggplot")
+cdfcomp(list(fitW, fitln, fitg), plotstyle = "ggplot")
+qqcomp(list(fitW, fitln, fitg), plotstyle = "ggplot")
+ppcomp(list(fitW, fitln, fitg), plotstyle = "ggplot")
+}
+
+# customizing graphical output with graphics
+denscomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+  main = "ground beef fits", xlab = "serving sizes (g)", xlim = c(0, 250),
+  xlegend = "topright", addlegend = FALSE)
+
+# customizing graphical output with ggplot2
+if (requireNamespace ("ggplot2", quietly = TRUE)) {
+  dcomp &lt;- denscomp(list(fitW, fitln, fitg), legendtext = c("Weibull", "lognormal", "gamma"),
+    xlab = "serving sizes (g)", xlim = c(0, 250),
+    xlegend = "topright", plotstyle = "ggplot", breaks = 20, addlegend = FALSE)
+  dcomp + ggplot2::theme_minimal() + ggplot2::ggtitle("Ground beef fits")
+}
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

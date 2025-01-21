@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Convert aweek objects to a data frame</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for as.data.frame.aweek {aweek}"><tr><td>as.data.frame.aweek {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Convert aweek objects to a data frame</h2>
+
+<h3>Description</h3>
+
+<p>Convert aweek objects to a data frame
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'aweek'
+as.data.frame(x, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an aweek object</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>unused</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a data frame with an aweek column
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="date2week.html">date2week()</a></code> <code><a href="aweek-class.html">print.aweek()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+d  &lt;- as.Date("2019-03-25") + 0:6
+w  &lt;- date2week(d, "Sunday")
+dw &lt;- data.frame(date = d, week = w)
+dw
+dw$week
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

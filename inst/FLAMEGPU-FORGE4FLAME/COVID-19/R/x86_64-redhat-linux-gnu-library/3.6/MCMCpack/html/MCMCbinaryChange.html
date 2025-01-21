@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for a Binary Multiple Changepoint...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMCbinaryChange {MCMCpack}"><tr><td>MCMCbinaryChange {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for a Binary Multiple Changepoint Model</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of
+a binary model with multiple changepoints. The function uses the
+Markov chain Monte Carlo method of Chib (1998).  The user supplies
+data and priors, and a sample from the posterior distribution is
+returned as an mcmc object, which can be subsequently analyzed with
+functions provided in the coda package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMCbinaryChange(data, m = 1, c0 = 1, d0 = 1, a = NULL, b = NULL,
+  burnin = 10000, mcmc = 10000, thin = 1, verbose = 0, seed = NA,
+  phi.start = NA, P.start = NA, marginal.likelihood = c("none",
+  "Chib95"), ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>The data.</p>
+</td></tr>
+<tr valign="top"><td><code>m</code></td>
+<td>
+<p>The number of changepoints.</p>
+</td></tr>
+<tr valign="top"><td><code>c0</code></td>
+<td>
+<p><i>c_0</i> is the shape1 parameter for Beta prior on
+<i>&phi;</i> (the mean).</p>
+</td></tr>
+<tr valign="top"><td><code>d0</code></td>
+<td>
+<p><i>d_0</i> is the shape2 parameter for Beta prior on
+<i>&phi;</i> (the mean).</p>
+</td></tr>
+<tr valign="top"><td><code>a</code></td>
+<td>
+<p><i>a</i> is the shape1 beta prior for transition
+probabilities.  By default, the expected duration is computed and
+corresponding a and b values are assigned. The expected duration
+is the sample period divided by the number of states.</p>
+</td></tr>
+<tr valign="top"><td><code>b</code></td>
+<td>
+<p><i>b</i> is the shape2 beta prior for transition
+probabilities.  By default, the expected duration is computed and
+corresponding a and b values are assigned. The expected duration
+is the sample period divided by the number of states.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of MCMC iterations after burn-in.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The
+number of MCMC iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the
+progress of the sampler is printed to the screen.  If
+<code>verbose</code> is greater than 0, the iteration number and the
+posterior density samples are printed to the screen every
+<code>verbose</code>th iteration.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA,
+current R system seed is used.</p>
+</td></tr>
+<tr valign="top"><td><code>phi.start</code></td>
+<td>
+<p>The starting values for the mean. The default
+value of NA will use draws from the Uniform distribution.</p>
+</td></tr>
+<tr valign="top"><td><code>P.start</code></td>
+<td>
+<p>The starting values for the transition matrix. A
+user should provide a square matrix with dimension equal to the
+number of states. By default, draws from the <code>Beta(0.9,
+0.1)</code> are used to construct a proper transition matrix for each
+raw except the last raw.</p>
+</td></tr>
+<tr valign="top"><td><code>marginal.likelihood</code></td>
+<td>
+<p>How should the marginal likelihood be
+calculated?  Options are: <code>none</code> in which case the marginal
+likelihood will not be calculated, and <code>Chib95</code> in which
+case the method of Chib (1995) is used.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>MCMCbinaryChange</code> simulates from the posterior distribution
+of a binary model with multiple changepoints.
+</p>
+<p>The model takes the following form: </p>
+<p style="text-align: center;"><i>Y_t \sim
+\mathcal{B}ernoulli(&phi;_i),\;\; i = 1, &hellip;, k</i></p>
+<p> Where <i>k</i>
+is the number of states.
+</p>
+<p>We assume Beta priors for <i>&phi;_{i}</i> and for transition
+probabilities: </p>
+<p style="text-align: center;"><i>&phi;_i \sim \mathcal{B}eta(c_0, d_0)</i></p>
+<p> And:
+</p>
+<p style="text-align: center;"><i>p_{mm} \sim \mathcal{B}eta{a}{b},\;\; m = 1, &hellip;, k</i></p>
+<p> Where
+<i>M</i> is the number of states.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This
+object can be summarized by functions provided by the coda
+package.  The object contains an attribute <code>prob.state</code>
+storage matrix that contains the probability of <i>state_i</i> for
+each period, and the log-marginal likelihood of the model
+(<code>logmarglike</code>).
+</p>
+
+
+<h3>References</h3>
+
+<p>Jong Hee Park. 2011. &ldquo;Changepoint Analysis of Binary
+and Ordinal Probit Models: An Application to Bank Rate Policy
+Under the Interwar Gold
+Standard.&quot; <em>Political Analysis</em>. 19: 188-204.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.
+&ldquo;MCMCpack: Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of
+Statistical Software</em>.  42(9): 1-21.
+<a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Siddhartha Chib. 1995. &ldquo;Marginal Likelihood from the Gibbs
+Output.&rdquo;  <em>Journal of the American Statistical
+Association</em>. 90: 1313-1321.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="MCMCpoissonChange.html">MCMCpoissonChange</a></code>,<code><a href="plotState.html">plotState</a></code>,
+<code><a href="plotChangepoint.html">plotChangepoint</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+    ## Not run: 
+    set.seed(19173)
+    true.phi&lt;- c(0.5, 0.8, 0.4)
+
+    ## two breaks at c(80, 180)
+    y1 &lt;- rbinom(80, 1,  true.phi[1])
+    y2 &lt;- rbinom(100, 1, true.phi[2])
+    y3 &lt;- rbinom(120, 1, true.phi[3])
+    y  &lt;- as.ts(c(y1, y2, y3))
+
+    model0 &lt;- MCMCbinaryChange(y, m=0, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+    model1 &lt;- MCMCbinaryChange(y, m=1, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+    model2 &lt;- MCMCbinaryChange(y, m=2, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+    model3 &lt;- MCMCbinaryChange(y, m=3, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+    model4 &lt;- MCMCbinaryChange(y, m=4, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+    model5 &lt;- MCMCbinaryChange(y, m=5, c0=2, d0=2, mcmc=100, burnin=100, verbose=50,
+    	      marginal.likelihood = "Chib95")
+
+    print(BayesFactor(model0, model1, model2, model3, model4, model5))
+
+    ## plot two plots in one screen
+    par(mfrow=c(attr(model2, "m") + 1, 1), mai=c(0.4, 0.6, 0.3, 0.05))
+    plotState(model2, legend.control = c(1, 0.6))
+    plotChangepoint(model2, verbose = TRUE, ylab="Density", start=1, overlay=TRUE)
+
+    
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

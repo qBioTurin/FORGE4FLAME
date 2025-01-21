@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Data on the 2003 SARS epidemic in Hong Kong.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for SARS2003 {EpiEstim}"><tr><td>SARS2003 {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Data on the 2003 SARS epidemic in Hong Kong.</h2>
+
+<h3>Description</h3>
+
+<p>This data set gives:
+</p>
+
+<ol>
+<li><p> the daily incidence of onset of symptoms in Hong Kong during the 2003
+severe acute respiratory syndrome (SARS) epidemic (see source and
+references),
+</p>
+</li>
+<li><p> the discrete daily distribution of the serial interval for SARS, assuming
+a shifted Gamma distribution with mean 8.4 days, standard deviation 3.8
+days and shift 1 day (see references).
+</p>
+</li></ol>
+
+
+
+<h3>Format</h3>
+
+<p>A list of two elements:
+</p>
+
+<ul>
+<li> <p><strong>incidence:</strong> a vector containing 107 days of observation,
+</p>
+</li>
+<li> <p><strong>si_distr:</strong> a vector containing a set of 25 probabilities.
+</p>
+</li></ul>
+
+
+<h3>Source</h3>
+
+<p>Cori A. et al. (2009) Temporal variability and social heterogeneity
+in disease transmission: the case of SARS in Hong Kong. PLoS Comput Biol 5(8)
+: e1000471.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cori A. et al. (2009) Temporal variability and social heterogeneity in
+disease transmission: the case of SARS in Hong Kong. PLoS Comput Biol 5(8):
+e1000471.
+</p>
+<p>Lipsitch M. et al. (2003) Transmission dynamics and control of severe acute
+respiratory syndrome. Science 300(5627): 1966-1970.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## load data on SARS in Hong Kong in 2003
+data("SARS2003")
+
+## estimate the reproduction number (method "non_parametric_si")
+res &lt;- estimate_R(SARS2003$incidence, method="non_parametric_si",
+          config = make_config(list(
+                      t_start = seq(14, 101), 
+                      t_end = seq(20, 107),
+                      si_distr = SARS2003$si_distr)))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the reproduction number
+## over the 7-day window finishing on that day.
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Data on the 2009 H1N1 influenza pandemic in a school in...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Flu2009 {EpiEstim}"><tr><td>Flu2009 {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Data on the 2009 H1N1 influenza pandemic in a school in Pennsylvania.</h2>
+
+<h3>Description</h3>
+
+<p>This data set gives:
+</p>
+
+<ol>
+<li><p> the daily incidence of onset of acute respiratory illness
+(ARI, defined as at least two symptoms among fever, cough, sore throat,
+and runny nose) amongst children in a school in Pennsylvania during the
+2009 H1N1 influenza pandemic (see source and references),
+</p>
+</li>
+<li><p> the discrete daily distribution of the serial interval for influenza,
+assuming a shifted Gamma distribution with mean 2.6 days, standard
+deviation 1.5 days and shift 1 day (see references).
+</p>
+</li>
+<li><p> interval-censored serial interval data from the 2009 outbreak of H1N1
+influenza in San Antonio, Texas, USA (see references).
+</p>
+</li></ol>
+
+
+
+<h3>Format</h3>
+
+<p>A list of three elements:
+</p>
+
+<ul>
+<li> <p><strong>incidence:</strong> a dataframe with 32 lines containing dates in first column,
+and daily incidence in second column (Cauchemez et al., 2011),
+</p>
+</li>
+<li> <p><strong>si_distr:</strong> a vector containing a set of 12 probabilities (Ferguson et
+al, 2005),
+</p>
+</li>
+<li> <p><strong>si_data:</strong> a dataframe with 16 lines giving serial interval patient
+data collected in a household study in San Antonio, Texas throughout the
+2009 H1N1 outbreak (Morgan et al., 2010).
+</p>
+</li></ul>
+
+
+<h3>Examples</h3>
+
+<pre>
+## load data on pandemic flu in a school in 2009
+data("Flu2009")
+
+## estimate the reproduction number (method "non_parametric_si")
+res &lt;- estimate_R(Flu2009$incidence, method="non_parametric_si",
+          config = make_config(list(si_distr = Flu2009$si_distr)))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the reproduction number
+## over the 7-day window finishing on that day.
+
+## Not run: 
+## Note the following examples use an MCMC routine
+## to estimate the serial interval distribution from data,
+## so they may take a few minutes to run
+
+## estimate the reproduction number (method "si_from_data")
+res &lt;- estimate_R(Flu2009$incidence, method="si_from_data",
+          si_data = Flu2009$si_data,
+          config = make_config(list(mcmc_control = make_mcmc_control(list(
+                                 burnin = 1000,
+                                 thin = 10, seed = 1)),
+                      n1 = 1000, n2 = 50,
+                      si_parametric_distr = "G")))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the reproduction number
+## over the 7-day window finishing on that day.
+
+## End(Not run)
+
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

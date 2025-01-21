@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Convert aweek objects to characters or dates</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for as.Date.aweek {aweek}"><tr><td>as.Date.aweek {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Convert aweek objects to characters or dates</h2>
+
+<h3>Description</h3>
+
+<p>Convert aweek objects to characters or dates
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'aweek'
+as.Date(x, floor_day = FALSE, ...)
+
+## S3 method for class 'aweek'
+as.POSIXlt(x, tz = "", floor_day = FALSE, ...)
+
+## S3 method for class 'aweek'
+as.character(x, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an object of class <a href="aweek-class.html">aweek</a>.</p>
+</td></tr>
+<tr valign="top"><td><code>floor_day</code></td>
+<td>
+<p>when <code>TRUE</code>, the days will be set to the start of the week.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>parameters passed to <code>as.POSIXlt()</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>tz</code></td>
+<td>
+<p>passed on to <code><a href="../../base/html/as.POSIXlt.html">as.POSIXlt()</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="date2week.html">date2week()</a></code> <code><a href="aweek-class.html">print.aweek()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+w &lt;- date2week(Sys.Date(), week_start = "Sunday")
+w
+# convert to POSIX
+as.POSIXlt(w)
+as.POSIXlt(w, floor_day = TRUE)
+as.POSIXlt(w, floor_day = TRUE, tz = "KST")
+
+# convert to date
+as.Date(w)
+as.Date(w, floor_day = TRUE)
+
+# convert to character (strip attributes)
+as.character(w)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

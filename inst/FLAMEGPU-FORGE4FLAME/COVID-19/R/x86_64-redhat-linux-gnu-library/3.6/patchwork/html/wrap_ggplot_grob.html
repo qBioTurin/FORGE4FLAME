@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Make a gtable created from a ggplot object patchwork...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for wrap_ggplot_grob {patchwork}"><tr><td>wrap_ggplot_grob {patchwork}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Make a gtable created from a ggplot object patchwork compliant</h2>
+
+<h3>Description</h3>
+
+<p>This function converts a gtable, as produced by <code><a href="../../ggplot2/html/ggplotGrob.html">ggplot2::ggplotGrob()</a></code> and
+makes it ready to be added to a patchwork. In contrast to passing
+the gtable to <code><a href="wrap_elements.html">wrap_elements()</a></code>, <code>wrap_ggplot_grob()</code> ensures proper
+alignment as expected. On the other hand major restructuring of the gtable
+will result in an object that doesn't work properly with
+<code>wrap_ggplot_grob()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+wrap_ggplot_grob(x)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A gtable as produced by <code><a href="../../ggplot2/html/ggplotGrob.html">ggplot2::ggplotGrob()</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code>table_patch</code> object to be added to a patchwork
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+library(grid)
+library(gtable)
+library(ggplot2)
+
+p1 &lt;- ggplot(mtcars) + geom_point(aes(mpg, disp)) + ggtitle('disp and mpg seems connected')
+p2 &lt;- ggplot(mtcars) + geom_boxplot(aes(gear, disp, group = gear))
+
+# Convert p2 so we can add new stuff to it
+p2_table &lt;- ggplotGrob(p2)
+stamp &lt;- textGrob('TOP SECRET', rot = 35,
+  gp = gpar(fontsize = 72, fontface = 'bold')
+)
+p2_table &lt;- gtable_add_grob(p2_table, stamp,
+  t = 1, l = 1, b = nrow(p2_table), r = ncol(p2_table)
+)
+
+# Adding it directly will loose alignment
+p1 + p2_table
+
+# Use wrap_ggplot_grob to keep alignment
+p1 + wrap_ggplot_grob(p2_table)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>patchwork</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

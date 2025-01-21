@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Calculate the marginal posterior probabilities of predictors...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for mptable {MCMCpack}"><tr><td>mptable {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Calculate the marginal posterior probabilities of predictors being included
+in a quantile regression model.</h2>
+
+<h3>Description</h3>
+
+<p>This function extracts the marginal probability table produced by
+<code>summary.qrssvs</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+mptable(qrssvs)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>qrssvs</code></td>
+<td>
+<p>An object of class <code>qrssvs</code>. Typically this will be the
+<code>gamma</code> component of the list returned by <code>SSVSquantreg</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A table with the predictors listed together with their posterior
+marginal posterior probability of inclusion.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Craig Reed
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="SSVSquantreg.html">SSVSquantreg</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Not run: 
+set.seed(1)
+epsilon&lt;-rnorm(100)
+set.seed(2)
+x&lt;-matrix(rnorm(1000),100,10)
+y&lt;-x[,1]+x[,10]+epsilon
+qrssvs&lt;-SSVSquantreg(y~x)
+mptable(qrssvs$gamma)
+
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

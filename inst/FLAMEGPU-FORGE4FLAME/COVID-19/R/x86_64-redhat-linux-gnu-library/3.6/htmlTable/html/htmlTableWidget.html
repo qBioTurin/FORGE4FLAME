@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: htmlTable with pagination widget</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for htmlTableWidget {htmlTable}"><tr><td>htmlTableWidget {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>htmlTable with pagination widget</h2>
+
+<h3>Description</h3>
+
+<p>This widget renders a table with pagination into an htmlwidget
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+htmlTableWidget(
+  x,
+  number_of_entries = c(10, 25, 100),
+  width = NULL,
+  height = NULL,
+  elementId = NULL,
+  ...
+)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A data frame to be rendered</p>
+</td></tr>
+<tr valign="top"><td><code>number_of_entries</code></td>
+<td>
+<p>a numeric vector with the number of entries per page to show.
+If there is more than one number given, the user will be able to show the number
+of rows per page in the table.</p>
+</td></tr>
+<tr valign="top"><td><code>width</code></td>
+<td>
+<p>Fixed width for widget (in css units). The default is
+<code>NULL</code>, which results in intelligent automatic sizing based on the
+widget's container.</p>
+</td></tr>
+<tr valign="top"><td><code>height</code></td>
+<td>
+<p>Fixed height for widget (in css units). The default is
+<code>NULL</code>, which results in intelligent automatic sizing based on the
+widget's container.</p>
+</td></tr>
+<tr valign="top"><td><code>elementId</code></td>
+<td>
+<p>Use an explicit element ID for the widget (rather than an
+automatically generated one). Useful if you have other JavaScript that
+needs to explicitly discover and interact with a specific widget instance.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Additional parameters passed to htmlTable</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>an htmlwidget showing the paginated table
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Hash Functions</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Hash functions {sodium}"><tr><td>Hash functions {sodium}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Hash Functions</h2>
+
+<h3>Description</h3>
+
+<p>Functions to calculate cryptographic hash of a message, with optionally a key for
+HMAC applications. For storing passwords, use <a href="password.html">password_store</a> instead.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+hash(buf, key = NULL, size = 32)
+
+scrypt(buf, salt = raw(32), size = 32)
+
+shorthash(buf, key)
+
+sha512(buf, key = NULL)
+
+sha256(buf, key = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>buf</code></td>
+<td>
+<p>data to be hashed</p>
+</td></tr>
+<tr valign="top"><td><code>key</code></td>
+<td>
+<p>key for HMAC hashing. Optional, except for in <code>shorthash</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>size</code></td>
+<td>
+<p>length of the output hash. Must be between 16 and 64 (recommended is 32)</p>
+</td></tr>
+<tr valign="top"><td><code>salt</code></td>
+<td>
+<p>non-confidential random data to seed the algorithm</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The generic <code>hash</code> function is recommended most most applications. It uses
+dynamic length
+<a href="https://download.libsodium.org/doc/hashing/generic_hashing.html">BLAKE2b</a>
+where output size can be any value between 16 bytes (128bit) and 64 bytes (512bit).
+</p>
+<p>The <a href="hash.html">scrypt</a> hash function is designed to be CPU and memory expensive to protect
+against brute force attacks. This algorithm is also used by the <a href="password.html">password_store</a>
+function.
+</p>
+<p>The <code>shorthash</code> function is a special 8 byte (64 bit) hash based on
+<a href="https://download.libsodium.org/doc/hashing/short-input_hashing.html">SipHash-2-4</a>.
+The output of this function is only 64 bits (8 bytes). It is useful for in e.g.
+Hash tables, but it should not be considered collision-resistant.
+</p>
+<p>Hash functions can be used for HMAC by specifying a secret <code>key</code>. They key size
+for <code>shorthash</code> is 16 bytes, for <code>sha256</code> it is 32 bytes and for <code>sha512</code>
+it is 64 bytes. For <code>hash</code> the key size can be any value between 16 and 62,
+recommended is at least 32.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://download.libsodium.org/doc/hashing/generic_hashing.html">https://download.libsodium.org/doc/hashing/generic_hashing.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# Basic hashing
+msg &lt;- serialize(iris, NULL)
+hash(msg)
+sha256(msg)
+sha512(msg)
+scrypt(msg)
+
+# Generate keys from passphrase
+passphrase &lt;- charToRaw("This is super secret")
+key &lt;- hash(passphrase)
+shortkey &lt;- hash(passphrase, size = 16)
+longkey &lt;- hash(passphrase, size = 64)
+
+# HMAC (hashing with key)
+hash(msg, key = key)
+shorthash(msg, shortkey)
+sha256(msg, key = key)
+sha512(msg, key = longkey)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>sodium</em> version 1.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

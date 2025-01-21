@@ -1,0 +1,27 @@
+i; init; init_m; n_file="/home/docker/data/input/NAMES.RDS"; perc.undetected = "1:1"
+g; c_rates; Contact.generation; matrixRData = "/home/docker/data/input/ContactMatrices.RData"; times=c(6,18,31,74,88,102);  alpha = list(time1 = data.frame(S = rep(0,3),W = c(.1,.9,.9) ), time2 = data.frame(S = rep(0,3), W = rep(.5,3), O = rep(.3,3) ), time3 = data.frame(S = rep(0,3), W = rep(.3,3), O = rep(.2,3)  ) , time4 = data.frame(S = rep(0,3), W = rep(.5,3), O = rep(.35,3) ), time5 = data.frame(S = rep(0,3), W = rep(.6,3), O = rep(.4,3) ), time6 = data.frame(S = rep(0,3), W = rep(.9,3), O = rep(.5,3)  ) ); eta = c(0, .9, .95); probMask = .6
+g; beta; beta.generation; min=0; max=1  
+g; k; k_calib; min=400; max=1200
+g; sw_rates; SW.generation; time.activation=list(time1 = data.frame(time=74, age =2, perc =.3 ))
+c; D_inf_a0_sy_s2; 0
+c; D_inf_a1_sy_s2; Death; n=1
+c; D_inf_a2_sy_s2; Death; n=2
+c; R_inf_a0_sy_s0; 0.2
+c; R_inf_a1_sy_s0; 0.2
+c; R_inf_a2_sy_s0; 0.2
+c; R_inf_a0_sy_s1; 0.2
+c; R_inf_a1_sy_s1; 0.2
+c; R_inf_a2_sy_s1; 0.2
+c; R_inf_a0_sy_s2; 0.2
+c; R_inf_a1_sy_s2; 0.2
+c; R_inf_a2_sy_s2; 0.2
+c; Lu_inf_a0_sy_s0; l.generation; age= "a0"; sy = "s0"; p=c(.5,.5,.5)
+c; Lu_inf_a1_sy_s0; l.generation; age= "a1"; sy = "s0"; p=c(.5,.5,.5)
+c; Lu_inf_a2_sy_s0; l.generation; age= "a2"; sy = "s0"; p=c(.5,.5,.5)
+c; Lq_inf_a0_sy_s1; l.generation; age= "a0"; sy = "s1"; p=c(.5,.5,.5)
+c; Lq_inf_a1_sy_s1; l.generation; age= "a1"; sy = "s1"; p=c(.5,.5,.5)
+c; Lq_inf_a2_sy_s1; l.generation; age= "a2"; sy = "s1"; p=c(.5,.5,.5)
+c; Lh_inf_a0_sy_s2; l.generation; age= "a0"; sy = "s2"; p=c(.5,.5,.5)
+c; Lh_inf_a1_sy_s2; l.generation; age= "a1"; sy = "s2"; p=c(.5,.5,.5)
+c; Lh_inf_a2_sy_s2; l.generation; age= "a2"; sy = "s2"; p=c(.5,.5,.5)
+c; O; 0.025

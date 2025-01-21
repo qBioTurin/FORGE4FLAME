@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Ground beef serving size data set</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for groundbeef {fitdistrplus}"><tr><td>groundbeef {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Ground beef serving size data set </h2>
+
+<h3>Description</h3>
+
+<p>Serving sizes collected in a French survey, for ground beef patties consumed by children under 5 years old. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+data(groundbeef)
+</pre>
+
+
+<h3>Format</h3>
+
+ 
+<p><code>groundbeef</code> is a data frame with 1 column (serving: serving sizes in grams)
+</p>
+
+
+<h3>Source</h3>
+
+ 
+<p>Delignette-Muller, M.L., Cornu, M. 2008. Quantitative risk assessment for <em>Escherichia coli</em> O157:H7 in 
+frozen ground beef patties consumed by young children in French households. <em>International Journal 
+of Food Microbiology</em>, <b>128</b>, 158-164.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# (1) load of data
+#
+data(groundbeef)
+
+# (2) description and plot of data
+#
+serving &lt;- groundbeef$serving
+descdist(serving)
+plotdist(serving)
+
+# (3) fit of a Weibull distribution to data
+#
+fitW &lt;- fitdist(serving,"weibull")
+summary(fitW)
+plot(fitW)
+gofstat(fitW)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

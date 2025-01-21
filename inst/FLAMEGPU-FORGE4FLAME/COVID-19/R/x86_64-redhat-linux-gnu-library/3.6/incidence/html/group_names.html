@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: extract and set group names</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for group_names {incidence}"><tr><td>group_names {incidence}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>extract and set group names</h2>
+
+<h3>Description</h3>
+
+<p>extract and set group names
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+group_names(x, value)
+
+group_names(x) &lt;- value
+
+## Default S3 method:
+group_names(x, value)
+
+## Default S3 replacement method:
+group_names(x) &lt;- value
+
+## S3 method for class 'incidence'
+group_names(x, value = NULL)
+
+## S3 replacement method for class 'incidence'
+group_names(x) &lt;- value
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an <code><a href="incidence.html">incidence()</a></code> object.</p>
+</td></tr>
+<tr valign="top"><td><code>value</code></td>
+<td>
+<p>character vector used to rename groups</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This accessor will return a
+</p>
+
+
+<h3>Value</h3>
+
+<p>an integer indicating the number of groups present in the incidence
+object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+i &lt;- incidence(dates = sample(10, 100, replace = TRUE), 
+               interval = 1L,
+               groups = sample(letters[1:3], 100, replace = TRUE))
+i
+group_names(i)
+
+# change the names of the groups
+group_names(i) &lt;- c("Group 1", "Group 2", "Group 3")
+i
+
+# example if there are mistakes in the original data, e.g. 
+# something is misspelled
+set.seed(50)
+grps &lt;- sample(c("child", "adult", "adlut"), 100, replace = TRUE, prob = c(0.45, 0.45, 0.05))
+i &lt;- incidence(dates = sample(10, 100, replace = TRUE), 
+               interval = 1L,
+               groups = grps)
+colSums(get_counts(i))
+
+# If you change the name of the mis-spelled group, it will be merged with the
+# correctly-spelled group
+gname &lt;- group_names(i)
+gname[gname == "adlut"] &lt;- "adult"
+# without side-effects
+print(ii &lt;- group_names(i, gname))
+colSums(get_counts(i))  # original still has three groups
+colSums(get_counts(ii))
+# with side-effects
+group_names(i) &lt;- gname
+colSums(get_counts(i))
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>incidence</em> version 1.7.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

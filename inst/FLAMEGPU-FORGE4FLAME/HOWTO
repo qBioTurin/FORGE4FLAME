@@ -1,0 +1,23 @@
+# Run simulations with ensemble
+
+./abm_ensemble.sh 
+
+Possible parameters:
+    -expdir or --experiment_dir:    directory with the scenario to simulate (default: .)
+    -prun   or --parallel_run:      number of run to execute in parallel on GPUs (default: 10)
+    -ob     or --only_build:        build the model without execute it (default: OFF; possible values: ON, OFF)
+    -c      or --clean:             clean files and directories (default: OFF; possible values: ON, OFF)
+
+
+
+# Run simulations without ensemble
+
+./abm.sh
+
+Possible parameters:
+    -expdir or --experiment_dir:         directory with the scenario to simulate (default: .)
+    -ob     or --only_build:             build the model without execute it (default: OFF; possible values: ON, OFF)
+   	-v      or --visualisation:          activate the visualisation (default: OFF; possible values: ON, OFF)
+    -cps    or --checkpoint_simulation:  run the model in a simplified version with the aim to obtain a checkpoint (default: OFF; possible values: ON, OFF)
+    -g      or --debug:                  execute the simulation with debug prints (default: OFF; possible values: ON, OFF)
+    -c      or --clean:                  clean old files and directories (default: OFF; possible values: ON, OFF)

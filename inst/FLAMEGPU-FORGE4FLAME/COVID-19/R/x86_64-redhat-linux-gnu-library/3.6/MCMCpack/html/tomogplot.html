@@ -1,0 +1,146 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Tomography Plot</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for tomogplot {MCMCpack}"><tr><td>tomogplot {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Tomography Plot</h2>
+
+<h3>Description</h3>
+
+<p>tomogplot is used to produce a tomography plot (see King, 1997) for a series
+of partially observed 2 x 2 contingency tables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+tomogplot(r0, r1, c0, c1, xlab = "fraction of r0 in c0 (p0)",
+  ylab = "fraction of r1 in c0 (p1)", bgcol = "white", ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>r0</code></td>
+<td>
+<p>An <i>(ntables \times 1)</i> vector of row sums from
+row 0.</p>
+</td></tr>
+<tr valign="top"><td><code>r1</code></td>
+<td>
+<p>An <i>(ntables \times 1)</i> vector of row sums from
+row 1.</p>
+</td></tr>
+<tr valign="top"><td><code>c0</code></td>
+<td>
+<p>An <i>(ntables \times 1)</i> vector of column sums
+from column 0.</p>
+</td></tr>
+<tr valign="top"><td><code>c1</code></td>
+<td>
+<p>An <i>(ntables \times 1)</i> vector of column sums
+from column 1.</p>
+</td></tr>
+<tr valign="top"><td><code>xlab</code></td>
+<td>
+<p>The x axis label for the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>ylab</code></td>
+<td>
+<p>The y axis label for the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>bgcol</code></td>
+<td>
+<p>The background color for the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Consider the following partially observed 2 by 2 contingency table:
+</p>
+
+<table summary="Rd table">
+<tr>
+ <td style="text-align: left;">
+           </td><td style="text-align: left;"> | <i>Y=0</i> </td><td style="text-align: left;"> | <i>Y=1</i> </td><td style="text-align: left;"> |           </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ --------- </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <i>X=0</i> </td><td style="text-align: left;"> | <i>Y_0</i> </td><td style="text-align: left;"> |           </td><td style="text-align: left;"> | <i>r_0</i> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ --------- </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <i>X=1</i> </td><td style="text-align: left;"> | <i>Y_1</i> </td><td style="text-align: left;"> |           </td><td style="text-align: left;"> | <i>r_1</i> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ --------- </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td><td style="text-align: left;"> ---------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+           </td><td style="text-align: left;"> | <i>c_0</i> </td><td style="text-align: left;"> | <i>c_1</i> </td><td style="text-align: left;"> | <i>N</i>
+</td>
+</tr>
+
+</table>
+
+<p>where <i>r_0</i>, <i>r_1</i>, <i>c_0</i>, <i>c_1</i>, and <i>N</i> are
+non-negative integers that are observed. The interior cell entries
+are not observed. It is assumed that <i>Y_0|r_0 \sim
+\mathcal{B}inomial(r_0, p_0)</i> and <i>Y_1|r_1 \sim
+\mathcal{B}inomial(r_1, p_1)</i>.
+</p>
+<p>This function plots the bounds on the maximum likelihood estimatess for (p0,
+p1).
+</p>
+
+
+<h3>References</h3>
+
+<p>Gary King, 1997. <em>A Solution to the Ecological Inference
+Problem</em>.  Princeton: Princeton University Press.
+</p>
+<p>Jonathan C. Wakefield. 2004. &ldquo;Ecological Inference for 2 x 2 Tables.&rdquo;
+<em>Journal of the Royal Statistical Society, Series A</em>. 167(3): 385445.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="MCMChierEI.html">MCMChierEI</a></code>, <code><a href="MCMCdynamicEI.html">MCMCdynamicEI</a></code>,
+<code><a href="dtomogplot.html">dtomogplot</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+r0 &lt;- rpois(100, 500)
+r1 &lt;- rpois(100, 200)
+c0 &lt;- rpois(100, 100)
+c1 &lt;- (r0 + r1) - c0
+tomogplot(r0, r1, c0, c1)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

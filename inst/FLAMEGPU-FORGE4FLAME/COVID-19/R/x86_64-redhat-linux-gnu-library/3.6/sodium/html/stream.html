@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Stream Ciphers</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Stream ciphers {sodium}"><tr><td>Stream ciphers {sodium}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Stream Ciphers</h2>
+
+<h3>Description</h3>
+
+<p>Generate deterministic streams of random data based off a secret key and random nonce.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+chacha20(size, key, nonce)
+
+salsa20(size, key, nonce)
+
+xsalsa20(size, key, nonce)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>size</code></td>
+<td>
+<p>length of cipher stream in bytes</p>
+</td></tr>
+<tr valign="top"><td><code>key</code></td>
+<td>
+<p>secret key used by the cipher</p>
+</td></tr>
+<tr valign="top"><td><code>nonce</code></td>
+<td>
+<p>non-secret unique data to randomize the cipher</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>You usually don't need to call these methods directly. For local encryption
+use <a href="symmetric.html">data_encrypt</a>. For secure communication use <a href="simple.html">simple_encrypt</a> or
+<a href="messaging.html">auth_encrypt</a>.
+</p>
+<p>Random streams form the basis for most cryptographic methods. Based a shared secret
+(the key) we generate a predictable random data stream of equal length as the message
+we need to encrypt. Then we <a href="../../base/html/Logic.html">xor</a> the message data with this random stream,
+which effectively inverts each byte in the message with probabiliy 0.5. The message
+can be decrypted by re-generating exactly the same random data stream and <a href="../../base/html/Logic.html">xor</a>'ing
+it back. See the examples.
+</p>
+<p>Each stream generator requires a <code>key</code> and a <code>nonce</code>. Both are required to re-generate
+the same stream for decryption. The key forms the shared secret and should only known to
+the trusted parties. The <code>nonce</code> is not secret and should be stored or sent along
+with the ciphertext. The purpose of the <code>nonce</code> is to make a random stream unique
+to protect gainst re-use attacks. This way you can re-use a your key to encrypt multiple
+messages, as long as you never re-use the same nonce.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://download.libsodium.org/doc/advanced/xsalsa20.html">https://download.libsodium.org/doc/advanced/xsalsa20.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# Very basic encryption
+myfile &lt;- file.path(R.home(), "COPYING")
+message &lt;- readBin(myfile, raw(), file.info(myfile)$size)
+passwd &lt;- charToRaw("My secret passphrase")
+
+# Encrypt:
+key &lt;- hash(passwd)
+nonce8 &lt;- random(8)
+stream &lt;- chacha20(length(message), key, nonce8)
+ciphertext &lt;- base::xor(stream, message)
+
+# Decrypt:
+stream &lt;- chacha20(length(ciphertext), key, nonce8)
+out &lt;- base::xor(ciphertext, stream)
+stopifnot(identical(out, message))
+
+# Other stream ciphers
+stream &lt;- salsa20(10000, key, nonce8)
+stream &lt;- xsalsa20(10000, key, random(24))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>sodium</em> version 1.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

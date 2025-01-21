@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: U-shaped Hazard Function</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for uh {npsurv}"><tr><td>uh {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>U-shaped Hazard Function</h2>
+
+<h3>Description</h3>
+
+<p><code>uh</code> creates an object of class <code>uh</code>, which stores a
+U-shaped hazard function. 
+</p>
+<p><code>print.uh</code> prints an object of class <code>uh</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+
+uh(alpha, tau, nu, eta, mu, upper=Inf, deg=1, collapse=TRUE)
+## S3 method for class 'uh'
+print(x, ...)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>alpha</code></td>
+<td>
+<p>a nonnegative value, for the constant coefficient.</p>
+</td></tr>
+<tr valign="top"><td><code>tau</code></td>
+<td>
+<p>vector of nonnegative real values, for left knots. </p>
+</td></tr>
+<tr valign="top"><td><code>nu</code></td>
+<td>
+<p>vector of nonnegative values, for masses associated with the
+left knots. </p>
+</td></tr>
+<tr valign="top"><td><code>eta</code></td>
+<td>
+<p>vector of nonnegative real values, for right knots. </p>
+</td></tr>
+<tr valign="top"><td><code>mu</code></td>
+<td>
+<p>vector of nonnegative real values, for masses associated with the
+right knots. </p>
+</td></tr>
+<tr valign="top"><td><code>upper</code></td>
+<td>
+<p>a positive value, at which point the hazard starts to
+become infinite. </p>
+</td></tr>
+<tr valign="top"><td><code>deg</code></td>
+<td>
+<p>nonnegative real number for spline degree (i.e., p in the formula below).</p>
+</td></tr>
+<tr valign="top"><td><code>collapse</code></td>
+<td>
+<p>logical, indicating if identical knots should be collapsed.</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an object of class <code>uh</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>other auguments for printing.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>A U-shape hazard function, as generalized by Wang and Fani (2017), is
+given by
+</p>
+<p style="text-align: center;"><i>     h(t) = alpha + sum_{j=1}^k nu_j (tau_j - t)_+^p 
+                  + sum_{j=1}^m mu_j (t - eta_j)_+^p,</i></p>
+
+<p>where <i>alpha, nu_j, mu_j &ge; 0</i>,
+<i>tau_1 &lt; ... &lt; tau_k &lt;= eta_1 &lt; ... &lt; eta_m,</i> and <i>p &gt;= 0</i> is the
+the spline degree which determines 
+the smoothness of the U-shaped hazard. As p increases, the
+family of hazard functions becomes increasingly smoother, but at the
+same time, smaller. When <i>p = 0</i>, the hazard function is
+U-shaped, as studied by Bray et al. (1967). When <i>p = 1</i>,
+the hazard function is convex, as studied by Jankowski and Wellner
+(2009a,b).
+</p>
+<p><code>print.uh</code> prints an object of class <code>uh</code>. While
+<code>alpha</code>, <code>upper</code> and <code>deg</code> are printed as they are,
+<code>tau</code> and <code>nu</code> are printed as a two-column matrix, and so
+are <code>eta</code> and <code>mu</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>uh</code> returns an object of class <code>uh</code>. It is a list with
+components <code>alpha</code>, <code>tau</code>, <code>nu</code>, <code>eta</code>, <code>mu</code>,
+<code>upper</code> and <code>deg</code>, which store their corresponding values as
+described above.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Bray, T. A., Crawford, G. B., and Proschan, F. (1967).  <em>Maximum
+Likelihood Estimation of a U-shaped Failure Rate Function</em>. Defense
+Technical Information Center.
+</p>
+<p>Jankowski, H. K. and Wellner, J. A. (2009a). Computation of
+nonparametric convex hazard estimators via profile
+methods. <em>Journal of Nonparametric Statistics</em>, <b>21</b>,
+505-518.
+</p>
+<p>Jankowski, H. K. and Wellner, J. A. (2009b). Nonparametric estimation
+of a convex bathtub-shaped hazard function. <em>Bernoulli</em>,
+<b>15</b>, 1010-1035.
+</p>
+<p>Wang, Y. and Fani, S. (2017). Nonparametric maximum likelihood
+computation of a U-shaped hazard function. <em>Statistics and
+Computing</em>, (in print).
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="Uhaz.html">Uhaz</a></code>, <code><a href="icendata.html">icendata</a></code>, <code><a href="plot.Uhaz.html">plot.uh</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+(h0 = uh(3, 2, 3, 4, 5, 7, deg=0))              # deg = 0
+plot(h0, ylim=c(0,20))
+(h1 = uh(4, 2, 3, 5, 6, 7, deg=1))              # deg = 1
+plot(h1, add=TRUE, col="green3")
+(h2 = uh(1, 1:2, 3:4, 5:6, 7:8, 9, deg=2))      # deg = 2
+plot(h2, add=TRUE, col="red3")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

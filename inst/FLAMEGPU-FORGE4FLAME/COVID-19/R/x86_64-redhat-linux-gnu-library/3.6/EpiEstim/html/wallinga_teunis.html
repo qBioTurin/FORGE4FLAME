@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Estimation of the case reproduction number using the Wallinga...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for wallinga_teunis {EpiEstim}"><tr><td>wallinga_teunis {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Estimation of the case reproduction number using the Wallinga and Teunis
+method</h2>
+
+<h3>Description</h3>
+
+<p><code>wallinga_teunis</code> estimates the case reproduction number of an epidemic,
+given the incidence time series and the serial interval distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+wallinga_teunis(incid, method = c("non_parametric_si", "parametric_si"),
+  config)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>incid</code></td>
+<td>
+<p>One of the following
+</p>
+
+<ul>
+<li><p> Vector (or a dataframe with
+a column named 'incid') of non-negative integers containing an incidence
+time series. If the dataframe contains a column <code>incid$dates</code>, this is
+used for plotting. <code>incid$dates</code> must contains only dates in a row.
+</p>
+</li>
+<li><p> An object of class <code><a href="../../incidence/html/incidence.html">incidence</a></code>
+</p>
+</li></ul>
+</td></tr>
+<tr valign="top"><td><code>method</code></td>
+<td>
+<p>the method used to estimate R, one of &quot;non_parametric_si&quot;,
+&quot;parametric_si&quot;, &quot;uncertain_si&quot;, &quot;si_from_data&quot; or &quot;si_from_sample&quot;</p>
+</td></tr>
+<tr valign="top"><td><code>config</code></td>
+<td>
+<p>a list with the following elements: </p>
+ <ul>
+<li><p>t_start:
+Vector of positive integers giving the starting times of each window over
+which the reproduction number will be estimated. These must be in ascending
+order, and so that for all <code>i</code>, <code>t_start[i]&lt;=t_end[i]</code>.
+t_start[1] should be strictly after the first day with non null incidence.
+</p>
+</li>
+<li><p>t_end: Vector of positive integers giving the ending times of each
+window over which the reproduction number will be estimated. These must be
+in ascending order, and so that for all <code>i</code>,
+<code>t_start[i]&lt;=t_end[i]</code>. </p>
+</li>
+<li><p>method: One of &quot;non_parametric_si&quot; or
+&quot;parametric_si&quot; (see details). </p>
+</li>
+<li><p>mean_si: For method &quot;parametric_si&quot; ;
+positive real giving the mean serial interval. </p>
+</li>
+<li><p>std_si: For method
+&quot;parametric_si&quot; ; non negative real giving the stadard deviation of the
+serial interval. </p>
+</li>
+<li><p>si_distr: For method &quot;non_parametric_si&quot; ; vector
+of probabilities giving the discrete distribution of the serial interval,
+starting with <code>si_distr[1]</code> (probability that the serial interval is
+zero), which should be zero. </p>
+</li>
+<li><p>n_sim: A positive integer giving the
+number of simulated epidemic trees used for computation of the confidence
+intervals of the case reproduction number (see details). </p>
+</li></ul>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Estimates of the case reproduction number for an epidemic over
+predefined time windows can be obtained, for a given discrete distribution of
+the serial interval, as proposed by Wallinga and Teunis (AJE, 2004).
+Confidence intervals are obtained by simulating a number (config$n_sim) of
+possible transmission trees (only done if config$n_sim &gt; 0).
+</p>
+<p>The methods vary in the way the serial interval distribution is specified.
+</p>
+<p>&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash; <code>method "non_parametric_si"</code>
+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;
+</p>
+<p>The discrete distribution of the serial interval is directly specified in the
+argument <code>config$si_distr</code>.
+</p>
+<p>&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash; <code>method "parametric_si"</code> &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;
+</p>
+<p>The mean and standard deviation of the continuous distribution of the serial
+interval are given in the arguments <code>config$mean_si</code> and
+<code>config$std_si</code>. The discrete distribution of the serial interval is
+derived automatically using <code><a href="discr_si.html">discr_si</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p> a list with components: </p>
+ <ul>
+<li><p>R: a dataframe
+containing: the times of start and end of each time window considered ; the
+estimated mean, std, and 0.025 and 0.975 quantiles of the reproduction
+number for each time window. </p>
+</li>
+<li><p>si_distr: a vector containing the
+discrete serial interval distribution used for estimation
+</p>
+</li>
+<li><p>SI.Moments: a vector containing the mean and std of the discrete
+serial interval distribution(s) used for estimation </p>
+</li>
+<li><p>I: the time
+series of total incidence </p>
+</li>
+<li><p>I_local: the time series of incidence of
+local cases (so that <code>I_local + I_imported = I</code>) </p>
+</li>
+<li><p>I_imported:
+the time series of incidence of imported cases (so that <code>I_local +
+  I_imported = I</code>) </p>
+</li>
+<li><p>dates: a vector of dates corresponding to the
+incidence time series </p>
+</li></ul>
+ 
+
+
+<h3>Author(s)</h3>
+
+<p>Anne Cori <a href="mailto:a.cori@imperial.ac.uk">a.cori@imperial.ac.uk</a>
+</p>
+
+
+<h3>References</h3>
+
+<p> Cori, A. et al. A new framework and software to estimate
+time-varying reproduction numbers during epidemics (AJE 2013). Wallinga, J.
+and P. Teunis. Different epidemic curves for severe acute respiratory
+syndrome reveal similar impacts of control measures (AJE 2004). 
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="discr_si.html">discr_si</a></code>, <code><a href="estimate_R.html">estimate_R</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## load data on pandemic flu in a school in 2009
+data("Flu2009")
+
+## estimate the case reproduction number (method "non_parametric_si")
+res &lt;- wallinga_teunis(Flu2009$incidence,
+   method="non_parametric_si",
+   config = list(t_start = seq(2, 26), t_end = seq(8, 32),
+                 si_distr = Flu2009$si_distr,
+                 n_sim = 100))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the case reproduction number over the 7-day window
+## finishing on that day.
+
+## estimate the case reproduction number (method "parametric_si")
+res &lt;- wallinga_teunis(Flu2009$incidence, method="parametric_si",
+   config = list(t_start = seq(2, 26), t_end = seq(8, 32),
+                 mean_si = 2.6, std_si = 1.5,
+                 n_sim = 100))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the case reproduction number over the 7-day window
+## finishing on that day.
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

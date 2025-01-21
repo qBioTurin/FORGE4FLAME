@@ -1,0 +1,255 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for sticky HDP-HMM with a Poisson...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for HDPHMMpoisson {MCMCpack}"><tr><td>HDPHMMpoisson {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for sticky HDP-HMM with a Poisson
+outcome distribution</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of
+a (sticky) HDP-HMM with a Poisson outcome distribution
+(Fox et al, 2011). The user supplies data and priors, and a
+sample from the posterior distribution is returned as an mcmc
+object, which can be subsequently analyzed with functions provided
+in the coda package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+HDPHMMpoisson(formula, data = parent.frame(), K = 10, b0 = 0,
+  B0 = 1, a.alpha = 1, b.alpha = 0.1, a.gamma = 1, b.gamma = 0.1,
+  a.theta = 50, b.theta = 5, burnin = 1000, mcmc = 1000,
+  thin = 1, verbose = 0, seed = NA, beta.start = NA,
+  P.start = NA, gamma.start = 0.5, theta.start = 0.98,
+  ak.start = 100, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>formula</code></td>
+<td>
+<p>Model formula.</p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>Data frame.</p>
+</td></tr>
+<tr valign="top"><td><code>K</code></td>
+<td>
+<p>The number of regimes under consideration. This should be
+larger than the hypothesized number of regimes in the data. Note
+that the sampler will likely visit fewer than <code>K</code> regimes.</p>
+</td></tr>
+<tr valign="top"><td><code>b0</code></td>
+<td>
+<p>The prior mean of <i>&beta;</i>.  This can either be a scalar
+or a column vector with dimension equal to the number of betas. If this
+takes a scalar value, then that value will serve as the prior mean for all
+of the betas.</p>
+</td></tr>
+<tr valign="top"><td><code>B0</code></td>
+<td>
+<p>The prior precision of <i>&beta;</i>.  This can either be a
+scalar or a square matrix with dimensions equal to the number of betas.  If
+this takes a scalar value, then that value times an identity matrix serves
+as the prior precision of beta. Default value of 0 is equivalent to an
+improper uniform prior for beta.</p>
+</td></tr>
+<tr valign="top"><td><code>a.alpha, b.alpha</code></td>
+<td>
+<p>Shape and scale parameters for the Gamma
+distribution on <i>&alpha; + &kappa;</i>.</p>
+</td></tr>
+<tr valign="top"><td><code>a.gamma, b.gamma</code></td>
+<td>
+<p>Shape and scale parameters for the Gamma
+distribution on <i>&gamma;</i>.</p>
+</td></tr>
+<tr valign="top"><td><code>a.theta, b.theta</code></td>
+<td>
+<p>Paramaters for the Beta prior on
+<i>&theta;</i>, which captures the strength of the self-transition
+bias.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of Metropolis iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+mcmc iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 the
+iteration number, the current beta vector, and the Metropolis acceptance
+rate are printed to the screen every <code>verbose</code>th iteration.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>beta.start</code></td>
+<td>
+<p>The starting value for the <i>&beta;</i> vector.  This
+can either be a scalar or a column vector with dimension equal to the number
+of betas. If this takes a scalar value, then that value will serve as the
+starting value for all of the betas.  The default value of NA will use the
+maximum likelihood estimate of <i>&beta;</i> as the starting value
+for all regimes.</p>
+</td></tr>
+<tr valign="top"><td><code>P.start</code></td>
+<td>
+<p>Initial transition matrix between regimes. Should be
+a <code>K</code> by <code>K</code> matrix. If not provided, the default value
+will be place <code>theta.start</code> along the diagonal and the rest
+of the mass even distributed within rows.</p>
+</td></tr>
+<tr valign="top"><td><code>theta.start, ak.start, gamma.start</code></td>
+<td>
+<p>Scalar starting values for the
+<i>&theta;</i>, <i>&alpha; + &kappa;</i>, and <i>&gamma;</i> parameters.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>HDPHMMpoisson</code> simulates from the posterior distribution of a
+sticky HDP-HMM with a Poisson outcome distribution,
+allowing for multiple, arbitrary changepoints in the model. The details of the
+model are discussed in Blackwell (2017). The implementation here is
+based on a weak-limit approximation, where there is a large, though
+finite number of regimes that can be switched between. Unlike other
+changepoint models in <code>MCMCpack</code>, the HDP-HMM approach allows
+for the state sequence to return to previous visited states.
+</p>
+<p>The model takes the following form, where we show the fixed-limit version:
+</p>
+<p style="text-align: center;"><i>y_t \sim \mathcal{P}oisson(&mu;_t)</i></p>
+
+<p style="text-align: center;"><i>&mu;_t = x_t ' &beta;_m,\;\; m = 1, &hellip;, M</i></p>
+
+<p>Where <i>M</i> is an upper bound on the number of states and
+<i>&beta;_m</i> are parameters when a state is
+<i>m</i> at <i>t</i>.
+</p>
+<p>The transition probabilities between states are assumed to follow a
+heirarchical Dirichlet process:
+</p>
+<p style="text-align: center;"><i>&pi;_m \sim \mathcal{D}irichlet(&alpha;&delta;_1, &hellip;,
+&alpha;&delta;_j + &kappa;, &hellip;, &alpha;&delta;_M)</i></p>
+
+<p style="text-align: center;"><i>&delta; \sim \mathcal{D}irichlet(&gamma;/M, &hellip;, &gamma;/M)</i></p>
+
+<p>The <i>&kappa;</i> value here is the sticky parameter that
+encourages self-transitions. The sampler follows Fox et al (2011)
+and parameterizes these priors with <i>&alpha; + &kappa;</i> and
+<i>&theta; = &kappa;/(&alpha; + &kappa;)</i>, with the latter
+representing the degree of self-transition bias. Gamma priors are
+assumed for <i>(&alpha; + &kappa;)</i> and <i>&gamma;</i>.
+</p>
+<p>We assume Gaussian distribution for prior of <i>&beta;</i>:
+</p>
+<p style="text-align: center;"><i>&beta;_m \sim \mathcal{N}(b_0,B_0^{-1}),\;\; m = 1, &hellip;, M</i></p>
+
+<p>The model is simulated via blocked Gibbs conditonal on the states.
+The <i>&beta;</i> being simulated via the auxiliary mixture sampling
+method of Fuerhwirth-Schanetter et al. (2009). The states are
+updated as in Fox et al (2011), supplemental materials.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.
+&ldquo;MCMCpack: Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical
+Software</em>. 42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Sylvia Fruehwirth-Schnatter, Rudolf Fruehwirth, Leonhard Held, and
+Havard Rue. 2009. &ldquo;Improved auxiliary mixture sampling for
+hierarchical models of non-Gaussian data&rdquo;, <em>Statistics
+and Computing</em> 19(4): 479-492.
+<a href="http://doi.org/10.1007/s11222-008-9109-4">http://doi.org/10.1007/s11222-008-9109-4</a>
+</p>
+<p>Matthew Blackwell. 2017. &ldquo;Game Changers: Detecting Shifts in
+Overdispersed Count Data,&rdquo; <em>Political Analysis</em>
+Forthcoming.
+<a href="http://www.mattblackwell.org/files/papers/gamechangers-letter.pdf">http://www.mattblackwell.org/files/papers/gamechangers-letter.pdf</a>
+</p>
+<p>Emily B. Fox, Erik B. Sudderth, Michael I. Jordan, and Alan S.
+Willsky. 2011.. &ldquo;A sticky HDP-HMM with application to speaker
+diarization.&rdquo; <em>The Annals of Applied Statistics</em>, 5(2A),
+1020-1056. <a href="http://doi.org/10.1214/10-AOAS395SUPP">http://doi.org/10.1214/10-AOAS395SUPP</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="MCMCpoissonChange.html">MCMCpoissonChange</a></code>, <code><a href="HDPHMMnegbin.html">HDPHMMnegbin</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+ ## Not run: 
+   n &lt;- 150
+   reg &lt;- 3
+   true.s &lt;- gl(reg, n/reg, n)
+   b1.true &lt;- c(1, -2, 2)
+   x1 &lt;- runif(n, 0, 2)
+   mu &lt;- exp(1 + x1 * b1.true[true.s])
+   y &lt;- rpois(n, mu)
+
+   posterior &lt;- HDPHMMpoisson(y ~ x1, K = 10, verbose = 1000,
+                          a.theta = 100, b.theta = 1,
+                          b0 = rep(0, 2), B0 = (1/9) * diag(2),
+                          seed = list(NA, 2),
+                          theta.start = 0.95, gamma.start = 10,
+                          ak.start = 10)
+
+   plotHDPChangepoint(posterior, ylab="Density", start=1)
+   
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Plot earlyR objects</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plot.earlyR {earlyR}"><tr><td>plot.earlyR {earlyR}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Plot earlyR objects</h2>
+
+<h3>Description</h3>
+
+<p>These functions are designed for plotting <code>earlyR</code> objects, output by
+the function <code><a href="get_R.html">get_R</a></code>. It can plot either the likelihood of R
+values, or the force of infection over time (see argument <code>type</code>). For
+<code>points</code>, the latter is used.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'earlyR'
+plot(x, type = c("R", "lambdas"), scale = 1, ...)
+
+## S3 method for class 'earlyR'
+points(x, scale = 1, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A <code>earlyR</code> object.</p>
+</td></tr>
+<tr valign="top"><td><code>type</code></td>
+<td>
+<p>The type of graphic to be generated, matching either &quot;R&quot; or
+&quot;lamdbas&quot;; &quot;R&quot; will plot the likelihood of R values; &quot;lambdas&quot; will plot
+the force of infection over time.</p>
+</td></tr>
+<tr valign="top"><td><code>scale</code></td>
+<td>
+<p>A numeric value indicating the scaling factor for lambdas on the
+'y' axis.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further arguments to be passed to other methods (not used).
+</p>
+<p>if (require(incidence)) 
+</p>
+<p>## example: onsets on days 1, 5, 6 and 12; estimation on day 24
+onset &lt;- c(1, 5, 6, 12)
+x &lt;- incidence(onset, last_date = 24)
+x
+</p>
+<p>res &lt;- get_R(x, disease = &quot;ebola&quot;)
+res
+plot(res)
+plot(res, &quot;lambdas&quot;)
+plot(res, &quot;lambdas&quot;, scaling = 5)
+points(onset, 1:4, cex = 3, pch = 20)
+</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>earlyR</em> version 0.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Simulated case and death reports from a fictional outbreak</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for simulated.outbreak.deaths {coarseDataTools}"><tr><td>simulated.outbreak.deaths {coarseDataTools}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Simulated case and death reports from a fictional outbreak</h2>
+
+<h3>Description</h3>
+
+<p>This dataset provides reported counts of cases and deaths occurring at different time points across a simulated outbreak. Details of the data simulation algorithm are provided in the manuscript &quot;Estimating case fatality ratios from infectious disease surveillance data&quot; (Reich et al., under review, available upon request).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+data(simulated.outbreak.deaths)
+</pre>
+
+
+<h3>Format</h3>
+
+
+<dl>
+<dt><code>time</code></dt><dd><p>time, t,  after start of outbreak</p>
+</dd>
+<dt><code>grp</code></dt><dd><p>an categorical variable indicating membership in one of two groups of a covariate, j</p>
+</dd>
+<dt><code>R</code></dt><dd><p>number of recovered cases reported at the given t and j</p>
+</dd>
+<dt><code>D</code></dt><dd><p>number of deaths reported at the given t and j</p>
+</dd>
+<dt><code>N</code></dt><dd><p>total number of cases and deaths reported at t and j, or D+R</p>
+</dd>
+</dl>
+
+
+<h3>Source</h3>
+
+<p>Reich NG, Lessler J, Cummings DAT, Brookmeyer R. Estimating case fatality ratios from infectious disease surveillance data. Biometrics. 2012. 68(2): 598-606.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(simulated.outbreak.deaths)
+head(simulated.outbreak.deaths)
+plot(simulated.outbreak.deaths[simulated.outbreak.deaths[,"grp"]==1,"D"], type="l")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>coarseDataTools</em> version 0.6-5 <a href="00Index.html">Index</a>]</div>
+</body></html>

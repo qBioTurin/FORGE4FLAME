@@ -1,0 +1,4 @@
+get_R                   Estimate the Reproduction Number
+plot.earlyR             Plot earlyR objects
+print.earlyR            Print method for earlyR objects
+sample_R                Get a sample of plausible Reproduction Numbers

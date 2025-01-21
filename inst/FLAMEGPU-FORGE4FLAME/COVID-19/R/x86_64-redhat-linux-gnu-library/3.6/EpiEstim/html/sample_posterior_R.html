@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: sample from the posterior R distribution</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for sample_posterior_R {EpiEstim}"><tr><td>sample_posterior_R {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>sample from the posterior R distribution</h2>
+
+<h3>Description</h3>
+
+<p>sample from the posterior R distribution
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+sample_posterior_R(R, n = 1000, window = 1L)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>R</code></td>
+<td>
+<p>an <code>estimate_R</code> object from the estimate_r function
+function.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>an integer specifying the number of samples to be taken from the
+gamma distribution.</p>
+</td></tr>
+<tr valign="top"><td><code>window</code></td>
+<td>
+<p>an integer (or sequence of integers) specifying the window(s) 
+from which to estimate R. Defaults to the first window. If multiple windows
+are specified, the resulting samples will be drawn from several 
+distributions.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>n values of R from the posterior R distribution
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Anne Cori
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+
+## load data on pandemic flu in a school in 2009
+data("Flu2009")
+
+## estimate the reproduction number (method "non_parametric_si")
+## when not specifying t_start and t_end in config, they are set to estimate
+## the reproduction number on sliding weekly windows                          
+res &lt;- estimate_R(incid = Flu2009$incidence, 
+                  method = "non_parametric_si",
+                  config = make_config(list(si_distr = Flu2009$si_distr)))
+
+## Sample R from the first weekly window
+win &lt;- 1L
+R_median &lt;- res$R$`Median(R)`[win]
+R_CrI &lt;- c(res$R$`Quantile.0.025(R)`[win], res$R$`Quantile.0.975(R)`[win])
+
+set.seed(2019-06-06) # fixing the random seed for reproducibility
+R_sample &lt;- sample_posterior_R(res, n = 1000, window = win)
+hist(R_sample, col = "grey", main = "R sampled from the first weekly window")
+abline(v = R_median, col = "red")       # show the median estimated R
+abline(v = R_CrI, col = "red", lty = 2) # show the 95%CrI of R
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

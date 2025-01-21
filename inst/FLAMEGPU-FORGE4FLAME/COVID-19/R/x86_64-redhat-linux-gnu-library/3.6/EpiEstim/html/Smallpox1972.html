@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Data on the 1972 smallpox epidemic in Kosovo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Smallpox1972 {EpiEstim}"><tr><td>Smallpox1972 {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Data on the 1972 smallpox epidemic in Kosovo</h2>
+
+<h3>Description</h3>
+
+<p>This data set gives:
+</p>
+
+<ol>
+<li><p> the daily incidence of onset of symptoms in Kosovo during the 1972
+smallpox epidemic (see source and references),
+</p>
+</li>
+<li><p> the discrete daily distribution of the serial interval for smallpox,
+assuming a shifted Gamma distribution with mean 22.4 days, standard
+deviation 6.1 days and shift 1 day (see references).
+</p>
+</li></ol>
+
+
+
+<h3>Format</h3>
+
+<p>A list of two elements:
+</p>
+
+<ul>
+<li> <p><strong>incidence:</strong> a vector containing 57 days of observation,
+</p>
+</li>
+<li> <p><strong>si_distr:</strong> a vector containing a set of 46 probabilities.
+</p>
+</li></ul>
+
+
+<h3>Source</h3>
+
+<p>Fenner F. et al. (1988) Smallpox and its Eradication. Geneva, World
+Health Organization.
+</p>
+
+
+<h3>References</h3>
+
+<p>Fenner F. et al. (1988) Smallpox and its Eradication. Geneva, World Health
+Organization.
+</p>
+<p>Gani R. and S. Leach (2001) Transmission potential of smallpox in
+contemporary populations. Nature 414(6865): 748-751.
+</p>
+<p>Riley S. and N. M. Ferguson (2006) Smallpox transmission and control: spatial
+dynamics in Great Britain. Proc Natl Acad Sci U S A 103(33): 12637-12642.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## load data on smallpox in Kosovo in 1972
+data("Smallpox1972")
+
+## estimate the reproduction number (method "non_parametric_si")
+res &lt;- estimate_R(Smallpox1972$incidence, method="non_parametric_si",
+          config = make_config(list(
+                      t_start = seq(27, 51), 
+                      t_end = seq(33, 57),
+                      si_distr = Smallpox1972$si_distr)))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the reproduction number
+## over the 7-day window finishing on that day.
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

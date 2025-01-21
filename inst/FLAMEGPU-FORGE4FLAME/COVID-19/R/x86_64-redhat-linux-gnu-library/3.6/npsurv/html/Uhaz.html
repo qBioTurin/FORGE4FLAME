@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: U-shaped Hazard Function Estimation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Uhaz {npsurv}"><tr><td>Uhaz {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>U-shaped Hazard Function Estimation</h2>
+
+<h3>Description</h3>
+
+<p><code>Uhaz</code> computes the nonparametric maximum likelihood esimate
+(NPMLE) of a U-shaped hazard function from exact or interval-censored
+data, or a mix of the two types of data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+
+Uhaz(data, w=1, deg=1, maxit=100, tol=1e-6, verb=0)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>vector or matrix, or an object of class <code>icendata</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>weights or multiplicities of the observations.</p>
+</td></tr>
+<tr valign="top"><td><code>deg</code></td>
+<td>
+<p>nonnegative real number for spline degree (i.e., p in the
+formula below).</p>
+</td></tr>
+<tr valign="top"><td><code>maxit</code></td>
+<td>
+<p>maximum number of iterations.</p>
+</td></tr>
+<tr valign="top"><td><code>tol</code></td>
+<td>
+<p> tolerance level for stopping the algorithm. It is used as
+the threshold on the increase of the log-likelihood after each
+iteration. </p>
+</td></tr>
+<tr valign="top"><td><code>verb</code></td>
+<td>
+<p> verbosity level for printing intermediate results in each
+iteration. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>data</code> is a vector, it contains only exact observations, with
+weights given in <code>w</code>.
+</p>
+<p>If <code>data</code> is a matrix with two columns, it contains
+interval-censored observations, with the two columns storing their
+left and right end-points, respectively. If the left and right
+end-points are equal, then the observation is exact. Weights are
+provided by <code>w</code>.
+</p>
+<p>If <code>data</code> is a matrix with three columns, it contains
+interval-censored observations, with the first two columns storing
+their left and right end-points, respectively. The weight of each
+observation is the third-column value multiplied by the corresponding
+weight value in <code>w</code>.
+</p>
+<p>The algorithm used for the computing the NPMLE of a hazard function
+under the U-shape restriction is is proposed by Wang and Fani
+(2015). Such a hazard function is given by
+</p>
+<p style="text-align: center;"><i>     h(t) = alpha + sum_{j=1}^k nu_j (tau_j - t)_+^p 
+                  + sum_{j=1}^m mu_j (t - eta_j)_+^p,</i></p>
+
+<p>where <i>alpha, nu_j, mu_j &ge; 0</i>,
+<i>tau_1 &lt; ... &lt; tau_k &lt;= eta_1 &lt; ... &lt; eta_m,</i> and <i>p &gt;= 0</i> is the
+the spline degree which determines 
+the smoothness of the U-shaped hazard. As p increases, the
+family of hazard functions becomes increasingly smoother, but at the
+time, smaller. When p = 0, the hazard function is U-shaped, as studied
+by Bray et al. (1967). When p = 1, the hazard function is convex, as
+studied by Jankowski and Wellner (2009a,b).
+</p>
+<p>Note that <code>deg</code> (i.e., p in the above mathematical display) can
+take on any nonnegative real value.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>Uhaz</code>, which is a list with components:
+</p>
+<table summary="R valueblock">
+<tr valign="top"><td><code>convergence</code></td>
+<td>
+<p>= <code>TRUE</code>, converged successfully;
+</p>
+<p>= <code>FALSE</code>, maximum number of iterations reached.</p>
+</td></tr>
+<tr valign="top"><td><code>grad</code></td>
+<td>
+<p>gradient values at the knots.</p>
+</td></tr>
+<tr valign="top"><td><code>numiter</code></td>
+<td>
+<p>number of iterations used.</p>
+</td></tr>
+<tr valign="top"><td><code>ll</code></td>
+<td>
+<p>log-likelihood value of the NPMLE <code>h</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>h</code></td>
+<td>
+<p>NPMLE of the U-shaped hazard function, an object of class
+<code>uh</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Bray, T. A., Crawford, G. B., and Proschan, F. (1967).  <em>Maximum
+Likelihood Estimation of a U-shaped Failure Rate Function</em>. Defense
+Technical Information Center.
+</p>
+<p>Jankowski, H. K. and Wellner, J. A. (2009a). Computation of
+nonparametric convex hazard estimators via profile
+methods. <em>Journal of Nonparametric Statistics</em>, <b>21</b>,
+505-518.
+</p>
+<p>Jankowski, H. K. and Wellner, J. A. (2009b). Nonparametric estimation
+of a convex bathtub-shaped hazard function. <em>Bernoulli</em>,
+<b>15</b>, 1010-1035.
+</p>
+<p>Wang, Y. and Fani, S. (2017). Nonparametric maximum likelihood
+computation of a U-shaped hazard function. <em>Statistics and
+Computing</em>, (in print).
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="icendata.html">icendata</a></code>, <code><a href="nzmort.html">nzmort</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Interval-censored observations
+data(ap)
+(r = Uhaz(ap, deg=0))
+plot(r, ylim=c(0,.3), col=1)
+for(i in 1:6) plot(Uhaz(ap, deg=i/2), add=TRUE, col=i+1)
+legend(15, 0.01, paste0("deg = ", 0:6/2), lwd=2, col=1:7, xjust=1, yjust=0)
+
+## Exact observations
+data(nzmort)
+x = with(nzmort, nzmort[ethnic=="maori",])[,1:2]   # Maori mortality
+(h0 = Uhaz(x[,1]+0.5, x[,2], deg=0)$h)     # U-shaped hazard
+(h1 = Uhaz(x[,1]+0.5, x[,2], deg=1)$h)     # convex hazard
+(h2 &lt;- Uhaz(x[,1]+0.5, x[,2], deg=2)$h)    # smooth U-shaped hazard
+
+plot(h0, pch=2)                            # plot hazard functions
+plot(h1, add=TRUE, col="green3", pch=1)
+plot(h2, add=TRUE, col="red3", pch=19)
+
+age = 0:max(x[,1])                         # plot densities
+count = integer(length(age))
+count[x[,"age"]+1] = x[,"deaths"]
+barplot(count/sum(count), space=0, col="lightgrey")
+axis(1, pos=NA, at=0:10*10)
+plot(h0, fn="d", add=TRUE, pch=2)
+plot(h1, fn="d", add=TRUE, col="green3", pch=1)
+plot(h2, fn="d", add=TRUE, col="red3", pch=19)
+
+plot(h0, fn="s", pch=2)                    # plot survival functions
+plot(h1, fn="s", add=TRUE, col="green3", pch=1)
+plot(h2, fn="s", add=TRUE, col="red3", pch=19)
+
+## Exact and right-censored observations
+data(gastric)
+plot(h0&lt;-Uhaz(gastric, deg=0)$h)           # plot hazard functions
+plot(h1&lt;-Uhaz(gastric, deg=1)$h, add=TRUE, col="green3")
+plot(h2&lt;-Uhaz(gastric, deg=2)$h, add=TRUE, col="red3")
+
+plot(npsurv(gastric), fn="s", col="grey")  # plot survival functions
+plot(h0, fn="s", add=TRUE)
+plot(h1, fn="s", add=TRUE, col="green3")
+plot(h2, fn="s", add=TRUE, col="red3")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

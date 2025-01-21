@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: An S4 Class that stores a MCMC fit coarse data object</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for cd.fit.mcmc {coarseDataTools}"><tr><td>cd.fit.mcmc {coarseDataTools}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>An S4 Class that stores a MCMC fit coarse data object</h2>
+
+<h3>Description</h3>
+
+<p>This is the output from <code>dic.fit.mcmc()</code>, which contains the important bits of information about the model fit and key options used.
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>ests</code>:</dt><dd><p>Matrix of class <code>"numeric"</code>. This matrix summarizes the results of fitting the model. Rows correspond to the first parameter , the second parameter and then percentiles specified by the ptiles argument. Columns correspond to the point estimate, the lower and upper bounds on the 95% credible interval and the standard error of the point estimate.</p>
+</dd>
+<dt><code>conv</code>:</dt><dd><p>Object of class <code>"numeric"</code>. Not used in with <code>dic.fit.mcmc</code></p>
+</dd>
+<dt><code>MSG</code>:</dt><dd><p>Object of class <code>"character"</code>. The error message returned from optim() if the routine fails to converge.</p>
+</dd>
+<dt><code>loglik</code>:</dt><dd><p>Object of class <code>"numeric"</code>.  Not used in with <code>dic.fit.mcmc</code>.</p>
+</dd>
+<dt><code>samples</code>:</dt><dd><p>Object of class <code>"data.frame"</code>. Data frame of posterior draws of parameters.</p>
+</dd>
+<dt><code>data</code>:</dt><dd><p>Object of class <code>"data.frame"</code>. Original data used to fit model.</p>
+</dd>
+<dt><code>dist</code>:</dt><dd><p>Object of class <code>"character"</code>. Failure time distribution fit to data. &quot;L&quot; for log-normal, &quot;G&quot; for gamma, &quot;W&quot; for Weibull, and &quot;E&quot; for Erlang.</p>
+</dd>
+<dt><code>inv.hessian</code>:</dt><dd><p>Object of class <code>"matrix"</code>. Not used in with <code>dic.fit.mcmc</code>.</p>
+</dd>
+<dt><code>est.method</code>:</dt><dd><p>Object of class <code>"character"</code>. Method used for estimation.</p>
+</dd>
+<dt><code>ci.method</code>:</dt><dd><p>Object of class <code>"character"</code>. Method used for estimation of confidence/credible intervals.</p>
+</dd>
+</dl>
+
+
+<hr /><div style="text-align: center;">[Package <em>coarseDataTools</em> version 0.6-5 <a href="00Index.html">Index</a>]</div>
+</body></html>

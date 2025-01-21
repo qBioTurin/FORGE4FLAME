@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Retrieve a header row</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for prGetCgroupHeader {htmlTable}"><tr><td>prGetCgroupHeader {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Retrieve a header row</h2>
+
+<h3>Description</h3>
+
+<p>This function retrieves a header row, i.e. a row
+within the &lt;th&gt; elements on top of the table. Used by
+<code><a href="htmlTable.html">htmlTable</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+prGetCgroupHeader(
+  x,
+  cgroup_vec,
+  n.cgroup_vec,
+  cgroup_vec.just,
+  css.cgroup_vec,
+  row_no,
+  top_row_style,
+  rnames,
+  rowlabel,
+  pos.rowlabel,
+  cgroup_spacer_cells,
+  css.cell
+)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>The matrix/data.frame with the data. For the <code>print</code> and <code>knit_print</code>
+it takes a string of the class <code>htmlTable</code> as <code>x</code> argument.</p>
+</td></tr>
+<tr valign="top"><td><code>cgroup_vec</code></td>
+<td>
+<p>The cgroup may be a matrix, this is
+just one row of that matrix</p>
+</td></tr>
+<tr valign="top"><td><code>n.cgroup_vec</code></td>
+<td>
+<p>The same as above but for the counter</p>
+</td></tr>
+<tr valign="top"><td><code>cgroup_vec.just</code></td>
+<td>
+<p>The same as above bot for the justificaiton</p>
+</td></tr>
+<tr valign="top"><td><code>css.cgroup_vec</code></td>
+<td>
+<p>The CSS row corresponding to the current row</p>
+</td></tr>
+<tr valign="top"><td><code>row_no</code></td>
+<td>
+<p>The row number within the header group. Useful for multirow
+headers when we need to output the rowlabel at the <code>pos.rowlabel</code>
+level.</p>
+</td></tr>
+<tr valign="top"><td><code>top_row_style</code></td>
+<td>
+<p>The top row has a special style depending on
+the <code>ctable</code> option in the <code>htmlTable</code> call.</p>
+</td></tr>
+<tr valign="top"><td><code>rnames</code></td>
+<td>
+<p>Default rownames are generated from <code><a href="../../base/html/rownames.html">rownames</a>(x)</code>. If you
+provide <code>FALSE</code> then it will skip the rownames. <em>Note:</em> For <code>data.frames</code>
+if you do <code><a href="../../base/html/rownames.html">rownames</a>(my_dataframe) &lt;- NULL</code> it still has
+rownames. Thus you need to use <code>FALSE</code> if you want to
+surpress rownames for <code>data.frames</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>rowlabel</code></td>
+<td>
+<p>If the table has rownames or <code>rnames</code>,
+rowlabel is a character string containing the
+column heading for the <code>rnames</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>pos.rowlabel</code></td>
+<td>
+<p>Where the rowlabel should be positioned. This value can be <code>"top"</code>,
+<code>"bottom"</code>, <code>"header"</code>, or a integer between <code>1</code> and <code>nrow(cgroup) + 1</code>. The options
+<code>"bottom"</code> and <code>"header"</code> are the same, where the row label is presented at the same level as
+the header.</p>
+</td></tr>
+<tr valign="top"><td><code>cgroup_spacer_cells</code></td>
+<td>
+<p>The spacer cells due to the multiple cgroup levels.
+With multiple rows in cgroup we need to keep track of how many spacer cells
+occur between the columns. This variable contains is of the size <code>ncol(x)-1</code>
+and 0 if there is no cgroup element between.</p>
+</td></tr>
+<tr valign="top"><td><code>css.cell</code></td>
+<td>
+<p>The css.cell element allows you to add any possible CSS style to your
+table cells. See section below for details.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>string</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other hidden helper functions for htmlTable: 
+<code><a href="prAddCells.html">prAddCells</a>()</code>,
+<code><a href="prAddSemicolon2StrEnd.html">prAddSemicolon2StrEnd</a>()</code>,
+<code><a href="prEscapeHtml.html">prEscapeHtml</a>()</code>,
+<code><a href="prGetRowlabelPos.html">prGetRowlabelPos</a>()</code>,
+<code><a href="prGetStyle.html">prGetStyle</a>()</code>,
+<code><a href="prPrepareAlign.html">prPrepareAlign</a>()</code>,
+<code><a href="prPrepareCgroup.html">prPrepareCgroup</a>()</code>,
+<code><a href="prTblNo.html">prTblNo</a>()</code>
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Wrap plots into a patchwork</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for wrap_plots {patchwork}"><tr><td>wrap_plots {patchwork}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Wrap plots into a patchwork</h2>
+
+<h3>Description</h3>
+
+<p>While the use of <code>+</code> is a natural way to add plots together, it can be
+difficult to string together multiple plots programmatically if the number
+of plots is not known beforehand. <code>wrap_plots</code> makes it easy to take a list
+of plots and add them into one composition, along with layout specifications.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+wrap_plots(..., ncol = NULL, nrow = NULL, byrow = NULL,
+  widths = NULL, heights = NULL, guides = NULL, tag_level = NULL,
+  design = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>multiple <code>ggplot</code>s or a list containing <code>ggplot</code> objects</p>
+</td></tr>
+<tr valign="top"><td><code>ncol</code></td>
+<td>
+<p>The dimensions of the grid to create - if both are <code>NULL</code> it
+will use the same logic as <a href="../../ggplot2/html/facet_wrap.html">facet_wrap()</a> to set the
+dimensions</p>
+</td></tr>
+<tr valign="top"><td><code>nrow</code></td>
+<td>
+<p>The dimensions of the grid to create - if both are <code>NULL</code> it
+will use the same logic as <a href="../../ggplot2/html/facet_wrap.html">facet_wrap()</a> to set the
+dimensions</p>
+</td></tr>
+<tr valign="top"><td><code>byrow</code></td>
+<td>
+<p>Analogous to <code>byrow</code> in <a href="../../base/html/matrix.html">matrix()</a>. If <code>FALSE</code> the
+plots will be filled in in column-major order</p>
+</td></tr>
+<tr valign="top"><td><code>widths</code></td>
+<td>
+<p>The relative widths and heights of each column and row
+in the grid. Will get repeated to match the dimensions of the grid.</p>
+</td></tr>
+<tr valign="top"><td><code>heights</code></td>
+<td>
+<p>The relative widths and heights of each column and row
+in the grid. Will get repeated to match the dimensions of the grid.</p>
+</td></tr>
+<tr valign="top"><td><code>guides</code></td>
+<td>
+<p>A string specifying how guides should be treated in the layout.
+<code>'collect'</code> will collect guides below to the given nesting level, removing
+duplicates. <code>'keep'</code> will stop collection at this level and let guides be
+placed alongside their plot. <code>auto</code> will allow guides to be collected if a
+upper level tries, but place them alongside the plot if not.</p>
+</td></tr>
+<tr valign="top"><td><code>tag_level</code></td>
+<td>
+<p>A string (<code>'keep'</code> or <code>'new'</code>) to indicate how
+auto-tagging should behave. See <code><a href="plot_annotation.html">plot_annotation()</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>design</code></td>
+<td>
+<p>Specification of the location of areas in the layout. Can either
+be specified as a text string or by concatenating calls to <code><a href="area.html">area()</a></code> together.
+See the examples for further information on use.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>design</code> is specified as a text string <em>and</em> the plots are named (e.g.
+<code>wrap_plots(A = p1, ...)</code>) <em>and</em> all plot names are single characters
+represented in the design layout string, the plots will be matched to their
+respective area by name. Otherwise the areas will be filled out
+sequentially in the same manner as using the <code>+</code> operator. See the examples
+for more.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>patchwork</code> object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+library(ggplot2)
+
+p1 &lt;- ggplot(mtcars) + geom_point(aes(mpg, disp))
+p2 &lt;- ggplot(mtcars) + geom_boxplot(aes(gear, disp, group = gear))
+p3 &lt;- ggplot(mtcars) + geom_bar(aes(gear)) + facet_wrap(~cyl)
+p4 &lt;- ggplot(mtcars) + geom_bar(aes(carb))
+p5 &lt;- ggplot(mtcars) + geom_violin(aes(cyl, mpg, group = cyl))
+
+# Either add the plots as single arguments
+wrap_plots(p1, p2, p3, p4, p5)
+
+# Or add them as a list...
+plots &lt;- list(p1, p2, p3, p4, p5)
+wrap_plots(plots)
+
+# Match plots to areas by name
+design &lt;- "#BB
+           AA#"
+wrap_plots(B = p1, A = p2, design = design)
+
+# Compare to not using named plot arguments
+wrap_plots(p1, p2, design = design)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>patchwork</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

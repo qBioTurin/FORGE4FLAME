@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Convert dates to weeks and back again</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for aweek-package {aweek}"><tr><td>aweek-package {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Convert dates to weeks and back again</h2>
+
+<h3>Description</h3>
+
+<p>The aweek package is a lightweight solution for converting dates to weeks
+that can start on any weekday. It implements the <a href="aweek-class.html">aweek class</a>,
+which can easily be converted to date and weeks that start on different days.
+</p>
+
+
+<h3>Before you begin</h3>
+
+<p>When you work with aweek, you will want to make sure that you set the default
+<code>week_start</code> variable to indicate which day of the week your weeks should
+begin. This can be done with <code><a href="week_start.html">set_week_start()</a></code>. It will ensure that all of
+your weeks will begin on the same day.
+</p>
+
+<ul>
+<li> <p><code><a href="week_start.html">get_week_start()</a></code> returns the global week_start option
+</p>
+</li>
+<li> <p><code><a href="week_start.html">set_week_start()</a></code> sets the global week_start option
+</p>
+</li></ul>
+
+
+
+<h3>Conversions</h3>
+
+
+
+<h4>Dates to weeks</h4>
+
+<p>This conversion is the simplest because dates are unambiguous.
+</p>
+
+<ul>
+<li> <p><code><a href="date2week.html">date2week()</a></code> converts dates, datetimes, and characters that look like dates to weeks
+</p>
+</li>
+<li> <p><code><a href="as.aweek.html">as.aweek()</a></code> is a wrapper around <code><a href="date2week.html">date2week()</a></code> that converts dates and datetimes
+</p>
+</li></ul>
+
+
+
+
+<h4>Week numbers to weeks or dates</h4>
+
+<p>If you have separate columns for week numbers and years, then this is the
+option for you. This allows you to specify a different start for each week
+element using the <code>start</code> argument.
+</p>
+
+<ul>
+<li> <p><code><a href="get_aweek.html">get_aweek()</a></code> converts week numbers (with years and days) to <a href="aweek-class.html">aweek objects</a>.
+</p>
+</li>
+<li> <p><code><a href="get_aweek.html">get_date()</a></code> converts week numbers (with years and days) to <a href="../../base/html/Dates.html">Dates</a>.
+</p>
+</li></ul>
+
+
+
+
+<h4>ISO week strings (YYYY-Www-d or YYYY-Www) to weeks or dates</h4>
+
+
+<ul>
+<li> <p><code><a href="as.aweek.html">as.aweek()</a></code> converts ISO-week formatted strings to <a href="aweek-class.html">aweek objects</a>.
+</p>
+</li>
+<li> <p><code><a href="date2week.html">week2date()</a></code> converts ISO-week formatted strings to <a href="../../base/html/Dates.html">Date</a>.
+</p>
+</li></ul>
+
+
+
+
+<h4>aweek objects to dates or datetimes</h4>
+
+<p>This conversion is simple for <a href="aweek-class.html">aweek</a> objects since their
+week_start is unambiguous
+</p>
+
+<ul>
+<li> <p><a href="aweek-conversions.html">as.Date()</a> converts to <a href="../../base/html/Dates.html">Date</a>.
+</p>
+</li>
+<li> <p><a href="aweek-conversions.html">as.POSIXlt()</a> converts to <a href="../../base/html/DateTimeClasses.html">POSIXlt</a>.
+</p>
+</li></ul>
+
+
+
+
+<h4>aweek objects to characters</h4>
+
+<p>You can strip the week_start attribute of the aweek object by converting to
+a character with <code><a href="../../base/html/character.html">as.character()</a></code>
+</p>
+
+
+
+<h3>Manipulating aweek objects</h3>
+
+
+<ul>
+<li> <p><code><a href="../../base/html/Round.html">trunc()</a></code> removes the weekday element of the ISO week string.
+</p>
+</li>
+<li> <p><code><a href="factor_aweek.html">factor_aweek()</a></code> does the same thing as trunc(), but will create a factor
+with levels spanning all the weeks from the first week to the last week.
+Useful for creating tables with zero counts for unobserved weeks.
+</p>
+</li>
+<li> <p><code><a href="change_week_start.html">change_week_start()</a></code> will change the week_start attribute and adjust the
+weeks accordingly so that the dates will always be consistent.
+</p>
+</li></ul>
+
+<p>When you combine aweek objects, they must have the same week_start attribute.
+Characters can be added to aweek objects as long as they are in ISO week
+format and you can safely assume that they start on the same weekday. Dates
+are trivial to add to aweek objects. See the <a href="aweek-class.html">aweek</a>
+documentation for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Zhian N. Kamvar <a href="mailto:zkamvar@gmail.com">zkamvar@gmail.com</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://www.repidemicsconsortium.org/aweek">https://www.repidemicsconsortium.org/aweek</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/reconhub/aweek/issues">https://github.com/reconhub/aweek/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre>
+# At the beginning of your analysis, set the week start to the weeks you want
+# to use for reporting
+ow &lt;- set_week_start("Sunday")
+
+# convert dates to weeks
+d &lt;- as.Date(c("2014-02-11", "2014-03-04"))
+w &lt;- as.aweek(d) 
+w
+
+# get the week numbers
+date2week(d, numeric = TRUE)
+
+# convert back to date
+as.Date(w)
+
+# convert to factor
+factor_aweek(w)
+
+# append a week
+w[3] &lt;- as.Date("2014-10-31")
+w 
+
+# change week start variable (if needed)
+change_week_start(w, "Monday")
+
+# note that the date remains the same
+as.Date(change_week_start(w, "Monday"))
+
+# Don't forget to reset the week_start at the end
+set_week_start(ow)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Plots the estimated survival function with an option to plot...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plot,cd.fit-method {coarseDataTools}"><tr><td>plot,cd.fit-method {coarseDataTools}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Plots the estimated survival function with an option to plot the posterior draws or bootstraps behind the fit</h2>
+
+<h3>Description</h3>
+
+<p>Plots the estimated survival function with an option to plot the posterior draws or bootstraps behind the fit
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S4 method for signature 'cd.fit'
+plot(x, y, col.main = rgb(230, 85, 13, maxColorValue =
+  255), col.samps = rgb(99, 99, 99, 10, maxColorValue = 255),
+  plot.n.samps = 200, add = F, xlim = range(x@data), ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p><code>cd.fit</code> or <code>cd.fit.mcmc</code> object</p>
+</td></tr>
+<tr valign="top"><td><code>y</code></td>
+<td>
+<p>unused</p>
+</td></tr>
+<tr valign="top"><td><code>col.main</code></td>
+<td>
+<p>color for plotting the main estimate</p>
+</td></tr>
+<tr valign="top"><td><code>col.samps</code></td>
+<td>
+<p>color for the samples (should include some alpha transparency)</p>
+</td></tr>
+<tr valign="top"><td><code>plot.n.samps</code></td>
+<td>
+<p>how many posterior or bootstrap samples do you want to plot?</p>
+</td></tr>
+<tr valign="top"><td><code>add</code></td>
+<td>
+<p>add to existing plot?</p>
+</td></tr>
+<tr valign="top"><td><code>xlim</code></td>
+<td>
+<p>xlim for plot, defaults to the range of the data slot in x</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>other options to pass to plot</p>
+</td></tr>
+</table>
+
+<hr /><div style="text-align: center;">[Package <em>coarseDataTools</em> version 0.6-5 <a href="00Index.html">Index</a>]</div>
+</body></html>

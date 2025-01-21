@@ -1,0 +1,224 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Plot Functions for U-shaped Hazard Estimation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plot.Uhaz {npsurv}"><tr><td>plot.Uhaz {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Plot Functions for U-shaped Hazard Estimation</h2>
+
+<h3>Description</h3>
+
+<p><code>plot.Uhaz</code> and <code>plot.uh</code> are wrapper functions that can be
+used to invoke <code>plot.hazuh</code>, <code>plot.chazuh</code>,
+<code>plot.survuh</code>, <code>plot.denuh</code> or <code>plot.graduh</code>.
+</p>
+<p><code>plothazuh</code> plots a U-shaped hazard function.
+</p>
+<p><code>plotchazuh</code> plots a cumulative hazard function that has a
+U-shaped hazard function.
+</p>
+<p><code>plotsurvuh</code> plots the survival function that has a U-shaped
+hazard function.
+</p>
+<p><code>plotdenuh</code> plots the density function that has a U-shaped
+hazard function.
+</p>
+<p><code>plotgraduh</code> plots the gradient function that has a U-shaped
+hazard function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+
+## S3 method for class 'Uhaz'
+plot(x, ...)
+## S3 method for class 'uh'
+plot(x, data, fn=c("haz","grad","surv","den","chaz"), ...)
+plothazuh(h, add=FALSE, col="darkblue", lty=1, xlim, ylim,
+          lwd=2, pch=19, len=500, vert=FALSE, add.knots=TRUE,
+          xlab="Time", ylab="Hazard", ...)
+plotchazuh(h, add=FALSE, lwd=2, len=500, col="darkblue",
+           pch=19, add.knots=TRUE, vert=FALSE, xlim, ylim, ...)
+plotdenuh(h, add=FALSE, lty=1, lwd=2, col="darkblue",
+          add.knots=TRUE, pch=19, ylim, len=500, vert=FALSE, ...)
+plotsurvuh(h, add=FALSE, lty=1, lwd=2, len=500, vert=FALSE,
+           col="darkblue", pch=19, add.knots=TRUE, xlim, ylim, ...)
+plotgraduh(h, data, w=1, len=500, xlim, ylim, vert=TRUE,
+           add=FALSE, xlab="Time", ylab="Gradient",
+           col0="red3", col1="blue3", col2="green3", order=0, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an object of class <code>Uhaz</code>, i.e., an output of function
+<code>Uhaz</code>, or an object of class <code>uh</code>..</p>
+</td></tr> 
+<tr valign="top"><td><code>h</code></td>
+<td>
+<p>an object of class <code>uh</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>vector or matrix that stores observations, or an object of
+class <code>icendata</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>additional weights/multiplicities for the observations stored
+in <code>data</code>.</p>
+</td></tr> 
+<tr valign="top"><td><code>fn</code></td>
+<td>
+<p>function to be plotted. It can be 
+</p>
+<p>= <code>haz</code>, for hazard function;
+</p>
+<p>= <code>chaz</code>, for cumulative hazard function;
+</p>
+<p>= <code>den</code>, for density function;
+</p>
+<p>= <code>surv</code>, for survival function;
+</p>
+<p>= <code>gradient</code>, for gradient functions. 
+</p>
+</td></tr>
+<tr valign="top"><td><code>xlim, ylim</code></td>
+<td>
+<p>numeric vectors of length 2, giving the x and y coordinates
+ranges.</p>
+</td></tr>
+<tr valign="top"><td><code>xlab, ylab</code></td>
+<td>
+<p>x- or y-axis labels.</p>
+</td></tr>
+<tr valign="top"><td><code>add</code></td>
+<td>
+<p>= <code>TRUE</code>, adds the curve to the existing plot;
+</p>
+<p>= <code>FALSE</code>, plots the curve in a new one.</p>
+</td></tr>
+<tr valign="top"><td><code>col</code></td>
+<td>
+<p>color used for plotting the curve.</p>
+</td></tr>
+<tr valign="top"><td><code>lty</code></td>
+<td>
+<p>line type for plotting the curve.</p>
+</td></tr>
+<tr valign="top"><td><code>lwd</code></td>
+<td>
+<p>line width for plotting the curve.</p>
+</td></tr>
+<tr valign="top"><td><code>len</code></td>
+<td>
+<p>number of points used to plot a curve.</p>
+</td></tr>
+<tr valign="top"><td><code>add.knots</code></td>
+<td>
+<p>logical, indicating if knots are also plotted. </p>
+</td></tr>
+<tr valign="top"><td><code>pch</code></td>
+<td>
+<p>point character/type for plotting knots.</p>
+</td></tr>
+<tr valign="top"><td><code>vert</code></td>
+<td>
+<p>logical, indicating if grey vertical lines are plotted to
+show the interval that separates the two discrete measures. </p>
+</td></tr>
+<tr valign="top"><td><code>col0</code></td>
+<td>
+<p>color for gradient function 0, i.e., for the
+hazard-constant part, or alpha.</p>
+</td></tr>
+<tr valign="top"><td><code>col1</code></td>
+<td>
+<p>color for gradient function 1, i.e., for the
+hazard-decreasing part.</p>
+</td></tr>
+<tr valign="top"><td><code>col2</code></td>
+<td>
+<p>color for gradient function 1, i.e., for the
+hazard-increasing part.</p>
+</td></tr>
+<tr valign="top"><td><code>order</code></td>
+<td>
+<p>= 0, the gradient functions are plotted;
+</p>
+<p>= 1, their first derivatives are plotted;
+</p>
+<p>= 2, their second derivatives are plotted. </p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>arguments for other graphical parameters (see <code>par</code>).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>A U-shaped hazard function is given by
+</p>
+<p style="text-align: center;"><i>     h(t) = alpha + sum_{j=1}^k nu_j (tau_j - t)_+^p 
+                  + sum_{j=1}^m mu_j (t - eta_j)_+^p,</i></p>
+
+<p>where <i>alpha, nu_j, mu_j &ge; 0</i>,
+<i>tau_1 &lt; ... &lt; tau_k &lt;= eta_1 &lt; ... &lt; eta_m,</i> and <i>p &gt;= 0</i>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Wang, Y. and Fani, S. (2017). Nonparametric maximum likelihood
+computation of a U-shaped hazard function. <em>Statistics and
+Computing</em>, (in print).
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="icendata.html">icendata</a></code>, <code><a href="uh.html">uh</a></code>, <code><a href="npsurv.html">npsurv</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## Angina Pectoris Survival Data
+data(ap)
+plot(r&lt;-Uhaz(ap))              # hazard function for a convex hazard
+plot(r, fn="c")                # cumulative hazard function
+plot(r, fn="s")                # survival function
+plot(r, fn="d")                # density function
+plot(r, ap, fn="g")            # gradient functions
+plot(r, ap, fn="g", order=1)   # first derivatives of gradient functions
+plot(r, ap, fn="g", order=2)   # second derivatives of gradient functions
+
+## New Zealand Mortality in 2000
+data(nzmort)
+i = nzmort$ethnic == "maori"
+x = nzmort[i,1:2]                            # Maori mortality
+h = Uhaz(x[,1]+0.5, x[,2], deg=2)$h          # smooth U-shaped hazard
+plot(h)                        # hazard function
+plot(h, fn="d")                # density function
+plot(h, fn="s")                # survival function
+
+x2 = nzmort[!i,1:2]                          # Non-Maori mortality
+h2 = Uhaz(x2[,1]+0.5, x2[,2], deg=2)$h
+plot(h2, fn="s", add=TRUE, col="green3")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

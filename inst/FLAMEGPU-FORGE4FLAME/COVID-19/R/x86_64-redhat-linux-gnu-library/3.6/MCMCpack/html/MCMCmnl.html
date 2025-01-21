@@ -1,0 +1,327 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for Multinomial Logistic Regression</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMCmnl {MCMCpack}"><tr><td>MCMCmnl {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for Multinomial Logistic Regression</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of a
+multinomial logistic regression model using either a random walk Metropolis
+algorithm or a slice sampler. The user supplies data and priors, and a
+sample from the posterior distribution is returned as an mcmc object, which
+can be subsequently analyzed with functions provided in the coda package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMCmnl(formula, baseline = NULL, data = NULL, burnin = 1000,
+  mcmc = 10000, thin = 1, mcmc.method = c("IndMH", "RWM", "slice"),
+  tune = 1, tdf = 6, verbose = 0, seed = NA, beta.start = NA,
+  b0 = 0, B0 = 0, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>formula</code></td>
+<td>
+<p>Model formula.
+</p>
+<p>If the choicesets do not vary across individuals, the <code>y</code> variable
+should be a factor or numeric variable that gives the observed choice of
+each individual. If the choicesets do vary across individuals, <code>y</code>
+should be a <i>n \times p</i> matrix where <i>n</i> is the number of
+individuals and <i>p</i> is the maximum number of choices in any
+choiceset.  Here each column of <code>y</code> corresponds to a particular
+observed choice and the elements of <code>y</code> should be either <code>0</code> (not
+chosen but available), <code>1</code> (chosen), or <code>-999</code> (not available).
+</p>
+<p>Choice-specific covariates have to be entered using the syntax:
+<code>choicevar(cvar, "var", "choice")</code> where <code>cvar</code> is the name of a
+variable in <code>data</code>, <code>"var"</code> is the name of the new variable to be
+created, and <code>"choice"</code> is the level of <code>y</code> that <code>cvar</code>
+corresponds to. Specifying each choice-specific covariate will typically
+require <i>p</i> calls to the <code>choicevar</code> function in the formula.
+</p>
+<p>Individual specific covariates can be entered into the formula normally.
+</p>
+<p>See the examples section below to see the syntax used to fit various models.</p>
+</td></tr>
+<tr valign="top"><td><code>baseline</code></td>
+<td>
+<p>The baseline category of the response variable.
+</p>
+<p><code>baseline</code> should be set equal to one of the observed levels of the
+response variable. If left equal to <code>NULL</code> then the baseline level is
+set to the alpha-numerically first element of the response variable. If the
+choicesets vary across individuals, the baseline choice must be in the
+choiceset of each individual.</p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>The data frame used for the analysis. Each row of the dataframe
+should correspond to an individual who is making a choice.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of iterations to run the sampler past burn-in.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+mcmc iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc.method</code></td>
+<td>
+<p>Can be set to either &quot;IndMH&quot; (default), &quot;RWM&quot;, or &quot;slice&quot;
+to perform independent Metropolis-Hastings sampling, random walk Metropolis
+sampling or slice sampling respectively.</p>
+</td></tr>
+<tr valign="top"><td><code>tune</code></td>
+<td>
+<p>Metropolis tuning parameter. Can be either a positive scalar or
+a <i>k</i>-vector, where <i>k</i> is the length of <i>&beta;</i>.
+Make sure that the acceptance rate is satisfactory (typically between 0.20
+and 0.5) before using the posterior sample for inference.</p>
+</td></tr>
+<tr valign="top"><td><code>tdf</code></td>
+<td>
+<p>Degrees of freedom for the multivariate-t proposal distribution
+when <code>mcmc.method</code> is set to &quot;IndMH&quot;. Must be positive.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 the
+iteration number, the current beta vector, and the Metropolis acceptance
+rate are printed to the screen every <code>verbose</code>th iteration.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>beta.start</code></td>
+<td>
+<p>The starting value for the <i>&beta;</i> vector.  This
+can either be a scalar or a column vector with dimension equal to the number
+of betas. If this takes a scalar value, then that value will serve as the
+starting value for all of the betas.  The default value of NA will use the
+maximum likelihood estimate of <i>&beta;</i> as the starting value.</p>
+</td></tr>
+<tr valign="top"><td><code>b0</code></td>
+<td>
+<p>The prior mean of <i>&beta;</i>.  This can either be a scalar
+or a column vector with dimension equal to the number of betas. If this
+takes a scalar value, then that value will serve as the prior mean for all
+of the betas.</p>
+</td></tr>
+<tr valign="top"><td><code>B0</code></td>
+<td>
+<p>The prior precision of <i>&beta;</i>. This can either be a
+scalar or a square matrix with dimensions equal to the number of betas.  If
+this takes a scalar value, then that value times an identity matrix serves
+as the prior precision of <i>&beta;</i>. Default value of 0 is
+equivalent to an improper uniform prior for beta.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further arguments to be passed.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>MCMCmnl</code> simulates from the posterior distribution of a multinomial
+logistic regression model using either a random walk Metropolis algorithm or
+a univariate slice sampler. The simulation proper is done in compiled C++
+code to maximize efficiency.  Please consult the coda documentation for a
+comprehensive list of functions that can be used to analyze the posterior
+sample.
+</p>
+<p>The model takes the following form:
+</p>
+<p style="text-align: center;"><i>y_i \sim \mathcal{M}ultinomial(&pi;_i)</i></p>
+
+<p>where:
+</p>
+<p style="text-align: center;"><i>&pi;_{ij} = \frac{\exp(x_{ij}'&beta;)}{&sum;_{k=1}^p\exp(x_{ik}'&beta;)}</i></p>
+
+<p>We assume a multivariate Normal prior on <i>&beta;</i>:
+</p>
+<p style="text-align: center;"><i>&beta; \sim \mathcal{N}(b_0,B_0^{-1})</i></p>
+
+<p>The Metropolis proposal distribution is centered at the current
+value of <i>&beta;</i> and has variance-covariance
+<i>V = T(B_0 + C^{-1})^{-1} T</i>, where <i>T</i> is a the
+diagonal positive definite matrix formed from the <code>tune</code>,
+<i>B_0</i> is the prior precision, and <i>C</i> is the large sample
+variance-covariance matrix of the MLEs. This last calculation is
+done via an initial call to <code>optim</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  &ldquo;MCMCpack:
+Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Radford Neal. 2003. &ldquo;Slice Sampling&rdquo; (with discussion). <em>Annals of
+Statistics</em>, 31: 705-767.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  &ldquo;Output
+Analysis and Diagnostics for MCMC (CODA)&rdquo;, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+<p>Siddhartha Chib, Edward Greenberg, and Yuxin Chen. 1998.  &ldquo;MCMC Methods for
+Fitting and Comparing Multinomial Response Models.&quot;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>,<code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>,
+<code><a href="../../nnet/html/multinom.html">multinom</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+  ## Not run: 
+  data(Nethvote)
+
+  ## just a choice-specific X var
+  post1 &lt;- MCMCmnl(vote ~
+                choicevar(distD66, "sqdist", "D66") +
+                choicevar(distPvdA, "sqdist", "PvdA") +
+                choicevar(distVVD, "sqdist", "VVD") +
+                choicevar(distCDA, "sqdist", "CDA"),
+                baseline="D66", mcmc.method="IndMH", B0=0,
+                verbose=500, mcmc=100000, thin=10, tune=1.0,
+                data=Nethvote)
+
+  plot(post1)
+  summary(post1)
+
+
+
+  ## just individual-specific X vars
+  post2&lt;- MCMCmnl(vote ~
+                relig + class + income + educ + age + urban,
+                baseline="D66", mcmc.method="IndMH", B0=0,
+                verbose=500, mcmc=100000, thin=10, tune=0.5,
+                data=Nethvote)
+
+  plot(post2)
+  summary(post2)
+
+
+
+  ## both choice-specific and individual-specific X vars
+  post3 &lt;- MCMCmnl(vote ~
+                choicevar(distD66, "sqdist", "D66") +
+                choicevar(distPvdA, "sqdist", "PvdA") +
+                choicevar(distVVD, "sqdist", "VVD") +
+                choicevar(distCDA, "sqdist", "CDA") +
+                relig + class + income + educ + age + urban,
+                baseline="D66", mcmc.method="IndMH", B0=0,
+                verbose=500, mcmc=100000, thin=10, tune=0.5,
+                data=Nethvote)
+
+  plot(post3)
+  summary(post3)
+
+
+  ## numeric y variable
+  nethvote$vote &lt;- as.numeric(nethvote$vote)
+  post4 &lt;- MCMCmnl(vote ~
+                choicevar(distD66, "sqdist", "2") +
+                choicevar(distPvdA, "sqdist", "3") +
+                choicevar(distVVD, "sqdist", "4") +
+                choicevar(distCDA, "sqdist", "1") +
+                relig + class + income + educ + age + urban,
+                baseline="2", mcmc.method="IndMH", B0=0,
+                verbose=500, mcmc=100000, thin=10, tune=0.5,
+                data=Nethvote)
+
+
+  plot(post4)
+  summary(post4)
+
+
+
+  ## Simulated data example with nonconstant choiceset
+  n &lt;- 1000
+  y &lt;- matrix(0, n, 4)
+  colnames(y) &lt;- c("a", "b", "c", "d")
+  xa &lt;- rnorm(n)
+  xb &lt;- rnorm(n)
+  xc &lt;- rnorm(n)
+  xd &lt;- rnorm(n)
+  xchoice &lt;- cbind(xa, xb, xc, xd)
+  z &lt;- rnorm(n)
+  for (i in 1:n){
+    ## randomly determine choiceset (c is always in choiceset)
+    choiceset &lt;- c(3, sample(c(1,2,4), 2, replace=FALSE))
+    numer &lt;- matrix(0, 4, 1)
+    for (j in choiceset){
+      if (j == 3){
+        numer[j] &lt;- exp(xchoice[i, j] )
+      }
+      else {
+        numer[j] &lt;- exp(xchoice[i, j] - z[i] )
+      }
+    }
+    p &lt;- numer / sum(numer)
+    y[i,] &lt;- rmultinom(1, 1, p)
+    y[i,-choiceset] &lt;- -999
+  }
+
+  post5 &lt;- MCMCmnl(y~choicevar(xa, "x", "a") +
+                  choicevar(xb, "x", "b") +
+                  choicevar(xc, "x", "c") +
+                  choicevar(xd, "x", "d") + z,
+                  baseline="c", verbose=500,
+                  mcmc=100000, thin=10, tune=.85)
+
+  plot(post5)
+  summary(post5)
+
+  
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

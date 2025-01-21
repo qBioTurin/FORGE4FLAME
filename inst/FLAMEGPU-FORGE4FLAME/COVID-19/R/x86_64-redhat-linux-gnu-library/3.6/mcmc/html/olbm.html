@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Overlapping Batch Means</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for olbm {mcmc}"><tr><td>olbm {mcmc}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Overlapping Batch Means</h2>
+
+<h3>Description</h3>
+
+<p>Variance of sample mean of time series calculated using overlapping
+batch means.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+olbm(x, batch.length, demean = TRUE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>a matrix or time series object.  Each column of <code>x</code> is
+treated as a scalar time series.</p>
+</td></tr>
+<tr valign="top"><td><code>batch.length</code></td>
+<td>
+<p>length of batches.</p>
+</td></tr>
+<tr valign="top"><td><code>demean</code></td>
+<td>
+<p>when <code>demean = TRUE</code> (the default) the sample mean
+is subtracted from each batch mean when estimating the variance.
+Using <code>demean = FALSE</code> would essentially assume the true mean
+is known to be zero, which might be useful in a toy problem where
+the answer is known.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The estimated variance of the sample mean.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../stats/html/ts.html">ts</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+h &lt;- function(x) if (all(x &gt;= 0) &amp;&amp; sum(x) &lt;= 1) return(1) else return(-Inf)
+out &lt;- metrop(h, rep(0, 5), 1000)
+out &lt;- metrop(out, scale = 0.1)
+out &lt;- metrop(out, nbatch = 1e4)
+foo &lt;- olbm(out$batch, 150)
+# monte carlo estimates (true means are same by symmetry)
+apply(out$batch, 2, mean)
+# monte carlo standard errors (true s. d. are same by symmetry)
+sqrt(diag(foo))
+# check that batch length is reasonable
+acf(out$batch, lag.max = 200)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>mcmc</em> version 0.9-7 <a href="00Index.html">Index</a>]</div>
+</body></html>

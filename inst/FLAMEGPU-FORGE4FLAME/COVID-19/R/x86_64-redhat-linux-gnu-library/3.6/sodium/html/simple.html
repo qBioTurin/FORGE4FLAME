@@ -1,0 +1,82 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Anonymous Public-key Encryption (Sealed Box)</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Simple encryption {sodium}"><tr><td>Simple encryption {sodium}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Anonymous Public-key Encryption (Sealed Box)</h2>
+
+<h3>Description</h3>
+
+<p>Create an encrypted message (sealed box) from a curve25519 public key.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+simple_encrypt(msg, pubkey)
+
+simple_decrypt(bin, key)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>msg</code></td>
+<td>
+<p>message to be encrypted</p>
+</td></tr>
+<tr valign="top"><td><code>pubkey</code></td>
+<td>
+<p>public key of the receiver</p>
+</td></tr>
+<tr valign="top"><td><code>bin</code></td>
+<td>
+<p>encrypted ciphertext</p>
+</td></tr>
+<tr valign="top"><td><code>key</code></td>
+<td>
+<p>private key of the receiver</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Simple public key encryption allows for sending anonymous encrypted messages to
+a recipient given its public key. Only the recipient can decrypt these messages,
+using its private key.
+</p>
+<p>While the recipient can verify the integrity of the message, it cannot verify the
+identity of the sender. For sending authenticated encrypted messages, use
+<a href="messaging.html">auth_encrypt</a> and <a href="messaging.html">auth_decrypt</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="http://doc.libsodium.org/public-key_cryptography/sealed_boxes.html">http://doc.libsodium.org/public-key_cryptography/sealed_boxes.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# Generate keypair
+key &lt;- keygen()
+pub &lt;- pubkey(key)
+
+# Encrypt message with pubkey
+msg &lt;- serialize(iris, NULL)
+ciphertext &lt;- simple_encrypt(msg, pub)
+
+# Decrypt message with private key
+out &lt;- simple_decrypt(ciphertext, key)
+stopifnot(identical(out, msg))
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>sodium</em> version 1.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

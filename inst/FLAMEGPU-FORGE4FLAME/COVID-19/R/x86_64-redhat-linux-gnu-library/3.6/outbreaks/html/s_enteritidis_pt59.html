@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Salmonella Enteritidis PT59 outbreak</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for s_enteritidis_pt59 {outbreaks}"><tr><td>s_enteritidis_pt59 {outbreaks}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Salmonella Enteritidis PT59 outbreak</h2>
+
+<h3>Description</h3>
+
+<p>This dataset covers a food-borne outbreak of Salmonella Enteritidis PT59
+investigated by Public Health England. The data includes a distribution
+network, and genetic clusters of bacteria isolated in contaminated
+patients. The data is anonymised: identifiers of the food distribution
+network have been hashed. The object <code>s_enteritidis_pt59</code> is a list
+containing:
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+s_enteritidis_pt59
+</pre>
+
+
+<h3>Format</h3>
+
+<p>An object of class <code>list</code> of length 2.</p>
+
+
+<h3>Details</h3>
+
+
+<ul>
+<li> <p><code>$graph</code>: a <code>data.frame</code> containing with two columns
+<code>from</code> and <code>to</code> specifying (directed) edges of the food
+distribution network, alongside reported cases (terminal branches, or 'tips').
+</p>
+</li>
+<li> <p><code>$cluster</code>: a <code>factor</code> indicating the genetic cluster of
+named tips.
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Thomas Inns <a href="mailto:Thomas.Inns@phe.gov.uk">Thomas.Inns@phe.gov.uk</a>, Philip Ashton, Tim
+Dallman, Roberto Vivancos. Hashing and port to R by Thibaut Jombart.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Multi-agency Salmonella Enteritidis PT59 Outbreak Control Team,
+chaired by Public Health England
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>outbreaks</em> version 1.5.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

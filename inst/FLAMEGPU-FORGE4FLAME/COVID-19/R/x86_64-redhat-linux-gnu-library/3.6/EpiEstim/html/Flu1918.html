@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Data on the 1918 H1N1 influenza pandemic in Baltimore.</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for Flu1918 {EpiEstim}"><tr><td>Flu1918 {EpiEstim}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Data on the 1918 H1N1 influenza pandemic in Baltimore.</h2>
+
+<h3>Description</h3>
+
+<p>This data set gives:
+</p>
+
+<ol>
+<li><p> the daily incidence of onset of disease in Baltimore during the 1918 H1N1
+influenza pandemic (see source and references),
+</p>
+</li>
+<li><p> the discrete daily distribution of the serial interval for influenza,
+assuming a shifted Gamma distribution with mean 2.6 days, standard
+deviation 1.5 days and shift 1 day (see references).
+</p>
+</li></ol>
+
+
+
+<h3>Format</h3>
+
+<p>A list of two elements:
+</p>
+
+<ul>
+<li> <p><strong>incidence</strong>: a vector containing 92 days of observation,
+</p>
+</li>
+<li> <p><strong>si_distr</strong>: a vector containing a set of 12 probabilities.
+</p>
+</li></ul>
+
+
+<h3>Source</h3>
+
+<p>Frost W. and E. Sydenstricker (1919) Influenza in Maryland:
+preliminary statistics of certain localities.
+Public Health Rep.(34): 491-504.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cauchemez S. et al. (2011) Role of social networks in shaping disease
+transmission during a community outbreak of 2009 H1N1 pandemic influenza.
+Proc Natl Acad Sci U S A 108(7), 2825-2830.
+</p>
+<p>Ferguson N.M. et al. (2005) Strategies for containing an emerging influenza
+pandemic in Southeast Asia. Nature 437(7056), 209-214.
+</p>
+<p>Fraser C. et al. (2011) Influenza Transmission in Households During the 1918
+Pandemic. Am J Epidemiol 174(5): 505-514.
+</p>
+<p>Frost W. and E. Sydenstricker (1919) Influenza in Maryland: preliminary
+statistics of certain localities. Public Health Rep.(34): 491-504.
+</p>
+<p>Vynnycky E. et al. (2007) Estimates of the reproduction numbers of Spanish
+influenza using morbidity data. Int J Epidemiol 36(4): 881-889.
+</p>
+<p>White L.F. and M. Pagano (2008) Transmissibility of the influenza virus in
+the 1918 pandemic. PLoS One 3(1): e1498.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## load data on pandemic flu in Baltimore in 1918
+data("Flu1918")
+
+## estimate the reproduction number (method "non_parametric_si")
+res &lt;- estimate_R(Flu1918$incidence,
+          method = "non_parametric_si",
+          config = make_config(list(si_distr = Flu1918$si_distr)))
+plot(res)
+## the second plot produced shows, at each each day,
+## the estimate of the reproduction number
+## over the 7-day window finishing on that day.
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>EpiEstim</em> version 2.2-1 <a href="00Index.html">Index</a>]</div>
+</body></html>

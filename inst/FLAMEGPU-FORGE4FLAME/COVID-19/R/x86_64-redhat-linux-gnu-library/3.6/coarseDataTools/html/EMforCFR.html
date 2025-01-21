@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: A function to estimate the relative case fatality ratio when...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for EMforCFR {coarseDataTools}"><tr><td>EMforCFR {coarseDataTools}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>A function to estimate the relative case fatality ratio when reporting rates
+are time-varying and deaths are lagged because of survival time.</h2>
+
+<h3>Description</h3>
+
+<p>This function implements an EM algorithm to estimate the relative case
+fatality ratio between two groups when reporting rates are time-varying and
+deaths are lagged because of survival time.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+EMforCFR(assumed.nu, alpha.start.values, full.data, max.iter = 50, 
+  verb = FALSE, tol = 1e-10, SEM.var = TRUE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>assumed.nu</code></td>
+<td>
+<p>a vector of probabilities corresponding to the survival
+distribution, i.e. nu[i]=Pr(surviving i days | fatal case)</p>
+</td></tr>
+<tr valign="top"><td><code>alpha.start.values</code></td>
+<td>
+<p>a vector starting values for the reporting rate
+parameter of the GLM model. This must have length which corresponds to one
+less than the number of unique integer values of full.dat[,&quot;new.times&quot;].</p>
+</td></tr>
+<tr valign="top"><td><code>full.data</code></td>
+<td>
+<p>A matrix of observed data. See description below.</p>
+</td></tr>
+<tr valign="top"><td><code>max.iter</code></td>
+<td>
+<p>The maximum number of iterations for the EM algorithm and
+the accompanying SEM algorithm (if used).</p>
+</td></tr>
+<tr valign="top"><td><code>verb</code></td>
+<td>
+<p>An indicator for whether the function should print results as it
+runs.</p>
+</td></tr>
+<tr valign="top"><td><code>tol</code></td>
+<td>
+<p>A tolerance to use to test for convergence of the EM algorithm.</p>
+</td></tr>
+<tr valign="top"><td><code>SEM.var</code></td>
+<td>
+<p>If TRUE, the SEM algorithm will be run in addition to the EM
+algorithm to calculate the variance of the parameter estimates.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The data matrix full.data must have the following columns: 
+</p>
+ <dl>
+<dt>grp</dt><dd><p>a 1 or a 2 indicating which of the two groups, j, 
+the observation is for.</p>
+</dd> <dt>new.times</dt><dd><p>an integer value representing
+the time, t, of observation.</p>
+</dd> <dt>R</dt><dd><p>the count of recovered cases with
+onset at time t in group j.</p>
+</dd> <dt>D</dt><dd><p>the count of deaths which occurred at
+time t in groupo j (note that these deaths did not have disease onset at
+time t but rather died at time t).</p>
+</dd> <dt>N</dt><dd><p>the total cases at t, j, or
+the sum of R and D columns.</p>
+</dd> </dl>
+
+
+
+<h3>Value</h3>
+
+<p>A list with the following elements </p>
+ <dl>
+<dt>naive.rel.cfr
+</dt><dd><p>the naive estimate of the relative case fatality ratio</p>
+</dd> 
+<dt>glm.rel.cfr </dt><dd><p>the reporting-rate-adjusted estimate of the relative
+case fatality ratio</p>
+</dd> <dt>EM.rel.cfr </dt><dd><p>the lag-adjusted estimate of the
+relative case fatality ratio</p>
+</dd> <dt>EM.re.cfr.var </dt><dd><p>the variance for the
+log-scale lag-adjusted estimator taken from the final M-step</p>
+</dd> 
+<dt>EM.rel.cfr.var.SEM </dt><dd><p> the Supplemented EM algorithm variance for the
+log-scale lag-adjusted estimator</p>
+</dd> <dt>EM.rel.cfr.chain </dt><dd><p>a vector of the
+EM algorithm iterates of the lag-adjusted relative CFR estimates</p>
+</dd> 
+<dt>EMiter</dt><dd><p>the number of iterations needed for the EM algorithm to
+converge</p>
+</dd> <dt>EMconv</dt><dd><p>indicator for convergence of the EM algorithm.  0
+indicates all parameters converged within max.iter iterations.  1 indicates
+that the estimate of the relative case fatality ratio converged but other
+did not.  2 indicates that the relative case fatality ratio did not
+converge.</p>
+</dd> <dt>SEMconv</dt><dd><p>indicator for convergence of SEM algorithm. 
+Same scheme as EMconv.</p>
+</dd> <dt>ests</dt><dd><p> the coefficient estimates for the
+model </p>
+</dd> <dt>ests.chain</dt><dd><p> a matrix with all of the coefficient estimates,
+at each EM iteration</p>
+</dd> <dt>DM</dt><dd><p>the DM matrix from the SEM algorithm</p>
+</dd> 
+<dt>DMiter</dt><dd><p>a vector showing how many iterations it took for the
+variance component to converge in the SEM algorithm</p>
+</dd> </dl>
+
+
+
+<h3>Examples</h3>
+
+<pre>
+       
+    ## This is code from the CFR vignette provided in the documentation.
+       
+data(simulated.outbreak.deaths)
+min.cases &lt;- 10 
+N.1 &lt;- simulated.outbreak.deaths[1:60, "N"] 
+N.2 &lt;- simulated.outbreak.deaths[61:120, "N"] 
+first.t &lt;- min(which(N.1 &gt; min.cases &amp; N.2 &gt; min.cases)) 
+last.t &lt;- max(which(N.1 &gt; min.cases &amp; N.2 &gt; min.cases)) 
+idx.for.Estep &lt;- first.t:last.t 
+new.times &lt;- 1:length(idx.for.Estep) 
+simulated.outbreak.deaths &lt;- cbind(simulated.outbreak.deaths, new.times = NA) 
+simulated.outbreak.deaths[c(idx.for.Estep, idx.for.Estep + 60), "new.times"] &lt;- rep(new.times, + 2)
+assumed.nu = c(0, 0.3, 0.4, 0.3)
+alpha.start &lt;- rep(0, 22)
+       
+## caution! this next line may take several minutes (5-10, depanding on 
+##    the speed of your machine) to run.
+## Not run: cfr.ests &lt;- EMforCFR(assumed.nu = assumed.nu, 
+                              alpha.start.values = alpha.start, 
+                              full.data = simulated.outbreak.deaths, 
+                              verb = FALSE, 
+                              SEM.var = TRUE, 
+                              max.iter = 500, 
+                              tol = 1e-05)
+## End(Not run)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>coarseDataTools</em> version 0.6-5 <a href="00Index.html">Index</a>]</div>
+</body></html>

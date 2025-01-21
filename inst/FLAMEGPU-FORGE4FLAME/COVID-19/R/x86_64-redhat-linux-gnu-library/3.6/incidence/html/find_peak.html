@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Find the peak date of an incidence curve</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for find_peak {incidence}"><tr><td>find_peak {incidence}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Find the peak date of an incidence curve</h2>
+
+<h3>Description</h3>
+
+<p>This function can be used to find the peak of an epidemic curve stored as an
+<code>incidence</code> object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+find_peak(x, pool = TRUE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>An <code>incidence</code> object.</p>
+</td></tr>
+<tr valign="top"><td><code>pool</code></td>
+<td>
+<p>If <code>TRUE</code> (default), any groups will be pooled before finding
+a peak. If <code>FALSE</code>, separate peaks will be found for each group.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The date of the (first) highest incidence in the data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>, Zhian N. Kamvar
+<a href="mailto:zkamvar@gmail.com">zkamvar@gmail.com</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="estimate_peak.html">estimate_peak()</a></code> for bootstrap estimates of the peak time
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+if (require(outbreaks) &amp;&amp; require(ggplot2)) { withAutoprint({
+  i &lt;- incidence(fluH7N9_china_2013$date_of_onset)
+  i
+  plot(i)
+
+  ## one simple bootstrap
+  x &lt;- bootstrap(i)
+  x
+  plot(x)
+
+  ## find 95% CI for peak time using bootstrap
+  find_peak(i)
+
+
+  ## show confidence interval
+  plot(i) + geom_vline(xintercept = find_peak(i), col = "red", lty = 2)
+
+})}
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>incidence</em> version 1.7.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

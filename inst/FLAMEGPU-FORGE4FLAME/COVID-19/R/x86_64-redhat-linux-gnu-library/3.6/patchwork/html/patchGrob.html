@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Get a grob describing the content of a patch object</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for patchGrob {patchwork}"><tr><td>patchGrob {patchwork}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Get a grob describing the content of a patch object</h2>
+
+<h3>Description</h3>
+
+<p>Methods for this generic should be defined for all <code>patch</code> subclasses
+and should return a compliant <code>gtable</code> object ready to be combined with
+regular plot objects. In general it is best to call <code>patch_table()</code> on the
+object and add grobs to this as <code>patch_table()</code> will return a compliant
+<code>gtable</code>
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+patchGrob(x, guides = "auto")
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>An <code>patch</code> object</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code>gtable</code> object
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>patchwork</em> version 1.0.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

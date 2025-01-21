@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Least Squares and Quadratic Programming under Nonnegativity...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for nnls {lsei}"><tr><td>nnls {lsei}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Least Squares and Quadratic Programming under Nonnegativity Constraints</h2>
+
+<h3>Description</h3>
+
+<p><code>nnls</code> solves the least squares problem under nonnegativity (NN)
+constraints. It is an R interface to the NNLS function that is
+described in Lawson and Hanson (1974, 1995). Its Fortran
+implementation is public domain and available at
+<a href="http://www.netlib.org/lawson-hanson">http://www.netlib.org/lawson-hanson</a>.
+</p>
+<p><code>pnnls</code> solves the least squares problem when only part of the
+coefficients are subject to nonnegativity constraints. It also allows
+the NN-restricted coefficients to be further restricted to have a
+fixed positive sum.
+</p>
+<p><code>pnnqp</code> solves the quadratic programming problem when solution
+values are partly subject to nonnegativity constraints. It also allows
+the NN-restricted coefficients to be further restricted to have a
+fixed positive sum.
+</p>
+<p>These functions are particularly useful for finding zeros exactly. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+nnls(a, b) 
+pnnls(a, b, k=0, sum=NULL) 
+pnnqp(q, p, k=0, sum=NULL, tol=1e-20)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>a</code></td>
+<td>
+<p>Design matrix.</p>
+</td></tr>
+<tr valign="top"><td><code>b</code></td>
+<td>
+<p>Response vector.</p>
+</td></tr> 
+<tr valign="top"><td><code>k</code></td>
+<td>
+<p>Integer, meaning that the first <code>k</code> coefficients are not
+NN-restricted.</p>
+</td></tr> 
+<tr valign="top"><td><code>sum</code></td>
+<td>
+<p>= NULL, if NN-restricted coefficients are not further
+restricted to have a fixed sum; 
+</p>
+<p>= a positive value, if NN-restricted coefficients are further
+restricted to have a fixed positive sum.</p>
+</td></tr>
+<tr valign="top"><td><code>q</code></td>
+<td>
+<p>Positive semidefinite matrix of numeric values for the
+quadratic term of a quadratic programming problem.</p>
+</td></tr>
+<tr valign="top"><td><code>p</code></td>
+<td>
+<p>Vector of numeric values for the linear term of a quadratic
+programming problem.</p>
+</td></tr>
+<tr valign="top"><td><code>tol</code></td>
+<td>
+<p>Tolerance used for calculating pseudo-rank of <code>q</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Given matrix <code>a</code> and vector <code>b</code>, <code>nnls</code> solves the
+nonnegativity least squares problem:
+</p>
+<p style="text-align: center;"><i>minimize  || a x - b ||,</i></p>
+ <p style="text-align: center;"><i> subject to  x &gt;= 0.</i></p>
+
+<p>Function <code>pnnls</code> also solves the above nonnegativity least
+squares problem when <code>k=0</code>, but it may also leave the first
+<code>k</code> coefficients unrestricted. The output value of <code>k</code> can
+be different from the input, if <code>a</code> has linearly dependent
+columns. If <code>sum</code> is a positive value, <code>pnnls</code> solves the
+problem by further restricting that the NN-restricted coefficients
+must sum to the given value.
+</p>
+<p>Function <code>pnnqp</code> solves the quadratic programming problem
+</p>
+<p style="text-align: center;"><i>minimize 0.5 x^T q x + p^T x,</i></p>
+
+<p>when only some or all coefficients are restricted by
+nonnegativity. The quadratic programming problem is solved by
+transforming the problem into a least squares one under the same
+constraints, which is then solved by function <code>pnnls</code>. Arguments
+<code>k</code> and <code>sum</code> have the same meanings as for <code>pnnls</code>.
+</p>
+<p>Functions <code>nnls</code>, <code>pnnls</code> and <code>pnnqp</code> are able to
+return any zero-valued solution as 0 exactly. This differs from
+functions <code>lsei</code> and <code>qp</code>, which may produce very small
+values for exactly 0s, thanks to numerical errors.
+</p>
+
+
+<h3>Value</h3>
+
+<table summary="R valueblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>Solution</p>
+</td></tr>
+<tr valign="top"><td><code>r</code></td>
+<td>
+<p>The upper-triangular matrix <code>Q*a</code>, pivoted by variables
+in the order of <code>index</code>, when <code>sum=NULL</code>. If <code>sum
+    &gt; 0</code>, <code>r</code> is for the transformed <code>a</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>b</code></td>
+<td>
+<p>The vector <code>Q*b</code>, pivoted by variables in the order of
+<code>index</code>, when <code>sum=NULL</code>. If <code>sum &gt; 0</code>, <code>b</code> is
+for the transformed <code>b</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>index</code></td>
+<td>
+<p>Indices of the columns of <code>r</code>; those unrestricted
+and in the positive set are first given, and then those in the zero
+set.</p>
+</td></tr>
+<tr valign="top"><td><code>rnorm</code></td>
+<td>
+<p>Euclidean norm of the residual vector.</p>
+</td></tr>
+<tr valign="top"><td><code>mode</code></td>
+<td>
+<p>= 1, successful computation;
+</p>
+<p>= 2, bad dimensions of the problem;
+</p>
+<p>= 3, iteration count exceeded (more than 3 times the number
+of variables iterations).</p>
+</td></tr>
+<tr valign="top"><td><code>k</code></td>
+<td>
+<p>Number of the first few coefficients that are truly not
+NN-restricted.</p>
+</td></tr> 
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Lawson and Hanson (1974, 1995). Solving Least Squares
+Problems. Englewood Cliffs, N.J., Prentice-Hall.
+</p>
+<p>Dax (1990). The smallest point of a polytope. Journal of Optimization
+Theory and Applications, 64, pp. 429-432.
+</p>
+<p>Wang (2010). Fisher scoring: An interpolation family and its Monte
+Carlo implementations. Computational Statistics and Data Analysis, 54,
+pp. 1744-1755.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="lsei.html">lsei</a></code>, <code><a href="hfti.html">hfti</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+a = matrix(rnorm(40), nrow=10)
+b = drop(a %*% c(0,1,-1,1)) + rnorm(10)
+nnls(a, b)$x                     # constraint x &gt;= 0
+pnnls(a, b, k=0)$x               # same as nnls(a, b)
+pnnls(a, b, k=2)$x               # first two coeffs are not NN-constrained
+pnnls(a, b, k=2, sum=1)$x        # NN-constrained coeffs must sum to 1
+pnnls(a, b, k=2, sum=2)$x        # NN-constrained coeffs must sum to 2
+q = crossprod(a)
+p = -drop(crossprod(b, a))
+pnnqp(q, p, k=2, sum=2)$x        # same solution
+
+pnnls(a, b, sum=1)$x             # zeros found exactly
+pnnqp(q, p, sum=1)$x             # zeros found exactly
+lsei(a, b, rep(1,4), 1, lower=0) # zeros not so exact
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>lsei</em> version 1.2-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

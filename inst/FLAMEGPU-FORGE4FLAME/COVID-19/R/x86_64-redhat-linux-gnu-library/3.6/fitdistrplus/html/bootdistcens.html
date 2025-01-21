@@ -1,0 +1,250 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Bootstrap simulation of uncertainty for censored data</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for bootdistcens {fitdistrplus}"><tr><td>bootdistcens {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Bootstrap simulation of uncertainty for censored data</h2>
+
+<h3>Description</h3>
+
+<p>Uses nonparametric bootstrap resampling in order to simulate uncertainty 
+in the parameters of the distribution fitted to censored data.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+bootdistcens(f, niter = 1001, silent = TRUE, 
+      parallel = c("no", "snow", "multicore"), ncpus)
+## S3 method for class 'bootdistcens'
+print(x, ...)
+## S3 method for class 'bootdistcens'
+plot(x, ...)
+## S3 method for class 'bootdistcens'
+summary(object, ...)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>f</code></td>
+<td>
+<p> An object of class <code>"fitdistcens"</code>, output of the <code><a href="fitdistcens.html">fitdistcens</a></code> function.</p>
+</td></tr>
+<tr valign="top"><td><code>niter</code></td>
+<td>
+<p> The number of samples drawn by bootstrap.</p>
+</td></tr>
+<tr valign="top"><td><code>silent</code></td>
+<td>
+<p>A logical to remove or show warnings and errors when bootstraping.</p>
+</td></tr>
+<tr valign="top"><td><code>parallel</code></td>
+<td>
+<p>The type of parallel operation to be used, <code>"snow"</code> or <code>"multicore"</code>
+(the second one not being available on Windows),
+or <code>"no"</code> if no parallel operation.</p>
+</td></tr>
+<tr valign="top"><td><code>ncpus</code></td>
+<td>
+<p>Number of processes to be used in parallel operation : 
+typically one would fix it to the number of available CPUs.</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p> An object of class <code>"bootdistcens"</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>object</code></td>
+<td>
+<p> An object of class <code>"bootdistcens"</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p> Further arguments to be passed to generic methods.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Samples are drawn by 
+nonparametric bootstrap (resampling with replacement from the data set). On each bootstrap sample the function 
+<code><a href="mledist.html">mledist</a></code> is used to estimate bootstrapped values of parameters. When <code><a href="mledist.html">mledist</a></code> fails
+to converge, <code>NA</code> values are returned. Medians and 2.5 and 97.5 percentiles are computed by removing
+<code>NA</code> values. The medians and the 95 percent confidence intervals of parameters (2.5 and 97.5 percentiles) 
+are printed in the summary.
+If inferior to the whole number of iterations, the number of iterations for which <code><a href="mledist.html">mledist</a></code> converges 
+is also printed in the summary.
+</p>
+<p>The plot of an object of class <code>"bootdistcens"</code> consists in a scatterplot or a matrix of scatterplots
+of the bootstrapped values of parameters.
+It uses the function <code><a href="../../graphics/html/stripchart.html">stripchart</a></code> when the fitted distribution
+is characterized by only one parameter, and the function <code><a href="../../graphics/html/plot.html">plot</a></code> in other cases.
+In these last cases, it provides
+a representation of the joint uncertainty distribution of the fitted parameters.
+</p>
+<p>It is possible to accelerate the bootstrap using parallelization. We recommend you to
+use <code>parallel = "multicore"</code>, or <code>parallel = "snow"</code> if you work on Windows,
+and to fix <code>ncpus</code> to the number of available processors.
+</p>
+
+
+<h3>Value</h3>
+
+ 
+<p><code>bootdistcens</code> returns an object of class <code>"bootdistcens"</code>, a list with 6 components,
+</p>
+<table summary="R valueblock">
+<tr valign="top"><td><code>estim</code></td>
+<td>
+<p> a data frame containing the bootstrapped values of parameters.</p>
+</td></tr>
+<tr valign="top"><td><code>converg</code></td>
+<td>
+<p> a vector containing the codes for convergence of the iterative method
+used to estimate parameters on 
+each bootstraped data set.</p>
+</td></tr>
+<tr valign="top"><td><code>method</code></td>
+<td>
+<p> A character string coding for the type of resampling : 
+in this case <code>"nonparam"</code> as it is the only available method for censored data. </p>
+</td></tr>
+<tr valign="top"><td><code>nbboot</code></td>
+<td>
+<p> The number of samples drawn by bootstrap.</p>
+</td></tr>   
+<tr valign="top"><td><code>CI</code></td>
+<td>
+<p> bootstrap medians and 95 percent confidence percentile intervals of parameters. </p>
+</td></tr>
+<tr valign="top"><td><code>fitpart</code></td>
+<td>
+<p> The object of class <code>"fitdistcens"</code> on which the bootstrap procedure
+was applied.</p>
+</td></tr>
+</table>
+<p>Generic functions:
+</p>
+       
+<dl>
+<dt><code>print</code></dt><dd>
+<p>The print of a <code>"bootdistcens"</code> object shows the bootstrap parameter estimates. If inferior to the whole number of bootstrap iterations, 
+the number of iterations 
+for which the estimation converges is also printed.
+</p>
+</dd>
+<dt><code>summary</code></dt><dd>
+<p>The summary provides the median and 2.5 and 97.5 percentiles of each parameter. If inferior to the whole number of bootstrap iterations, 
+the number of iterations 
+for which the estimation converges is also printed in the summary.
+</p>
+</dd>
+<dt><code>plot</code></dt><dd>
+<p>The plot shows the bootstrap estimates with the <code><a href="../../graphics/html/stripchart.html">stripchart</a></code> function
+for univariate parameters and <code><a href="../../graphics/html/plot.html">plot</a></code> function for multivariate parameters.
+</p>
+</dd>          
+</dl>
+   
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Marie-Laure Delignette-Muller and Christophe Dutang.
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>Cullen AC and Frey HC (1999), <em>Probabilistic techniques in exposure assessment</em>.
+Plenum Press, USA, pp. 181-241.
+</p>
+<p>Delignette-Muller ML and Dutang C (2015), <em>fitdistrplus: An R Package for Fitting Distributions</em>.
+Journal of Statistical Software, 64(4), 1-34.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p>See <code><a href="fitdistrplus.html">fitdistrplus</a></code> for an overview of the package.
+<code><a href="fitdistcens.html">fitdistcens</a></code>, <code><a href="mledist.html">mledist</a></code>, <code><a href="quantiles.html">quantile.bootdistcens</a></code> 
+for another generic function to calculate 
+quantiles from the fitted distribution and its bootstrap results
+and <code><a href="CIcdfplot.html">CIcdfplot</a></code> for adding confidence intervals on quantiles
+to a CDF plot of the fitted distribution.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+# We choose a low number of bootstrap replicates in order to satisfy CRAN running times
+# constraint.
+# For practical applications, we recommend to use at least niter=501 or niter=1001.
+
+# (1) Fit of a normal distribution to fluazinam data in log10
+# followed by nonparametric bootstrap and calculation of quantiles
+# with 95 percent confidence intervals
+#
+data(fluazinam)
+(d1 &lt;-log10(fluazinam))
+f1 &lt;- fitdistcens(d1, "norm")
+b1 &lt;- bootdistcens(f1, niter = 101)
+b1
+summary(b1)
+plot(b1)
+quantile(b1)
+CIcdfplot(b1, CI.output = "quantile")
+
+# (2) Estimation of the mean of the normal distribution 
+# by maximum likelihood with the standard deviation fixed at 1 
+# using the argument fix.arg
+# followed by nonparametric bootstrap 
+# and calculation of quantiles with 95 percent confidence intervals
+#
+f1b &lt;- fitdistcens(d1, "norm", start = list(mean = 1),fix.arg = list(sd = 1))
+b1b &lt;- bootdistcens(f1b, niter = 101)
+summary(b1b)
+plot(b1b)
+quantile(b1b)
+
+# (3) comparison of sequential and parallel versions of bootstrap
+# to be tried with a greater number of iterations (1001 or more)
+#
+## Not run: 
+niter &lt;- 1001
+data(fluazinam)
+d1 &lt;-log10(fluazinam)
+f1 &lt;- fitdistcens(d1, "norm")
+
+# sequential version
+ptm &lt;- proc.time()
+summary(bootdistcens(f1, niter = niter))
+proc.time() - ptm
+
+# parallel version using snow
+require(parallel)
+ptm &lt;- proc.time()
+summary(bootdistcens(f1, niter = niter, parallel = "snow", ncpus = 4))
+proc.time() - ptm
+
+# parallel version using multicore (not available on Windows)
+ptm &lt;- proc.time()
+summary(bootdistcens(f1, niter = niter, parallel = "multicore", ncpus = 4))
+proc.time() - ptm
+
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Convert date to a an arbitrary week definition</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for date2week {aweek}"><tr><td>date2week {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Convert date to a an arbitrary week definition</h2>
+
+<h3>Description</h3>
+
+<p>Convert date to a an arbitrary week definition
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+date2week(
+  x,
+  week_start = get_week_start(),
+  floor_day = factor,
+  numeric = FALSE,
+  factor = FALSE,
+  ...
+)
+
+week2date(x, week_start = get_week_start(), floor_day = FALSE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>a <a href="../../base/html/Dates.html">Date</a>, <a href="../../base/html/DateTimeClasses.html">POSIXt</a>, <a href="../../base/html/character.html">character</a>, or any data that can be easily
+converted to a date with <code><a href="../../base/html/as.POSIXlt.html">as.POSIXlt()</a></code>.</p>
+</td></tr>
+<tr valign="top"><td><code>week_start</code></td>
+<td>
+<p>a number indicating the start of the week based on the ISO
+8601 standard from 1 to 7 where 1 = Monday OR an abbreviation of the
+weekdate in an English or current locale. <em>Note: using a non-English locale
+may render your code non-portable.</em> Defaults to the value of
+<code><a href="week_start.html">get_week_start()</a></code></p>
+</td></tr>
+<tr valign="top"><td><code>floor_day</code></td>
+<td>
+<p>when <code>TRUE</code>, the days will be set to the start of the week.</p>
+</td></tr>
+<tr valign="top"><td><code>numeric</code></td>
+<td>
+<p>if <code>TRUE</code>, only the numeric week be returned. If <code>FALSE</code>
+(default), the date in the format &quot;YYYY-Www-d&quot; will be returned.</p>
+</td></tr>
+<tr valign="top"><td><code>factor</code></td>
+<td>
+<p>if <code>TRUE</code>, a factor will be returned with levels spanning the
+range of dates. This should only be used with <code>floor_day = TRUE</code> to
+produce the sequence of weeks between the first and last date as the
+factor levels.  Currently, <code>floor_date = FALSE</code> will still work, but will
+produce a message indicating that it is deprecated. <em>Take caution when
+using this with a large date range as the resulting factor can contain all
+days between dates</em>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>arguments passed to <code><a href="../../base/html/as.POSIXlt.html">as.POSIXlt()</a></code>, unused in all other cases.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Weeks differ in their start dates depending on context. The ISO
+8601 standard specifies that Monday starts the week
+(<a href="https://en.wikipedia.org/wiki/ISO_week_date">https://en.wikipedia.org/wiki/ISO_week_date</a>) while the US CDC uses
+Sunday as the start of the week
+(<a href="https://wwwn.cdc.gov/nndss/document/MMWR_Week_overview.pdf">https://wwwn.cdc.gov/nndss/document/MMWR_Week_overview.pdf</a>). For
+example, MSF has varying start dates depending on country in order to
+better coordinate response.
+</p>
+<p>While there are packages that provide conversion for ISOweeks and epiweeks,
+these do not provide seamless conversion from dates to epiweeks with
+non-standard start dates. This package provides a lightweight utility to
+be able to convert each day.
+</p>
+
+
+<h3>Value</h3>
+
+
+<ul>
+<li> <p><code>date2week()</code> an <a href="aweek-class.html">aweek</a> object which represents dates in
+<code>YYYY-Www-d</code> format where <code>YYYY</code> is the year (associated with the week,
+not necessarily the day), <code>Www</code> is the week number prepended by a &quot;W&quot; that
+ranges from 01-53 and <code>d</code> is the day of the week from 1 to 7 where 1
+represents the first day of the week (as defined by the <code>week_start</code>
+attribute).
+</p>
+</li>
+<li> <p><code>week2date()</code> a <a href="../../base/html/Dates.html">Date</a> object.
+</p>
+</li></ul>
+
+
+
+<h3>Note</h3>
+
+<p><code>date2week()</code> will initially convert the input with <code><a href="../../base/html/as.POSIXlt.html">as.POSIXlt()</a></code> and
+use that to calculate the week. If the user supplies character input, it
+is expected that the input will be of the format yyyy-mm-dd <em>unless</em> the
+user explicitly passes the &quot;format&quot; parameter to <code><a href="../../base/html/as.POSIXlt.html">as.POSIXlt()</a></code>. If the
+input is not in yyyy-mm-dd and the format parameter is not passed,
+<code>date2week()</code> will result in an error.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Zhian N. Kamvar
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="week_start.html">set_week_start()</a></code>, <code><a href="aweek-conversions.html">as.Date.aweek()</a></code>, <code><a href="aweek-class.html">print.aweek()</a></code>, <code><a href="as.aweek.html">as.aweek()</a></code>,
+<code><a href="get_aweek.html">get_aweek()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Dates to weeks -----------------------------------------------------------
+
+# The same set of days will occur in different weeks depending on the start
+# date. Here we can define a week before and after today
+
+print(dat &lt;- as.Date("2018-12-31") + -6:7)
+
+# By default, the weeks are defined as ISO weeks, which start on Monday
+print(iso_dat &lt;- date2week(dat))
+
+# This can be changed by setting the global default with set_week_start()
+
+set_week_start("Sunday")
+
+date2week(dat)
+
+# If you want lubridate-style numeric-only weeks, you need look no further
+# than the "numeric" argument
+date2week(dat, numeric = TRUE)
+
+# To aggregate weeks, you can use `floor_day = TRUE`
+date2week(dat, floor_day = TRUE)
+
+# If you want aggregations into factors that include missing weeks, use
+# `floor_day = TRUE, factor = TRUE`:
+date2week(dat[c(1, 14)], floor_day = TRUE, factor = TRUE)
+
+
+## Weeks to dates -----------------------------------------------------------
+
+# The aweek class can be converted back to a date with `as.Date()`
+as.Date(iso_dat)
+
+# If you don't have an aweek class, you can use week2date(). Note that the
+# week_start variable is set by the "aweek.week_start" option, which we will
+# set to Monday:
+
+set_week_start("Monday")
+week2date("2019-W01-1") # 2018-12-31
+
+# This can be overidden by the week_start argument;
+week2date("2019-W01-1", week_start = "Sunday") # 2018-12-30
+
+# If you want to convert to the first day of the week, you can use the 
+# `floor_day` argument
+as.Date(iso_dat, floor_day = TRUE)
+
+## The same two week timespan starting on different days --------------------
+# ISO week definition: Monday -- 1
+date2week(dat, 1)
+date2week(dat, "Monday")
+
+# Tuesday -- 2
+date2week(dat, 2)
+date2week(dat, "Tuesday")
+
+# Wednesday -- 3
+date2week(dat, 3)
+date2week(dat, "W") # you can use valid abbreviations
+
+# Thursday -- 4
+date2week(dat, 4)
+date2week(dat, "Thursday")
+
+# Friday -- 5
+date2week(dat, 5)
+date2week(dat, "Friday")
+
+# Saturday -- 6
+date2week(dat, 6)
+date2week(dat, "Saturday")
+
+# Epiweek definition: Sunday -- 7 
+date2week(dat, 7)
+date2week(dat, "Sunday")
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

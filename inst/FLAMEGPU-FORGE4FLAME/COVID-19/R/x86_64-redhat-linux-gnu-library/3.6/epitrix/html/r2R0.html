@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Transform a growth rate into a reproduction number</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for r2R0 {epitrix}"><tr><td>r2R0 {epitrix}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Transform a growth rate into a reproduction number</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>r2R0</code> can be used to transform a growth rate into a
+reproduction number estimate, given a generation time distribution. This uses
+the approach described in Wallinga and Lipsitch (2007, Proc Roy Soc B
+274:599–604) for empirical distributions. The function <code>lm2R0_sample</code>
+generates a sample of R0 values from a log-linear regression of incidence
+data stored in a <code>lm</code> object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+r2R0(r, w, trunc = 1000)
+
+lm2R0_sample(x, w, n = 100, trunc = 1000)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>r</code></td>
+<td>
+<p>A vector of growth rate values.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>The serial interval distribution, either provided as a
+<code>distcrete</code> object, or as a <code>numeric</code> vector containing
+probabilities of the mass functions.</p>
+</td></tr>
+<tr valign="top"><td><code>trunc</code></td>
+<td>
+<p>The number of time units (most often, days), used for truncating
+<code>w</code>, whenever a <code>distcrete</code> object is provided. Defaults to 1000.</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A <code>lm</code> object storing a a linear regression of log-incidence
+over time.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>The number of draws of R0 values, defaulting to 100.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>It is assumed that the growth rate ('r') is measured in the same
+time unit as the serial interval ('w' is the SI distribution, starting at
+time 0).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Code by Anne Cori <a href="mailto:a.cori@imperial.ac.uk">a.cori@imperial.ac.uk</a>, packaging by
+Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Ebola estimates of the SI distribution from the first 9 months of
+## West-African Ebola oubtreak
+
+mu &lt;- 15.3 # days
+sigma &lt;- 9.3 # days
+param &lt;- gamma_mucv2shapescale(mu, sigma / mu)
+
+if (require(distcrete)) {
+  w &lt;- distcrete("gamma", interval = 1,
+                 shape = param$shape,
+                 scale = param$scale, w = 0)
+
+  r2R0(c(-1, -0.001, 0, 0.001, 1), w)
+
+
+## Use simulated Ebola outbreak and 'incidence' to get a log-linear
+## model of daily incidence.
+
+  if (require(outbreaks) &amp;&amp; require(incidence)) {
+    i &lt;- incidence(ebola_sim$linelist$date_of_onset)
+    plot(i)
+    f &lt;- fit(i[1:100])
+    f
+    plot(i[1:150], fit = f)
+
+    R0 &lt;- lm2R0_sample(f$model, w)
+    hist(R0, col = "grey", border = "white", main = "Distribution of R0")
+    summary(R0)
+  }
+}
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>epitrix</em> version 0.2.2 <a href="00Index.html">Index</a>]</div>
+</body></html>

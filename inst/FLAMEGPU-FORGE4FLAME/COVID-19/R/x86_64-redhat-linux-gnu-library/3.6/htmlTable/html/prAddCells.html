@@ -1,0 +1,104 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Add a cell</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for prAddCells {htmlTable}"><tr><td>prAddCells {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Add a cell</h2>
+
+<h3>Description</h3>
+
+<p>Adds a row of cells &lt;td&gt;val&lt;/td&gt;&lt;td&gt;...&lt;/td&gt; to a table string for
+<code><a href="htmlTable.html">htmlTable</a></code>
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+prAddCells(
+  rowcells,
+  cellcode,
+  align,
+  style,
+  cgroup_spacer_cells,
+  has_rn_col,
+  col.columns,
+  offset = 1,
+  css.cell
+)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>rowcells</code></td>
+<td>
+<p>The cells with the values that are to be added</p>
+</td></tr>
+<tr valign="top"><td><code>cellcode</code></td>
+<td>
+<p>Type of cell, can either be <code>th</code> or <code>td</code></p>
+</td></tr>
+<tr valign="top"><td><code>align</code></td>
+<td>
+<p>A character strings specifying column alignments, defaulting to
+<code><a href="../../base/html/paste.html">paste</a>(rep('c',ncol(x)),collapse='')</code> to center. Valid alignments are
+l = left, c = center and r = right. You can also specify <code>align='c|c'</code> and
+other LaTeX tabular formatting. If you want to set the alignment of the
+rownames this string needst to be <code>ncol(x) + 1</code>, otherwise it automatically
+pads the string with a left alignment for the rownames.</p>
+</td></tr>
+<tr valign="top"><td><code>style</code></td>
+<td>
+<p>The cell style</p>
+</td></tr>
+<tr valign="top"><td><code>cgroup_spacer_cells</code></td>
+<td>
+<p>The number of cells that occur between
+columns due to the cgroup arguments.</p>
+</td></tr>
+<tr valign="top"><td><code>has_rn_col</code></td>
+<td>
+<p>Due to the alignment issue we need to keep track
+of if there has already been printed a rowname column or not and therefore
+we have this has_rn_col that is either 0 or 1.</p>
+</td></tr>
+<tr valign="top"><td><code>col.columns</code></td>
+<td>
+<p>Alternating colors for each column.</p>
+</td></tr>
+<tr valign="top"><td><code>offset</code></td>
+<td>
+<p>For rgroup rows there may be an offset != 1</p>
+</td></tr>
+<tr valign="top"><td><code>css.cell</code></td>
+<td>
+<p>The css.cell but only for this row compared to the htmlTable matrix</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>string</code> Returns the string with the new cell elements
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other hidden helper functions for htmlTable: 
+<code><a href="prAddSemicolon2StrEnd.html">prAddSemicolon2StrEnd</a>()</code>,
+<code><a href="prEscapeHtml.html">prEscapeHtml</a>()</code>,
+<code><a href="prGetCgroupHeader.html">prGetCgroupHeader</a>()</code>,
+<code><a href="prGetRowlabelPos.html">prGetRowlabelPos</a>()</code>,
+<code><a href="prGetStyle.html">prGetStyle</a>()</code>,
+<code><a href="prPrepareAlign.html">prPrepareAlign</a>()</code>,
+<code><a href="prPrepareCgroup.html">prPrepareCgroup</a>()</code>,
+<code><a href="prTblNo.html">prTblNo</a>()</code>
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

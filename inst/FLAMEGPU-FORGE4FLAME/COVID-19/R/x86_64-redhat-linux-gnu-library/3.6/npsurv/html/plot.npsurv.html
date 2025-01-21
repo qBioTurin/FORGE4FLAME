@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Plot Functions for Nonparametric Survival Estimation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plot.npsurv {npsurv}"><tr><td>plot.npsurv {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Plot Functions for Nonparametric Survival Estimation</h2>
+
+<h3>Description</h3>
+
+<p><code>plot.npsurv</code> and <code>plot.idf</code> are wrapper functions that call
+either <code>plotsurvidf</code> or <code>plotgradidf</code>.
+</p>
+<p><code>plotsurvidf</code> plots the survival function of the nonparametric
+maximum likelihood estimate (NPMLE). 
+</p>
+<p><code>plotgradidf</code> plots the gradient function of the NPMLE.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+
+## S3 method for class 'npsurv'
+plot(x, ...)
+## S3 method for class 'idf'
+plot(x, data, fn=c("surv","grad"), ...)
+plotsurvidf(f, style=c("box","uniform","left","right","midpoint"),
+            xlab="Time", ylab="Survival Probability", col="blue3", fill=0,  
+            add=FALSE, lty=1, lty.inf=2, xlim, ...)
+plotgradidf(f, data, w=1, col1="red3", col2="blue3", 
+            xlab="Survival Time", ylab="Gradient", xlim, ...)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an object of class <code>npsurv</code> (i.e., an output of function
+<code>npsurv</code>) or an object of class <code>idf</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fn</code></td>
+<td>
+<p>either &quot;surv&quot; or &quot;grad&quot;, to indicate plotting either the
+survival or the gradient function.</p>
+</td></tr>
+<tr valign="top"><td><code>f</code></td>
+<td>
+<p>an object of class <code>idf</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>style</code></td>
+<td>
+<p>for how to plot the survival function on a &quot;maximal
+intersection interval&quot;:
+</p>
+<p>= <code>box</code>, plot a rectangle, which shows the uncertainty of
+probability allocation within the interval;
+</p>
+<p>= <code>uniform</code>, treat it as a uniform distribution and hence the
+diagonal line of the rectangle is plotted;
+</p>
+<p>= <code>left</code>, plot only the left side of the rectangle;
+</p>
+<p>= <code>right</code>, plot only the right side of the rectangle;
+</p>
+<p>= <code>midpoint</code>, plot a vertical line at the midpoint of the interval.
+</p>
+</td></tr>
+<tr valign="top"><td><code>xlab, ylab</code></td>
+<td>
+<p>x- or y-axis label. </p>
+</td></tr>
+<tr valign="top"><td><code>add</code></td>
+<td>
+<p>= <code>TRUE</code>, adds the curve to the existing plot;
+</p>
+<p>= <code>FALSE</code>, plots the curve in a new one.</p>
+</td></tr>
+<tr valign="top"><td><code>col</code></td>
+<td>
+<p>color for all line segments, including box/rectangle borders.</p>
+</td></tr>
+<tr valign="top"><td><code>fill</code></td>
+<td>
+<p>color for filling a box/rectangle. By default, a lighter
+semi-transparent color is used.</p>
+</td></tr>
+<tr valign="top"><td><code>lty</code></td>
+<td>
+<p>line type</p>
+</td></tr>
+<tr valign="top"><td><code>lty.inf</code></td>
+<td>
+<p>line type for the rectangle that may extend to infinity.</p>
+</td></tr>
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p>vector or matrix that stores observations, or an object of
+class <code>icendata</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>w</code></td>
+<td>
+<p>additional weights/multiplicities of the observations stored in
+<code>x</code>. </p>
+</td></tr>
+<tr valign="top"><td><code>col1</code></td>
+<td>
+<p>color for drawing maximal intersection intervals allocated
+with positive probabilities.</p>
+</td></tr>
+<tr valign="top"><td><code>col2</code></td>
+<td>
+<p>color for drawing all gradients and the maximal
+intersection intervals allocated with zero probabilities.</p>
+</td></tr>
+<tr valign="top"><td><code>xlim</code></td>
+<td>
+<p>x-coordinate limit points.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>arguments for other graphical parameters (see <code>par</code>).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>plotsurvidf</code> by default chooses a less saturated color for
+<code>fill</code> than <code>col</code>.
+</p>
+<p><code>plotgradidf</code> plots gradient values as vertical lines located as
+the left endpoints of the maximal intersection intervals. Each maximal
+intersection interval is plotted as a wider line on the horizontal
+zero-gradient line, with a circle to represent the open left endpoint
+of the interval and a solid point the closed right endpoint of the
+interval. The maximal intersection intervals allocated with positive
+probabilities have zero gradients, and hence no vertical lines are
+drawn for them.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Yong Wang &lt;yongwang@auckland.ac.nz&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Wang, Y. (2008). Dimension-reduced nonparametric maximum likelihood
+computation for interval-censored data. <em>Computational Statistics &amp;
+Data Analysis</em>, <b>52</b>, 2388-2402.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="icendata.html">icendata</a></code>, <code><a href="idf.html">idf</a></code>, <code><a href="npsurv.html">npsurv</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(ap)
+plot(r&lt;-npsurv(ap))              # survival function
+plot(r$f, ap, fn="g")            # all gradients virtually zeros.
+
+data(cancer)
+cancerRT = with(cancer, cancer[group=="RT",1:2])
+plot(rt&lt;-npsurv(cancerRT), xlim=c(0,60))                  # survival of RT 
+cancerRCT = with(cancer, cancer[group=="RCT",1:2])
+plot(rct&lt;-npsurv(cancerRCT), add=TRUE, col="green3") # survival of RCT 
+## as uniform dististrbutions.
+plot(rt, add=TRUE, style="uniform", col="blue3")
+plot(rct, add=TRUE, style="uniform", col="green3")
+
+## plot gradients; must supply data
+plot(rt, cancerRT, fn="g")        # for group RT
+plotgradidf(rct$f, cancerRCT)   # or, for group RCT
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

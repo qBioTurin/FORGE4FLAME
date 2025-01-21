@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: A merges lines while preserving the line break for html/LaTeX</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for txtMergeLines {htmlTable}"><tr><td>txtMergeLines {htmlTable}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>A merges lines while preserving the line break for html/LaTeX</h2>
+
+<h3>Description</h3>
+
+<p>This function helps you to do a multiline
+table header in both html and in LaTeX. In
+html this isn't that tricky, you just use
+the &lt;br /&gt; command but in LaTeX I often find
+myself writing vbox/hbox stuff and therefore
+I've created this simple helper function
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+txtMergeLines(..., html = 5)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>The lines that you want to be joined</p>
+</td></tr>
+<tr valign="top"><td><code>html</code></td>
+<td>
+<p>If HTML compatible output should be used. If <code>FALSE</code>
+it outputs LaTeX formatting. Note if you set this to 5
+then the html5 version of <em>br</em> will be used: <code>&lt;br&gt;</code>
+otherwise it uses the <code>&lt;br /&gt;</code> that is compatible
+with the xhtml-formatting.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>string
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other text formatters: 
+<code><a href="txtPval.html">txtPval</a>()</code>,
+<code><a href="txtRound.html">txtRound</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+txtMergeLines("hello", "world")
+txtMergeLines("hello", "world", html=FALSE)
+txtMergeLines("hello", "world", list("A list", "is OK"))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>htmlTable</em> version 1.13.3 <a href="00Index.html">Index</a>]</div>
+</body></html>

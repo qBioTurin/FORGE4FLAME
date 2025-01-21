@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Quantile matching fit of univariate distributions</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for qmedist {fitdistrplus}"><tr><td>qmedist {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Quantile matching fit of univariate distributions</h2>
+
+<h3>Description</h3>
+
+<p>Fit of univariate distribution by matching quantiles for non censored data.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+qmedist(data, distr, probs, start = NULL, fix.arg = NULL, qtype = 7, 
+    optim.method = "default", lower = -Inf, upper = Inf, 
+    custom.optim = NULL, weights = NULL, silent = TRUE, gradient = NULL, 
+    checkstartfix=FALSE, ...)
+
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>data</code></td>
+<td>
+<p> A numeric vector for non censored data. </p>
+</td></tr>
+<tr valign="top"><td><code>distr</code></td>
+<td>
+<p> A character string <code>"name"</code> naming a distribution  for which the corresponding 
+quantile function 
+<code>qname</code> and the corresponding density distribution <code>dname</code> must be classically defined. </p>
+</td></tr>
+<tr valign="top"><td><code>probs</code></td>
+<td>
+<p>A numeric vector of the probabilities for which the quantile matching is done.
+The length of this vector must be equal
+to the number of parameters to estimate.</p>
+</td></tr>  
+<tr valign="top"><td><code>start</code></td>
+<td>
+<p>A named list giving the initial values of parameters of the named distribution
+or a function of data computing initial values and returning a named list.
+This argument may be omitted (default) for some distributions for which reasonable 
+starting values are computed (see the 'details' section of  <code><a href="mledist.html">mledist</a></code>). </p>
+</td></tr>
+<tr valign="top"><td><code>fix.arg</code></td>
+<td>
+<p>An optional named list giving the values of fixed parameters of the named distribution
+or a function of data computing (fixed) parameter values and returning a named list. 
+Parameters with fixed value are thus NOT estimated.</p>
+</td></tr>
+<tr valign="top"><td><code>qtype</code></td>
+<td>
+<p>The quantile type used by the R <code><a href="../../stats/html/quantile.html">quantile</a></code> function to 
+compute the empirical quantiles, (default 7 corresponds to the default quantile method in R).</p>
+</td></tr>
+<tr valign="top"><td><code>optim.method</code></td>
+<td>
+ <p><code>"default"</code> or optimization method to pass to <code><a href="../../stats/html/optim.html">optim</a></code>.  </p>
+</td></tr>
+<tr valign="top"><td><code>lower</code></td>
+<td>
+<p> Left bounds on the parameters for the <code>"L-BFGS-B"</code> method (see <code><a href="../../stats/html/optim.html">optim</a></code>).  </p>
+</td></tr>
+<tr valign="top"><td><code>upper</code></td>
+<td>
+<p> Right bounds on the parameters for the <code>"L-BFGS-B"</code> method (see <code><a href="../../stats/html/optim.html">optim</a></code>).  </p>
+</td></tr>
+<tr valign="top"><td><code>custom.optim</code></td>
+<td>
+<p>a function carrying the optimization.</p>
+</td></tr>
+<tr valign="top"><td><code>weights</code></td>
+<td>
+<p>an optional vector of weights to be used in the fitting process. 
+Should be <code>NULL</code> or a numeric vector with strictly positive integers 
+(typically the number of occurences of each observation). If non-<code>NULL</code>, 
+weighted QME is used, otherwise ordinary QME.</p>
+</td></tr>
+<tr valign="top"><td><code>silent</code></td>
+<td>
+<p>A logical to remove or show warnings when bootstraping.</p>
+</td></tr>        
+<tr valign="top"><td><code>gradient</code></td>
+<td>
+<p>A function to return the gradient of the squared difference for the <code>"BFGS"</code>, <code>"CG"</code> 
+and <code>"L-BFGS-B"</code> methods. If it is <code>NULL</code>, a finite-difference approximation will be used,
+see details.</p>
+</td></tr>
+<tr valign="top"><td><code>checkstartfix</code></td>
+<td>
+<p>A logical to test starting and fixed values. Do not change it.</p>
+</td></tr>      
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments passed to the <code><a href="../../stats/html/optim.html">optim</a></code>, 
+<code><a href="../../stats/html/constrOptim.html">constrOptim</a></code> or <code>custom.optim</code> function.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The <code>qmedist</code> function carries out the quantile matching numerically, by minimization of the
+sum of squared differences between observed and theoretical quantiles.
+Note that for discrete distribution, the sum of squared differences is a step function and
+consequently, the optimum is not unique, see the FAQ.
+</p>
+<p>The optimization process is the same as <code><a href="mledist.html">mledist</a></code>, see the 'details' section 
+of that function.
+</p>
+<p>Optionally, a vector of <code>weights</code> can be used in the fitting process. 
+By default (when <code>weigths=NULL</code>), ordinary QME is carried out, otherwise 
+the specified weights are used to compute weighted quantiles used in the squared differences.
+Weigthed quantiles are computed by <code><a href="../../Hmisc/html/wtd.stats.html">wtd.quantile</a></code> from the <code>Hmisc</code> package.
+It is not yet possible to take into account weighths in functions <code>plotdist</code>, 
+<code>plotdistcens</code>, <code>plot.fitdist</code>, <code>plot.fitdistcens</code>, <code>cdfcomp</code>, 
+<code>cdfcompcens</code>, <code>denscomp</code>, <code>ppcomp</code>, <code>qqcomp</code>, <code>gofstat</code> 
+and <code>descdist</code>
+(developments planned in the future).
+</p>
+<p>This function is not intended to be called directly but is internally called in
+<code><a href="fitdist.html">fitdist</a></code> and <code><a href="bootdist.html">bootdist</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+ 
+<p><code>qmedist</code> returns a list with following components,
+</p>
+<table summary="R valueblock">
+<tr valign="top"><td><code>estimate</code></td>
+<td>
+<p> the parameter estimates.</p>
+</td></tr>
+<tr valign="top"><td><code>convergence</code></td>
+<td>
+<p> an integer code for the convergence of <code><a href="../../stats/html/optim.html">optim</a></code> defined as below
+or defined by the user in the user-supplied optimization function. 
+<code>0</code> indicates successful convergence.
+<code>1</code> indicates that the iteration limit of <code><a href="../../stats/html/optim.html">optim</a></code> has been reached.
+<code>10</code> indicates degeneracy of the Nealder-Mead simplex.
+<code>100</code> indicates that <code><a href="../../stats/html/optim.html">optim</a></code> encountered an internal error.
+</p>
+</td></tr>
+<tr valign="top"><td><code>value</code></td>
+<td>
+<p>the minimal value reached for the criterion to minimize.</p>
+</td></tr>    
+<tr valign="top"><td><code>hessian</code></td>
+<td>
+<p> a symmetric matrix computed by <code><a href="../../stats/html/optim.html">optim</a></code> as an estimate of the Hessian
+at the solution found or computed in the user-supplied optimization function. </p>
+</td></tr>
+<tr valign="top"><td><code>optim.function</code></td>
+<td>
+<p>the name of the optimization function used for maximum likelihood.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.method</code></td>
+<td>
+<p>when <code><a href="../../stats/html/optim.html">optim</a></code> is used, the name of the
+algorithm used, the field <code>method</code> of the <code>custom.optim</code> function
+otherwise.</p>
+</td></tr>
+<tr valign="top"><td><code>fix.arg</code></td>
+<td>
+<p>the named list giving the values of parameters of the named distribution
+that must kept fixed rather than estimated by maximum likelihood or <code>NULL</code> 
+if there are no such parameters. </p>
+</td></tr>
+<tr valign="top"><td><code>fix.arg.fun</code></td>
+<td>
+<p>the function used to set the value of <code>fix.arg</code> or <code>NULL</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>weights</code></td>
+<td>
+<p>the vector of weigths used in the estimation process or <code>NULL</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>counts</code></td>
+<td>
+<p>A two-element integer vector giving the number of calls 
+to the log-likelihood function and its gradient respectively. 
+This excludes those calls needed to compute the Hessian, if requested, 
+and any calls to log-likelihood function to compute a finite-difference
+approximation to the gradient. <code>counts</code> is returned by <code><a href="../../stats/html/optim.html">optim</a></code>
+or the user-supplied function or set to <code>NULL</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.message</code></td>
+<td>
+<p>A character string giving any additional information 
+returned by the optimizer, or <code>NULL</code>. To understand exactly the message,
+see the source code.</p>
+</td></tr>
+<tr valign="top"><td><code>loglik</code></td>
+<td>
+<p> the log-likelihood value. </p>
+</td></tr>
+<tr valign="top"><td><code>probs</code></td>
+<td>
+<p> the probability vector on which quantiles are matched. </p>
+</td></tr>   
+</table>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Christophe Dutang and Marie Laure Delignette-Muller.
+</p>
+
+
+<h3>References</h3>
+
+<p>Klugman SA, Panjer HH and Willmot GE (2012),
+<em>Loss Models: From Data to Decissions</em>, 4th edition.
+Wiley Series in Statistics for Finance, Business and Economics, p. 253.
+</p>
+<p>Delignette-Muller ML and Dutang C (2015), <em>fitdistrplus: An R Package for Fitting Distributions</em>.
+Journal of Statistical Software, 64(4), 1-34.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p><code><a href="mmedist.html">mmedist</a></code>, <code><a href="mledist.html">mledist</a></code>, <code><a href="mgedist.html">mgedist</a></code>,
+<code><a href="fitdist.html">fitdist</a></code> for other estimation methods and 
+<code><a href="../../stats/html/quantile.html">quantile</a></code> for empirical quantile estimation in R.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+# (1) basic fit of a normal distribution 
+#
+
+set.seed(1234)
+x1 &lt;- rnorm(n=100)
+qmedist(x1, "norm", probs=c(1/3, 2/3))
+
+
+# (2) defining your own distribution functions, here for the Gumbel 
+# distribution for other distributions, see the CRAN task view dedicated 
+# to probability distributions
+
+dgumbel &lt;- function(x, a, b) 1/b*exp((a-x)/b)*exp(-exp((a-x)/b))
+qgumbel &lt;- function(p, a, b) a - b*log(-log(p))
+qmedist(x1, "gumbel", probs=c(1/3, 2/3), start=list(a=10,b=5))
+
+# (3) fit a discrete distribution (Poisson)
+#
+
+set.seed(1234)
+x2 &lt;- rpois(n=30,lambda = 2)
+qmedist(x2, "pois", probs=1/2)
+
+# (4) fit a finite-support distribution (beta)
+#
+
+set.seed(1234)
+x3 &lt;- rbeta(n=100,shape1=5, shape2=10)
+qmedist(x3, "beta", probs=c(1/3, 2/3))
+
+# (5) fit frequency distributions on USArrests dataset.
+#
+
+x4 &lt;- USArrests$Assault
+qmedist(x4, "pois", probs=1/2)
+qmedist(x4, "nbinom", probs=c(1/3, 2/3))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

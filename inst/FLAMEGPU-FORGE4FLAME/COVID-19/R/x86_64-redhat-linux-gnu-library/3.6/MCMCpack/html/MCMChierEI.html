@@ -1,0 +1,267 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Markov Chain Monte Carlo for Wakefield's Hierarchial...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMChierEI {MCMCpack}"><tr><td>MCMChierEI {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Markov Chain Monte Carlo for Wakefield's Hierarchial Ecological Inference
+Model</h2>
+
+<h3>Description</h3>
+
+<p>&lsquo;MCMChierEI&rsquo; is used to fit Wakefield's hierarchical ecological
+inference model for partially observed 2 x 2 contingency tables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMChierEI(r0, r1, c0, c1, burnin = 5000, mcmc = 50000, thin = 1,
+  verbose = 0, seed = NA, m0 = 0, M0 = 2.287656, m1 = 0,
+  M1 = 2.287656, a0 = 0.825, b0 = 0.0105, a1 = 0.825,
+  b1 = 0.0105, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>r0</code></td>
+<td>
+<p><i>(ntables \times 1)</i> vector of row sums from row 0.</p>
+</td></tr>
+<tr valign="top"><td><code>r1</code></td>
+<td>
+<p><i>(ntables \times 1)</i> vector of row sums from row 1.</p>
+</td></tr>
+<tr valign="top"><td><code>c0</code></td>
+<td>
+<p><i>(ntables \times 1)</i> vector of column sums from
+column 0.</p>
+</td></tr>
+<tr valign="top"><td><code>c1</code></td>
+<td>
+<p><i>(ntables \times 1)</i> vector of column sums from
+column 1.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in scans for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of mcmc scans to be saved.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+mcmc iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen. If <code>verbose</code> is greater than 0 then
+every <code>verbose</code>th iteration will be printed to the screen.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>m0</code></td>
+<td>
+<p>Prior mean of the <i>&mu;_0</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>M0</code></td>
+<td>
+<p>Prior variance of the <i>&mu;_0</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>m1</code></td>
+<td>
+<p>Prior mean of the <i>&mu;_1</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>M1</code></td>
+<td>
+<p>Prior variance of the <i>&mu;_1</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>a0</code></td>
+<td>
+<p><code>a0/2</code> is the shape parameter for the inverse-gamma
+prior on the <i>&sigma;^2_0</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>b0</code></td>
+<td>
+<p><code>b0/2</code> is the scale parameter for the inverse-gamma
+prior on the <i>&sigma;^2_0</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>a1</code></td>
+<td>
+<p><code>a1/2</code> is the shape parameter for the inverse-gamma
+prior on the <i>&sigma;^2_1</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>b1</code></td>
+<td>
+<p><code>b1/2</code> is the scale parameter for the inverse-gamma
+prior on the <i>&sigma;^2_1</i> parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Consider the following partially observed 2 by 2 contingency table
+for unit <i>t</i> where <i>t=1,&hellip;,ntables</i>:
+</p>
+
+<table summary="Rd table">
+<tr>
+ <td style="text-align: left;">
+            </td><td style="text-align: left;"> | <i>Y=0</i>    </td><td style="text-align: left;"> | <i>Y=1</i>    </td><td style="text-align: left;"> |              </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  --------- </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <i>X=0</i> </td><td style="text-align: left;"> | <i>Y_{0t}</i> </td><td style="text-align: left;"> |              </td><td style="text-align: left;"> | <i>r_{0t}</i> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  --------- </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <i>X=1</i> </td><td style="text-align: left;"> | <i>Y_{1t}</i> </td><td style="text-align: left;"> |              </td><td style="text-align: left;"> | <i>r_{1t}</i> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  --------- </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td><td style="text-align: left;"> ------------   </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+            </td><td style="text-align: left;"> | <i>c_{0t}</i> </td><td style="text-align: left;"> | <i>c_{1t}</i> </td><td style="text-align: left;"> | <i>N_t</i>
+</td>
+</tr>
+
+</table>
+
+<p>Where <i>r_{0t}</i>, <i>r_{1t}</i>, <i>c_{0t}</i>, <i>c_{1t}</i>, and
+<i>N_t</i> are non-negative integers that are observed. The interior
+cell entries are not observed. It is assumed that
+<i>Y_{0t}|r_{0t} \sim \mathcal{B}inomial(r_{0t}, p_{0t})</i> and
+<i>Y_{1t}|r_{1t} \sim \mathcal{B}inomial(r_{1t}, p_{1t})</i>.  Let
+<i>&theta;_{0t} = log(p_{0t}/(1-p_{0t}))</i>, and <i>&theta;_{1t} =
+log(p_{1t}/(1-p_{1t}))</i>.
+</p>
+<p>The following prior distributions are assumed: <i>&theta;_{0t}
+\sim \mathcal{N}(&mu;_0, &sigma;^2_0)</i>, <i>&theta;_{1t} \sim
+\mathcal{N}(&mu;_1, &sigma;^2_1)</i>.  <i>&theta;_{0t}</i> is assumed to
+be a priori independent of <i>&theta;_{1t}</i> for all t.  In
+addition, we assume the following hyperpriors: <i>&mu;_0 \sim
+\mathcal{N}(m_0, M_0)</i>, <i>&mu;_1 \sim \mathcal{N}(m_1, M_1)</i>,
+<i>&sigma;^2_0 \sim \mathcal{IG}(a_0/2, b_0/2)</i>, and
+<i>&sigma;^2_1 \sim \mathcal{IG}(a_1/2, b_1/2)</i>.
+</p>
+<p>The default priors have been chosen to make the implied prior
+distribution for <i>p_{0}</i> and <i>p_{1}</i> <em>approximately</em>
+uniform on (0,1).
+</p>
+<p>Inference centers on <i>p_0</i>, <i>p_1</i>, <i>&mu;_0</i>,
+<i>&mu;_1</i>, <i>&sigma;^2_0</i>, and <i>&sigma;^2_1</i>.  Univariate
+slice sampling (Neal, 2003) along with Gibbs sampling is used to
+sample from the posterior distribution.
+</p>
+<p>See Section 5.4 of Wakefield (2003) for discussion of the priors
+used here.  <code>MCMChierEI</code> departs from the Wakefield model in
+that the <code>mu0</code> and <code>mu1</code> are here assumed to be drawn
+from independent normal distributions whereas Wakefield assumes
+they are drawn from logistic distributions.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the sample from the posterior
+distribution.  This object can be summarized by functions
+provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Jonathan C. Wakefield. 2004. &ldquo;Ecological Inference for 2 x 2
+Tables.&rdquo; <em>Journal of the Royal Statistical Society, Series A</em>. 167(3):
+385445.
+</p>
+<p>Radford Neal. 2003. &ldquo;Slice Sampling&quot; (with discussion). <em>Annals of
+Statistics</em>, 31: 705-767.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  &ldquo;MCMCpack:
+Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  &ldquo;Output
+Analysis and Diagnostics for MCMC (CODA)&rdquo;, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="MCMCdynamicEI.html">MCMCdynamicEI</a></code>,
+<code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>,<code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+   ## Not run: 
+## simulated data example
+set.seed(3920)
+n &lt;- 100
+r0 &lt;- round(runif(n, 400, 1500))
+r1 &lt;- round(runif(n, 100, 4000))
+p0.true &lt;- pnorm(rnorm(n, m=0.5, s=0.25))
+p1.true &lt;- pnorm(rnorm(n, m=0.0, s=0.10))
+y0 &lt;- rbinom(n, r0, p0.true)
+y1 &lt;- rbinom(n, r1, p1.true)
+c0 &lt;- y0 + y1
+c1 &lt;- (r0+r1) - c0
+
+## plot data
+tomogplot(r0, r1, c0, c1)
+
+## fit exchangeable hierarchical model
+post &lt;- MCMChierEI(r0,r1,c0,c1, mcmc=40000, thin=5, verbose=100,
+                    seed=list(NA, 1))
+
+p0meanHier &lt;- colMeans(post)[1:n]
+p1meanHier &lt;- colMeans(post)[(n+1):(2*n)]
+
+## plot truth and posterior means
+pairs(cbind(p0.true, p0meanHier, p1.true, p1meanHier))
+   
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

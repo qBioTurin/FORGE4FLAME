@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Simulated Ebola outbreak</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for ebola_sim {outbreaks}"><tr><td>ebola_sim {outbreaks}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Simulated Ebola outbreak</h2>
+
+<h3>Description</h3>
+
+<p>This simulated outbreak of Ebola Virus Disease matches some key properties of the West African
+Ebola outbreak of 2014-2015. Specifically, care was taken to use realistic delays (incubation
+period, serial interval, time to hospitalisation, etc.) and reproduction number (see references).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+ebola_sim
+
+ebola_sim_clean
+</pre>
+
+
+<h3>Format</h3>
+
+<p>An object of class <code>list</code> of length 2.</p>
+
+
+<h3>Details</h3>
+
+<p>This dataset is used for teaching purposes during Imperial College's short course on infectious
+disease modelling. The exercise aims to simulate the response to an Ebola outbreak taking place
+in a single large city, and evaluate the impact of an intervention (increased bed capacity).
+</p>
+<p>Note that to ensure realism, some errors have been introduced in this dataset. These can be
+identified as negative incubation periods (delay from infection to onset of symptoms). See
+example for a simple way to identify these cases. The dataset <code>ebola_sim_clean</code> is the same
+dataset, only dates of infection and onset have been set to 'NA'.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Data simulated by Pierre Nouvellet (<a href="mailto:p.nouvellet@imperial.ac.uk">p.nouvellet@imperial.ac.uk</a>). Transfer to R
+and documentation by Thibaut Jombart (<a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>).
+</p>
+
+
+<h3>References</h3>
+
+<p>WHO Ebola Response Team. 2014. Ebola virus disease in West Africa&ndash;the first 9 months
+of the epidemic and forward projections. The New England journal of medicine 371:1481–1495.
+</p>
+<p>WHO Ebola Response Team, J. Agua-Agum, A. Ariyarajah, B. Aylward, I. M. Blake, R. Brennan,
+A. Cori, C. A. Donnelly, I. Dorigatti, C. Dye, T. Eckmanns, N. M. Ferguson, P. Formenty,
+C. Fraser, E. Garcia, T. Garske, W. Hinsley, D. Holmes, S. Hugonnet, S. Iyengar, T. Jombart,
+R. Krishnan, S. Meijers, H. L. Mills, Y. Mohamed, G. Nedjati-Gilani, E. Newton, P. Nouvellet,
+L. Pelletier, D. Perkins, S. Riley, M. Sagrado, J. Schnitzler, D. Schumacher, A. Shah, M. D. Van
+Kerkhove, O. Varsaneux, and N. Wijekoon Kannangarage. 2015. West African Ebola epidemic after one
+year&ndash;slowing but not yet under control. The New England journal of medicine 372:584–587.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+## identify mistakes in data entry (negative incubation period)
+mistakes &lt;- which(ebola_sim$linelist$date_of_onset &lt;= ebola_sim$linelist$date_of_infection)
+mistakes
+ebola_sim$linelist[mistakes, ]
+
+## check that ebola_sim_clean is identical after removing mistakes
+identical(ebola_sim_clean$linelist, ebola_sim$linelist[-mistakes, ])
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>outbreaks</em> version 1.5.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Expand a Vector into a Symmetric Matrix</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for xpnd {MCMCpack}"><tr><td>xpnd {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Expand a Vector into a Symmetric Matrix</h2>
+
+<h3>Description</h3>
+
+<p>This function takes a vector of appropriate length (typically created using
+<code>vech</code>) and creates a symmetric matrix.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+xpnd(x, nrow = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>A list of elements to expand into symmetric matrix.</p>
+</td></tr>
+<tr valign="top"><td><code>nrow</code></td>
+<td>
+<p>The number of rows (and columns) in the returned matrix.  Look
+into the details.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function is particularly useful when dealing with variance covariance
+matrices. Note that R stores matrices in column major order, and that the
+items in <code>x</code> will be recycled to fill the matrix if need be.
+</p>
+<p>The number of rows can be specified or automatically computed from the
+number of elements in a given object via <i>(-1 + &radic;{(1 + 8 *
+length(x))}) / 2</i>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <i>(nrows \times nrows)</i> symmetric matrix.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="vech.html">vech</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+  xpnd(c(1,2,3,4,4,5,6,7,8,9),4)
+  xpnd(c(1,2,3,4,4,5,6,7,8,9))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

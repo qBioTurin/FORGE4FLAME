@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Changepoint State Plot</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for plotState {MCMCpack}"><tr><td>plotState {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Changepoint State Plot</h2>
+
+<h3>Description</h3>
+
+<p>Plot the posterior probability that each time point is in each state.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+plotState(mcmcout, main = "Posterior Regime Probability",
+  ylab = expression(paste("Pr(", S[t], "= k |", Y[t], ")")),
+  legend.control = NULL, cex = 0.8, lwd = 1.2, start = 1)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>mcmcout</code></td>
+<td>
+<p>The <code>mcmc</code> object containing the posterior density
+sample from a changepoint model.  Note that this must have a
+<code>prob.state</code> attribute.</p>
+</td></tr>
+<tr valign="top"><td><code>main</code></td>
+<td>
+<p>Title of the plot.</p>
+</td></tr>
+<tr valign="top"><td><code>ylab</code></td>
+<td>
+<p>Label for the y-axis.</p>
+</td></tr>
+<tr valign="top"><td><code>legend.control</code></td>
+<td>
+<p>Control the location of the legend.  It is necessary
+to pass both the x and y locations; i.e., <code>c(x,y)</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>cex</code></td>
+<td>
+<p>Control point size.</p>
+</td></tr>
+<tr valign="top"><td><code>lwd</code></td>
+<td>
+<p>Line width parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>start</code></td>
+<td>
+<p>The time of the first observation to be shown in the time
+series plot.</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="MCMCpoissonChange.html">MCMCpoissonChange</a></code>, <code><a href="MCMCbinaryChange.html">MCMCbinaryChange</a></code>
+</p>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

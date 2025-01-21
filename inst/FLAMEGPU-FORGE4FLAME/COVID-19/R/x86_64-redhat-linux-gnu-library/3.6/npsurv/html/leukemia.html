@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Remission Times for Acute Leukemia Patients</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for leukemia {npsurv}"><tr><td>leukemia {npsurv}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Remission Times for Acute Leukemia Patients </h2>
+
+<h3>Description</h3>
+
+<p> Contains remission times in weeks of 42 acute leukemia
+patients, who received either the treatment of drug 6-mercaptopurine
+or the placebo treatment. Each remission time is either exactly
+observed or right-censored. </p>
+
+
+<h3>Usage</h3>
+
+<pre>leukemia</pre>
+
+
+<h3>Format</h3>
+
+<p> A data frame with 42 observations and 3 variables:
+</p>
+<p>L: left-end points of the interval-censored remission times in weeks;
+</p>
+<p>R: right-end points of the interval-censored remission times;
+</p>
+<p>group: either 6-MP (6-mercaptopurine) or Placebo.</p>
+
+
+<h3>Source</h3>
+
+<p> Freireich et al. (1963). </p>
+
+
+<h3>References</h3>
+
+<p> Freireich, E. O. et al. (1963). The effect of
+6-mercaptopmine on the duration of steroid induced remission in acute
+leukemia. <em>Blood</em>, <b>21</b>, 699-716. </p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="npsurv.html">npsurv</a></code>. </p>
+
+
+<h3>Examples</h3>
+
+<pre>
+data(leukemia)
+i = leukemia[,"group"] == "Placebo"
+plot(npsurv(leukemia[i,1:2]), xlim=c(0,40), col="green3") # placebo
+plot(npsurv(leukemia[!i,1:2]), add=TRUE)                  # 6-MP
+
+## Treat each remission time as interval-censored:
+x = leukemia
+ii = x[,1] == x[,2]
+x[ii,2] = x[ii,1] + 1
+plot(npsurv(x[i,1:2]), xlim=c(0,40), col="green3")        # placebo
+plot(npsurv(x[!i,1:2]), add=TRUE)                         # 6-MP
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>npsurv</em> version 0.4-0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

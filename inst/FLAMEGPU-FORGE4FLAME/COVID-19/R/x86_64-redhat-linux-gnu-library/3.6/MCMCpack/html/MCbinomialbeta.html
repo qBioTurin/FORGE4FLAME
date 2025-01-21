@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Monte Carlo Simulation from a Binomial Likelihood with a Beta...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCbinomialbeta {MCMCpack}"><tr><td>MCbinomialbeta {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Monte Carlo Simulation from a Binomial Likelihood with a Beta Prior</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of a
+binomial likelihood with a Beta prior.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCbinomialbeta(y, n, alpha = 1, beta = 1, mc = 1000, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>y</code></td>
+<td>
+<p>The number of successes in the independent Bernoulli trials.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>The number of independent Bernoulli trials.</p>
+</td></tr>
+<tr valign="top"><td><code>alpha</code></td>
+<td>
+<p>Beta prior distribution alpha parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>beta</code></td>
+<td>
+<p>Beta prior distribution beta parameter.</p>
+</td></tr>
+<tr valign="top"><td><code>mc</code></td>
+<td>
+<p>The number of Monte Carlo draws to make.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>MCbinomialbeta</code> directly simulates from the posterior distribution.
+This model is designed primarily for instructional use.  <i>&pi;</i> is
+the probability of success for each independent Bernoulli trial.  We assume
+a conjugate Beta prior:
+</p>
+<p style="text-align: center;"><i>&pi; \sim \mathcal{B}eta(&alpha;, &beta;)</i></p>
+
+<p><i>y</i> is the number of successes in <i>n</i> trials.  By
+default, a uniform prior is used.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>, <code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Not run: 
+posterior &lt;- MCbinomialbeta(3,12,mc=5000)
+summary(posterior)
+plot(posterior)
+grid &lt;- seq(0,1,0.01)
+plot(grid, dbeta(grid, 1, 1), type="l", col="red", lwd=3, ylim=c(0,3.6),
+  xlab="pi", ylab="density")
+lines(density(posterior), col="blue", lwd=3)
+legend(.75, 3.6, c("prior", "posterior"), lwd=3, col=c("red", "blue"))
+
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

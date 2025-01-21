@@ -1,0 +1,98 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Cache the value of an R expression to an RDS file</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for cache_rds {xfun}"><tr><td>cache_rds {xfun}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Cache the value of an R expression to an RDS file</h2>
+
+<h3>Description</h3>
+
+<p>Save the value of an expression to a cache file (of the RDS format). Next
+time the value is loaded from the file if it exists. To invalidate the cache,
+you can either delete the file, or use the argument <code>rerun = TRUE</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+cache_rds(expr = {
+}, rerun = FALSE, file = "cache.rds", dir = "cache/", ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>expr</code></td>
+<td>
+<p>An R expression.</p>
+</td></tr>
+<tr valign="top"><td><code>rerun</code></td>
+<td>
+<p>Whether to delete the RDS file, rerun the expression, and save
+the result again (i.e., invalidate the cache).</p>
+</td></tr>
+<tr valign="top"><td><code>file</code></td>
+<td>
+<p>The cache filename under the directory specified by the
+<code>dir</code> argument. If not specified and this function is called inside a
+code chunk of a <span class="pkg">knitr</span> document (e.g., an R Markdown document), the
+filename is the current chunk label with the extension &lsquo;<span class="file">.rds</span>&rsquo;.</p>
+</td></tr>
+<tr valign="top"><td><code>dir</code></td>
+<td>
+<p>The path of the RDS file is determined by <code>paste0(dir,
+file)</code>. If not specified and the <span class="pkg">knitr</span> package is available, the
+default value of <code>dir</code> is the <span class="pkg">knitr</span> chunk option
+<code>cache.path</code> (so if you are compiling a <span class="pkg">knitr</span> document, you do
+not need to provide this <code>dir</code> argument explicitly), otherwise the
+default is &lsquo;<span class="file">cache/</span>&rsquo;. If you do not want to provide a <code>dir</code> but
+simply a valid path to the <code>file</code> argument, you may use <code>dir =
+""</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Other arguments to be passed to <code><a href="../../base/html/readRDS.html">saveRDS</a>()</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If the cache file does not exist, run the expression and save the
+result to the file, otherwise read the cache file and return the value.
+</p>
+
+
+<h3>Note</h3>
+
+<p>When this function is called in a code chunk of a <span class="pkg">knitr</span> document,
+you may not want to provide the filename or directory of the cache file,
+because they have reasonable defaults.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+f = tempfile()  # the cache file
+compute = function(...) {
+    res = xfun::cache_rds({
+        Sys.sleep(2)
+        1:10
+    }, file = f, dir = "", ...)
+    res
+}
+compute()  # takes two seconds
+compute()  # returns 1:10 immediately
+compute()  # fast again
+compute(rerun = TRUE)  # two seconds to rerun
+compute()
+file.remove(f)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>xfun</em> version 0.13 <a href="00Index.html">Index</a>]</div>
+</body></html>

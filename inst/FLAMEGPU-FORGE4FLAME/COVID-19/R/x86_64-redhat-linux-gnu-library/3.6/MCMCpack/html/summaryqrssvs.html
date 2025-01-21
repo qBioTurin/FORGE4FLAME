@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Summarising the results of quantile regression stochastic...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for summaryqrssvs {MCMCpack}"><tr><td>summaryqrssvs {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Summarising the results of quantile regression stochastic search variable
+selection (QR-SSVS).</h2>
+
+<h3>Description</h3>
+
+<p>This function produces a table of predictors and their associated marginal
+posterior probability of inclusion. It also returns the median probability
+model (see the details section).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'qrssvs'
+summary(object, ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>object</code></td>
+<td>
+<p>An object of class <code>qrssvs</code>. Typically this will be the
+<code>gamma</code> component of the list returned by <code>SSVSquantreg</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further arguments.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The median probability model is defined to be the model that contains any
+predictor with marginal posterior probability greater than or equal to 0.5.
+If the goal is to select a single model e.g. for prediction, Barbieri and
+Berger (2004) recommend the median probability model. In some cases, this
+will coincide with the maximum probability model.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Craig Reed
+</p>
+
+
+<h3>References</h3>
+
+<p>Maria M. Barbieri, and James O. Berger (2004). &quot;Optimal predictive model
+selection&quot;. <em>Annals of Statistics</em>, 32, 870-897.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="SSVSquantreg.html">SSVSquantreg</a></code>,
+<code><a href="mptable.html">mptable</a></code>, <code><a href="topmodels.html">topmodels</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+## Not run: 
+set.seed(1)
+epsilon&lt;-rnorm(100)
+set.seed(2)
+x&lt;-matrix(rnorm(1000),100,10)
+y&lt;-x[,1]+x[,10]+epsilon
+qrssvs&lt;-SSVSquantreg(y~x)
+summary(qrssvs$gamma)
+
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>

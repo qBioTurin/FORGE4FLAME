@@ -1,30 +1,37 @@
-Package: F4F
-Title: F4F: Forge 4 Flame.
-Version: 1.0
+Package: FORGE4FLAME
+Title: Forge4Flame (F4F)
+Version: 1.0.0.0
 Authors@R: 
-    c(person("Simone", "Pernice", , "simone.pernice@unito.it", role = c("cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-           )
-Description: F4F, a Shiny application to build a customised environment wit different rooms for flame ABM simulations.
-License: `use_mit_license()`
+    person("Daniele", "Baccega", email = "daniele.baccega@unito.it", role = c("aut", "cre"))
+Description: Forge4Flame (F4F) is a user-friendly R Shiny dashboard designed 
+    to streamline the creation of FLAME GPU 2 ABMs, automatically generating 
+    the necessary code. With its intuitive interface, users can easily define 
+    key components, including the model’s environment, the agents interacting 
+    within it, the disease model, and other essential elements for agent-based 
+    simulations.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.1
 Imports: 
-  shinydashboard,
-  shinyjs,
-  jsonlite,
-  dplyr,
-  shinythemes,
-  colourpicker,
-  glue,
-  readr,
-  zip,
-  EBImageExtra,
-  sortable,
-  shinyalert,
-  shinybusy,
-  shinyBS,
-  stringr,
-  ggplot2,
-  tidyr
+    shinydashboard,
+    shinyjs,
+    jsonlite,
+    dplyr,
+    shinythemes,
+    colourpicker,
+    glue,
+    readr,
+    zip,
+    EBImageExtra,
+    sortable,
+    shinyalert,
+    shinybusy,
+    shinyBS,
+    stringr,
+    ggplot2,
+    tidyr,
+    shiny,
+    shinyWidgets,
+    htmltools,
+    DT

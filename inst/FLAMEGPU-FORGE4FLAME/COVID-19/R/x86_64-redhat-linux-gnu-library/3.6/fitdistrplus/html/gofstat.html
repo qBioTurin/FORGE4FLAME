@@ -1,0 +1,282 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Goodness-of-fit statistics</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for gofstat {fitdistrplus}"><tr><td>gofstat {fitdistrplus}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2> Goodness-of-fit statistics</h2>
+
+<h3>Description</h3>
+
+<p>Computes goodness-of-fit statistics for parametric distributions fitted to a same  
+non-censored data set.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+gofstat(f, chisqbreaks, meancount, discrete, fitnames=NULL) 
+	
+## S3 method for class 'gofstat.fitdist'
+print(x, ...)
+	
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>f</code></td>
+<td>
+<p> An object of class <code>"fitdist"</code>, output of the function <code>fitdist</code>, or
+a list of <code>"fitdist"</code> objects.</p>
+</td></tr>
+<tr valign="top"><td><code>chisqbreaks</code></td>
+<td>
+<p> A numeric vector defining the breaks of the cells used to compute the chi-squared
+statistic. If omitted, these breaks are automatically computed from the data 
+in order to reach roughly the same number of observations per cell, roughly equal to the argument
+<code>meancount</code>, or sligthly more if there are some ties. </p>
+</td></tr>
+<tr valign="top"><td><code>meancount</code></td>
+<td>
+<p> The mean number of observations per cell expected for the definition of the breaks 
+of the cells used to compute the chi-squared statistic. This argument will not be taken into 
+account if the breaks are directly defined in the argument <code>chisqbreaks</code>. If <code>chisqbreaks</code> 
+and <code>meancount</code> are both omitted, <code>meancount</code> is fixed in order to obtain roughly 
+<i>(4n)^{2/5}</i> cells with <i>n</i> the length of the dataset. </p>
+</td></tr>
+<tr valign="top"><td><code>discrete</code></td>
+<td>
+<p>If <code>TRUE</code>, only the Chi-squared statistic and information criteria are computed.
+If missing, <code>discrete</code> is passed from the first object of class <code>"fitdist"</code> of the list <code>f</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>fitnames</code></td>
+<td>
+<p>A vector defining the names of the fits.</p>
+</td></tr>
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>An object of class <code>"fitdist"</code>.  </p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Further arguments to be passed to generic functions.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Goodness-of-fit statistics are computed. The Chi-squared statistic is computed using cells defined 
+by the argument 
+<code>chisqbreaks</code> or cells automatically defined from data, in order 
+to reach roughly the same number of observations per cell, roughly equal to the argument
+<code>meancount</code>, or sligthly more if there are some ties. 
+The choice to define cells from the empirical distribution (data), and not from the
+theoretical distribution, was done to enable the comparison of Chi-squared values obtained
+with different distributions fitted on a same data set.
+If <code>chisqbreaks</code> and <code>meancount</code> 
+are both omitted, <code>meancount</code> is fixed in order to obtain roughly <i>(4n)^{2/5}</i> cells, 
+with <i>n</i> the length of the data set (Vose, 2000).
+The Chi-squared statistic is not computed if the program fails
+to define enough cells due to a too small dataset. When the Chi-squared statistic is computed, 
+and if the degree of freedom (nb of cells - nb of parameters - 1)  of the corresponding distribution 
+is strictly positive, the p-value of the Chi-squared test is returned.
+</p>
+<p>For continuous distributions, Kolmogorov-Smirnov, Cramer-von Mises and 
+Anderson-Darling  and statistics are also computed, as defined by Stephens (1986). 
+</p>
+<p>An approximate Kolmogorov-Smirnov test is 
+performed by assuming the distribution parameters known. The critical value defined by Stephens (1986) 
+for a completely specified distribution is used to reject or not the 
+distribution at the significance level 0.05. Because of this approximation, the result of the test
+(decision of rejection of the distribution or not) is returned only for data sets with more 
+than 30 observations. Note that this approximate test may be too conservative. 
+</p>
+<p>For data sets with more than 5 observations and for distributions for 
+which the test is described by Stephens (1986) for maximum likelihood estimations 
+(<code>"exp"</code>, <code>"cauchy"</code>, <code>"gamma"</code> and <code>"weibull"</code>),
+the Cramer-von Mises and Anderson-darling tests are performed as described by Stephens (1986). 
+Those tests take into 
+account the fact that the parameters are not known but estimated from the data by maximum likelihood.
+The result is the 
+decision to reject or not the distribution at the significance level 0.05. Those tests are available
+only for maximum likelihood estimations.
+</p>
+<p>Only recommended statistics are automatically printed, i.e.
+Cramer-von Mises, Anderson-Darling and Kolmogorov statistics for continuous distributions and
+Chi-squared statistics for discrete ones ( <code>"binom"</code>, 
+<code>"nbinom"</code>, <code>"geom"</code>, <code>"hyper"</code> and <code>"pois"</code> ). 
+</p>
+<p>Results of the tests are not printed but stored in the output of the function. 
+</p>
+
+
+<h3>Value</h3>
+
+ 
+<p><code>gof.stat</code> returns an object of class <code>"gofstat.fitdist"</code> with following components,
+</p>
+<table summary="R valueblock">
+<tr valign="top"><td><code> chisq </code></td>
+<td>
+<p> a named vector with the Chi-squared statistics or <code>NULL</code> if not computed</p>
+</td></tr>
+<tr valign="top"><td><code> chisqbreaks </code></td>
+<td>
+<p> common breaks used to define cells in the Chi-squared statistic </p>
+</td></tr>
+<tr valign="top"><td><code> chisqpvalue </code></td>
+<td>
+<p> a named vector with the p-values of the Chi-squared statistic 
+or <code>NULL</code> if not computed</p>
+</td></tr>
+<tr valign="top"><td><code> chisqdf </code></td>
+<td>
+<p> a named vector with the degrees of freedom of the Chi-squared distribution
+or <code>NULL</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> chisqtable </code></td>
+<td>
+<p> a table with observed and theoretical counts used for the Chi-squared calculations </p>
+</td></tr>
+<tr valign="top"><td><code> cvm </code></td>
+<td>
+<p> a named vector of the Cramer-von Mises statistics or <code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> cvmtest </code></td>
+<td>
+<p> a named vector of the decisions of the Cramer-von Mises test 
+or <code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> ad </code></td>
+<td>
+<p> a named vector with the Anderson-Darling statistics or 
+<code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> adtest </code></td>
+<td>
+<p> a named vector with the decisions of the Anderson-Darling test 
+or <code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> ks </code></td>
+<td>
+<p> a named vector with the Kolmogorov-Smirnov statistic or 
+<code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code> kstest </code></td>
+<td>
+<p> a named vector with the decisions of the Kolmogorov-Smirnov test 
+or <code>"not computed"</code> if not computed </p>
+</td></tr>
+<tr valign="top"><td><code>aic</code></td>
+<td>
+<p>a named vector with the values of the Akaike's Information Criterion.</p>
+</td></tr>
+<tr valign="top"><td><code>bic</code></td>
+<td>
+<p>a named vector with the values of the Bayesian Information Criterion.</p>
+</td></tr>
+<tr valign="top"><td><code>discrete</code></td>
+<td>
+<p>the input argument or the automatic definition by the function from  the first
+object of class <code>"fitdist"</code> of the list in input.</p>
+</td></tr>
+<tr valign="top"><td><code>nbfit</code></td>
+<td>
+<p>Number of fits in argument.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Marie-Laure Delignette-Muller and Christophe Dutang.
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>Cullen AC and Frey HC (1999), <em>Probabilistic techniques in exposure assessment</em>.
+Plenum Press, USA, pp. 81-155.
+</p>
+<p>Stephens MA (1986), <em>Tests based on edf statistics</em>. In Goodness-of-fit techniques (D'Agostino RB and
+Stephens MA, eds), Marcel Dekker, New York, pp. 97-194.
+</p>
+<p>Venables WN and Ripley BD (2002), <em>Modern applied statistics with S</em>.
+Springer, New York, pp. 435-446.
+</p>
+<p>Vose D (2000), <em>Risk analysis, a quantitative guide</em>.
+John Wiley &amp; Sons Ltd, Chischester, England, pp. 99-143.
+</p>
+<p>Delignette-Muller ML and Dutang C (2015), <em>fitdistrplus: An R Package for Fitting Distributions</em>.
+Journal of Statistical Software, 64(4), 1-34.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p><code><a href="fitdist.html">fitdist</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+# (1) fit of two distributions to the serving size data
+# by maximum likelihood estimation
+# and comparison of goodness-of-fit statistics
+#
+
+data(groundbeef)
+serving &lt;- groundbeef$serving
+(fitg &lt;- fitdist(serving, "gamma"))
+gofstat(fitg)
+(fitln &lt;- fitdist(serving, "lnorm"))
+gofstat(fitln)
+
+gofstat(list(fitg, fitln))
+
+
+# (2) fit of two discrete distributions to toxocara data
+# and comparison of goodness-of-fit statistics
+#
+
+data(toxocara)
+number &lt;- toxocara$number
+
+fitp &lt;- fitdist(number,"pois")
+summary(fitp)
+plot(fitp)
+
+fitnb &lt;- fitdist(number,"nbinom")
+summary(fitnb)
+plot(fitnb)
+
+gofstat(list(fitp, fitnb),fitnames = c("Poisson","negbin"))
+
+# (3) Use of Chi-squared results in addition to
+#     recommended statistics for continuous distributions
+#
+
+set.seed(1234)
+x4 &lt;- rweibull(n=1000,shape=2,scale=1)
+# fit of the good distribution
+f4 &lt;- fitdist(x4,"weibull")
+
+# fit of a bad distribution
+f4b &lt;- fitdist(x4,"cauchy")
+
+gofstat(list(f4,f4b),fitnames=c("Weibull", "Cauchy"))
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>fitdistrplus</em> version 1.0-14 <a href="00Index.html">Index</a>]</div>
+</body></html>

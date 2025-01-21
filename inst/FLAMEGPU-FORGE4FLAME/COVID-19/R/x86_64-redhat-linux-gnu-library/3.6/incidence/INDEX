@@ -1,0 +1,19 @@
+as.data.frame.incidence
+                        Conversion of incidence objects
+bootstrap               Bootstrap incidence time series
+cumulate                Compute cumulative 'incidence'
+dim.incidence           Access various elements of an incidence object
+estimate_peak           Estimate the peak date of an incidence curve
+                        using bootstrap
+find_peak               Find the peak date of an incidence curve
+fit                     Fit exponential models to incidence data
+get_counts              Get counts from an incidence object
+get_dates               Retrieve dates from an incidence object
+get_fit                 Accessors for 'incidence_fit' objects
+group_names             extract and set group names
+incidence               Compute incidence of events from a vector of
+                        dates.
+incidence_pal1          Color palettes used in incidence
+plot.incidence          Plot function for incidence objects
+pool                    Pool 'incidence' across groups
+subset.incidence        Subsetting 'incidence' objects

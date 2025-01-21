@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Get a sample of plausible Reproduction Numbers</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for sample_R {earlyR}"><tr><td>sample_R {earlyR}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Get a sample of plausible Reproduction Numbers</h2>
+
+<h3>Description</h3>
+
+<p>This function derives a sample of plausible R values from an <code>earlyR</code>
+object (as returned by <code><a href="get_R.html">get_R</a></code>). The probability of each returned
+values of R are directly proportional to their likelihood.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+sample_R(x, n = 100)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>An <code>earlyR</code> object.</p>
+</td></tr>
+<tr valign="top"><td><code>n</code></td>
+<td>
+<p>The number of R values to sample.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Thibaut Jombart <a href="mailto:thibautjombart@gmail.com">thibautjombart@gmail.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+if (require(incidence)) {
+ x &lt;- incidence(c(1, 5, 5, 12, 45, 65))
+ plot(x)
+ res &lt;- get_R(x, disease = "ebola")
+ res
+ plot(res)
+
+ sample_R(res, 10)
+ hist(sample_R(res, 1000), col = "grey", border = "white")
+}
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>earlyR</em> version 0.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

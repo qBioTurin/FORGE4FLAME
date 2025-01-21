@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: The aweek class</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for print.aweek {aweek}"><tr><td>print.aweek {aweek}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>The aweek class</h2>
+
+<h3>Description</h3>
+
+<p>The aweek class is a character or factor in the format YYYY-Www(-d) with a
+&quot;week_start&quot; attribute containing an integer specifying which day of the ISO
+8601 week each week should begin.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+## S3 method for class 'aweek'
+print(x, ...)
+
+## S3 method for class 'aweek'
+x[i]
+
+## S3 method for class 'aweek'
+x[[i]]
+
+## S3 replacement method for class 'aweek'
+x[i] &lt;- value
+
+## S3 method for class 'aweek'
+as.list(x, ...)
+
+## S3 method for class 'aweek'
+trunc(x, ...)
+
+## S3 method for class 'aweek'
+rep(x, ...)
+
+## S3 method for class 'aweek'
+c(..., recursive = FALSE, use.names = TRUE)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>x</code></td>
+<td>
+<p>an object of class <code>aweek</code></p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>a series of <code>aweek</code> objects, characters, or Dates, (unused in <code>print.aweek()</code>)</p>
+</td></tr>
+<tr valign="top"><td><code>i</code></td>
+<td>
+<p>index for subsetting an aweek object.</p>
+</td></tr>
+<tr valign="top"><td><code>value</code></td>
+<td>
+<p>a value to add or replace in an aweek object</p>
+</td></tr>
+<tr valign="top"><td><code>recursive, use.names</code></td>
+<td>
+<p>parameters passed on to <code><a href="../../base/html/unlist.html">unlist()</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Weeks differ in their start dates depending on context. The ISO
+8601 standard specifies that Monday starts the week
+(<a href="https://en.wikipedia.org/wiki/ISO_week_date">https://en.wikipedia.org/wiki/ISO_week_date</a>) while the US CDC uses
+Sunday as the start of the week
+(<a href="https://wwwn.cdc.gov/nndss/document/MMWR_Week_overview.pdf">https://wwwn.cdc.gov/nndss/document/MMWR_Week_overview.pdf</a>). For
+example, MSF has varying start dates depending on country in order to
+better coordinate response.
+</p>
+<p>While there are packages that provide conversion for ISOweeks and epiweeks,
+these do not provide seamless conversion from dates to epiweeks with
+non-standard start dates. This package provides a lightweight utility to
+be able to convert each day.
+</p>
+
+
+<h4>Calculation of week numbers</h4>
+
+<p>Week numbers are calculated in three steps:
+</p>
+
+<ol>
+<li><p> Find the day of the week, relative to the week_start (d). The day of the
+week (d) relative to the week start (s) is calculated using the ISO week
+day (i) via <code>d = 1L + ((i + (7L - s)) %% 7L)</code>.
+</p>
+</li>
+<li><p> Find the date that represents midweek (m). The date that represents
+midweek is found by subtracting the day of the week (d) from 4 and
+adding that number of days to the current date: <code>m = date + (4 - d)</code>.
+</p>
+</li>
+<li><p> Find the week number (w) by counting the number of days since 1 January
+to (m), and use integer division by 7: <code>w = 1L + ((m - yyyy-01-01) %/% 7)</code>
+</p>
+</li></ol>
+
+<p>For the weeks around 1 January, the year is determined by the week number.
+If the month is January, but the week number is 52 or 53, then the year for
+the week (YYYY) is the calendar year (yyyy) minus 1. However, if the month
+is December, but the week number is 1, then the year for the week (YYYY) is
+the calendar year (yyyy) plus 1.
+</p>
+
+
+
+<h4>Structure of the aweek object</h4>
+
+<p>The aweek object is a character vector in either the precise ISO week
+format (YYYY-Www-d) or imprecise ISO week format (YYYY-Www) with
+a <code>week_start</code> attribute indicating which ISO week day the week begins.
+The precise ISO week format can be broken down like this:
+</p>
+
+<ul>
+<li> <p><strong>YYYY</strong> is an ISO week-numbering year, which is the year relative to
+the week, not the day. For example, the date 2016-01-01 would be
+represented as 2015-W53-5 (ISO week), because while the date is in the
+year 2016, the week is still part of the final week of 2015.
+</p>
+</li>
+<li><p> W<strong>ww</strong> is the week number, prefixed by the character &quot;W&quot;. This ranges
+from 01 to 52 or 53, depending on whether or not the year has 52 or 53
+weeks.
+</p>
+</li>
+<li> <p><strong>d</strong> is a digit representing the weekday where 1 represents the first
+day of the week and 7 represents the last day of the week. #'
+The attribute <code>week_start</code> represents the first day of the week as an ISO
+week day. This defaults to 1, which is Monday. If, for example, an aweek
+object represented weeks starting on Friday, then the <code>week_start</code>
+attribute would be 5, which is Friday of the ISO week.
+</p>
+</li></ul>
+
+<p>Imprecise formats (YYYY-Www) are equivalent to the first day of the week.
+For example, 2015-W53 and 2015-W53-1 will be identical when converted to
+date.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>an object of class <code>aweek</code>
+</p>
+
+
+<h3>Note</h3>
+
+<p>when combining aweek objects together, you must ensure that they have
+the same week_start attribute. You can use <code><a href="change_week_start.html">change_week_start()</a></code> to adjust
+it.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="date2week.html">date2week()</a></code>, <code><a href="get_aweek.html">get_aweek()</a></code>, <code><a href="aweek-conversions.html">as.Date.aweek()</a></code>, <code><a href="change_week_start.html">change_week_start()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+d &lt;- as.Date("2018-12-20") + 1:40
+w &lt;- date2week(d, week_start = "Sunday")
+print(w)
+
+# subsetting acts as normal
+w[1:10]
+
+# Combining multiple aweek objects will only work if they have the same
+# week_start day
+c(w[1], w[3], w[5], as.aweek(as.Date("2018-12-01"), week_start = "Sunday"))
+
+# differing week_start days will throw an error
+mon &lt;- date2week(as.Date("2018-12-01"), week_start = "Monday")
+mon
+try(c(w, mon))
+
+# combining Dates will be coerced to aweek objects under the same rules
+c(w, Sys.Date())
+
+# truncated aweek objects will be un-truncated
+w2 &lt;- date2week(d[1:5], week_start = "Sunday", floor_day = TRUE)
+w2
+c(w[1:5], w2)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>aweek</em> version 1.0.1 <a href="00Index.html">Index</a>]</div>
+</body></html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Metropolis Sampling from User-Written R function</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for MCMCmetrop1R {MCMCpack}"><tr><td>MCMCmetrop1R {MCMCpack}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Metropolis Sampling from User-Written R function</h2>
+
+<h3>Description</h3>
+
+<p>This function allows a user to construct a sample from a user-defined
+continuous distribution using a random walk Metropolis algorithm.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+MCMCmetrop1R(fun, theta.init, burnin = 500, mcmc = 20000, thin = 1,
+  tune = 1, verbose = 0, seed = NA, logfun = TRUE,
+  force.samp = FALSE, V = NULL, optim.method = "BFGS",
+  optim.lower = -Inf, optim.upper = Inf, optim.control = list(fnscale
+  = -1, trace = 0, REPORT = 10, maxit = 500), ...)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>fun</code></td>
+<td>
+<p>The unnormalized (log)density of the distribution from which to
+take a sample. This must be a function defined in R whose first argument is
+a continuous (possibly vector) variable. This first argument is the point in
+the state space at which the (log)density is to be evaluated. Additional
+arguments can be passed to <code>fun()</code> by inserting them in the call to
+<code>MCMCmetrop1R()</code>. See the Details section and the examples below for
+more information.</p>
+</td></tr>
+<tr valign="top"><td><code>theta.init</code></td>
+<td>
+<p>Starting values for the sampling. Must be of the
+appropriate dimension. It must also be the case that <code>fun(theta.init,
+...)</code> is greater than <code>-Inf</code> if <code>fun()</code> is a logdensity or greater
+than 0 if <code>fun()</code> is a density.</p>
+</td></tr>
+<tr valign="top"><td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td></tr>
+<tr valign="top"><td><code>mcmc</code></td>
+<td>
+<p>The number of MCMC iterations after burnin.</p>
+</td></tr>
+<tr valign="top"><td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+MCMC iterations must be divisible by this value.</p>
+</td></tr>
+<tr valign="top"><td><code>tune</code></td>
+<td>
+<p>The tuning parameter for the Metropolis sampling.  Can be either
+a positive scalar or a <i>k</i>-vector, where <i>k</i> is the length of
+<i>&theta;</i>.</p>
+</td></tr>
+<tr valign="top"><td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 the
+iteration number, the <i>&theta;</i> vector, the function value, and
+the Metropolis acceptance rate are sent to the screen every <code>verbose</code>th
+iteration.</p>
+</td></tr>
+<tr valign="top"><td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>logfun</code></td>
+<td>
+<p>Logical indicating whether <code>fun</code> returns the natural log
+of a density function (TRUE) or a density (FALSE).</p>
+</td></tr>
+<tr valign="top"><td><code>force.samp</code></td>
+<td>
+<p>Logical indicating whether the sampling should proceed if
+the Hessian calculated from the initial call to <code>optim</code> routine to
+maximize the (log)density is not negative definite. If
+<code>force.samp==TRUE</code> and the Hessian from <code>optim</code> is non-negative
+definite, the Hessian is rescaled by subtracting small values from it's main
+diagonal until it is negative definite. Sampling proceeds using this
+rescaled Hessian in place of the original Hessian from <code>optim</code>. By
+default, if <code>force.samp==FALSE</code> and the Hessian from <code>optim</code> is
+non-negative definite, an error message is printed and the call to
+<code>MCMCmetrop1R</code> is terminated.
+</p>
+<p><em>Please note that a non-negative Hessian at the mode is often an
+indication that the function of interest is not a proper density. Thus,
+<code>force.samp</code> should only be set equal to <code>TRUE</code> with great
+caution.</em></p>
+</td></tr>
+<tr valign="top"><td><code>V</code></td>
+<td>
+<p>The variance-covariance matrix for the Gaussian proposal
+distribution. Must be a square matrix or <code>NULL</code>. If a square matrix,
+<code>V</code> must have dimension equal to the length of <code>theta.init</code>. If
+<code>NULL</code>, <code>V</code> is calculated from <code>tune</code> and an initial call to
+<code>optim</code>. See the Details section below for more information. Unless the
+log-posterior is expensive to compute it will typically be best to use the
+default <code>V = NULL</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.method</code></td>
+<td>
+<p>The value of the <code>method</code> parameter sent to
+<code>optim</code> during an initial maximization of <code>fun</code>. See <code>optim</code>
+for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.lower</code></td>
+<td>
+<p>The value of the <code>lower</code> parameter sent to
+<code>optim</code> during an initial maximization of <code>fun</code>. See <code>optim</code>
+for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.upper</code></td>
+<td>
+<p>The value of the <code>upper</code> parameter sent to
+<code>optim</code> during an initial maximization of <code>fun</code>. See <code>optim</code>
+for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>optim.control</code></td>
+<td>
+<p>The value of the <code>control</code> parameter sent to
+<code>optim</code> during an initial maximization of <code>fun</code>. See <code>optim</code>
+for more details.</p>
+</td></tr>
+<tr valign="top"><td><code>...</code></td>
+<td>
+<p>Additional arguments.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>MCMCmetrop1R produces a sample from a user-defined distribution using a
+random walk Metropolis algorithm with multivariate normal proposal
+distribution. See Gelman et al. (2003) and Robert &amp; Casella (2004) for
+details of the random walk Metropolis algorithm.
+</p>
+<p>The proposal distribution is centered at the current value of
+<i>&theta;</i> and has variance-covariance <i>V</i>. If <i>V</i> is
+specified by the user to be <code>NULL</code> then <i>V</i> is calculated
+as: <i>V = T (-1\cdot H)^{-1} T </i>, where <i>T</i> is a the
+diagonal positive definite matrix formed from the <code>tune</code> and
+<i>H</i> is the approximate Hessian of <code>fun</code> evaluated at its
+mode. This last calculation is done via an initial call to
+<code>optim</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Siddhartha Chib; Edward Greenberg. 1995. &ldquo;Understanding the
+Metropolis-Hastings Algorithm.&quot;  <em>The American Statistician</em>, 49,
+327-335.
+</p>
+<p>Andrew Gelman, John B. Carlin, Hal S. Stern, and Donald B. Rubin. 2003.
+<em>Bayesian Data Analysis</em>. 2nd Edition. Boca Raton: Chapman &amp; Hall/CRC.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  &ldquo;MCMCpack:
+Markov Chain Monte Carlo in R.&rdquo;, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="http://www.jstatsoft.org/v42/i09/">http://www.jstatsoft.org/v42/i09/</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.lsa.umich.edu">http://scythe.lsa.umich.edu</a>.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  &ldquo;Output
+Analysis and Diagnostics for MCMC (CODA)&rdquo;, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+<p>Christian P. Robert and George Casella. 2004. <em>Monte Carlo Statistical
+Methods</em>. 2nd Edition. New York: Springer.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="../../coda/html/plot.mcmc.html">plot.mcmc</a></code>, <code><a href="../../coda/html/summary.mcmc.html">summary.mcmc</a></code>,
+<code><a href="../../stats/html/optim.html">optim</a></code>, <code><a href="../../mcmc/html/metrop.html">metrop</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+
+  ## Not run: 
+
+    ## logistic regression with an improper uniform prior
+    ## X and y are passed as args to MCMCmetrop1R
+
+    logitfun &lt;- function(beta, y, X){
+      eta &lt;- X %*% beta
+      p &lt;- 1.0/(1.0+exp(-eta))
+      sum( y * log(p) + (1-y)*log(1-p) )
+    }
+
+    x1 &lt;- rnorm(1000)
+    x2 &lt;- rnorm(1000)
+    Xdata &lt;- cbind(1,x1,x2)
+    p &lt;- exp(.5 - x1 + x2)/(1+exp(.5 - x1 + x2))
+    yvector &lt;- rbinom(1000, 1, p)
+
+    post.samp &lt;- MCMCmetrop1R(logitfun, theta.init=c(0,0,0),
+                              X=Xdata, y=yvector,
+                              thin=1, mcmc=40000, burnin=500,
+                              tune=c(1.5, 1.5, 1.5),
+                              verbose=500, logfun=TRUE)
+
+    raftery.diag(post.samp)
+    plot(post.samp)
+    summary(post.samp)
+    ## ##################################################
+
+
+    ##  negative binomial regression with an improper unform prior
+    ## X and y are passed as args to MCMCmetrop1R
+    negbinfun &lt;- function(theta, y, X){
+      k &lt;- length(theta)
+      beta &lt;- theta[1:(k-1)]
+      alpha &lt;- exp(theta[k])
+      mu &lt;- exp(X %*% beta)
+      log.like &lt;- sum(
+                      lgamma(y+alpha) - lfactorial(y) - lgamma(alpha) +
+                      alpha * log(alpha/(alpha+mu)) +
+                      y * log(mu/(alpha+mu))
+                     )
+    }
+
+    n &lt;- 1000
+    x1 &lt;- rnorm(n)
+    x2 &lt;- rnorm(n)
+    XX &lt;- cbind(1,x1,x2)
+    mu &lt;- exp(1.5+x1+2*x2)*rgamma(n,1)
+    yy &lt;- rpois(n, mu)
+
+    post.samp &lt;- MCMCmetrop1R(negbinfun, theta.init=c(0,0,0,0), y=yy, X=XX,
+                              thin=1, mcmc=35000, burnin=1000,
+                              tune=1.5, verbose=500, logfun=TRUE,
+                              seed=list(NA,1))
+    raftery.diag(post.samp)
+    plot(post.samp)
+    summary(post.samp)
+    ## ##################################################
+
+
+    ## sample from a univariate normal distribution with
+    ## mean 5 and standard deviation 0.1
+    ##
+    ## (MCMC obviously not necessary here and this should
+    ##  really be done with the logdensity for better
+    ##  numerical accuracy-- this is just an illustration of how
+    ##  MCMCmetrop1R works with a density rather than logdensity)
+
+    post.samp &lt;- MCMCmetrop1R(dnorm, theta.init=5.3, mean=5, sd=0.1,
+                          thin=1, mcmc=50000, burnin=500,
+                          tune=2.0, verbose=5000, logfun=FALSE)
+
+    summary(post.samp)
+
+  
+## End(Not run)
+
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>MCMCpack</em> version 1.4-6 <a href="00Index.html">Index</a>]</div>
+</body></html>
