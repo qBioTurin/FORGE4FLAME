@@ -3,6 +3,8 @@ Title: Forge4Flame (F4F)
 Version: 1.0.0.0
 Authors@R: 
     person("Daniele", "Baccega", email = "daniele.baccega@unito.it", role = c("aut", "cre"))
+    person("Irene", "Terrone", email = "irene.terrone@unito.it", role = c("aut", "cre"))
+    person("Simone", "Pernice", email = "simone.pernice@unito.it", role = c("aut", "cre"))
 Description: Forge4Flame (F4F) is a user-friendly R Shiny dashboard designed 
     to streamline the creation of FLAME GPU 2 ABMs, automatically generating 
     the necessary code. With its intuitive interface, users can easily define 
