@@ -1,6 +1,0 @@
-bresenham==0.2.1
-pandas
-cpplint
-matplotlib
-seaborn
-plotnine

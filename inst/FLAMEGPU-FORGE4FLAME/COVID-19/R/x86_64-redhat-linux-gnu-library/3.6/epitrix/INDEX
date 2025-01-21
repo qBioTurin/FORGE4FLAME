@@ -1,6 +1,0 @@
-clean_labels            Standardise labels
-fit_disc_gamma          Fit discretised distributions using ML
-gamma_shapescale2mucv   Reparameterise Gamma distributions
-hash_names              Anonymise data using scrypt
-r2R0                    Transform a growth rate into a reproduction
-                        number

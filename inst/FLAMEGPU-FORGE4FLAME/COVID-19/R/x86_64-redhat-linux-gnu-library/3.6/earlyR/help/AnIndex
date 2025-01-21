@@ -1,9 +1,0 @@
-get_R	get_R
-get_R.default	get_R
-get_R.incidence	get_R
-get_R.integer	get_R
-get_R.numeric	get_R
-plot.earlyR	plot.earlyR
-points.earlyR	plot.earlyR
-print.earlyR	print.earlyR
-sample_R	sample_R

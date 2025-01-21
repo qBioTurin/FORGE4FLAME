@@ -1,7 +1,0 @@
-To run a configuration you need to create a configuration file (with .conf extension) specifying the values to assign for each (or for some) parameters (described below). In the ExampleOfConfigurationFile directory you can find some examples of configuration files. After that, you can run the configuration in this way (it's necessary to specify the correct path to netlogo-headless.sh into the start.sh script, for example ~/NetLogo6.1.1/netlogo-headless.sh):
-
-./start.sh ConfigurationFileName NumberOfThreads
-
-
-For example:
-./start.sh ExampleOfConfigurationFile/Example1.conf 24
