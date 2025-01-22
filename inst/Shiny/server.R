@@ -2656,19 +2656,37 @@ server <- function(input, output,session) {
     })
 
     isolate({
-      if(dim(rooms)[1]==0){
-        data = data.frame()
-      } else if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
-        uni =
-        data = do.call(rbind,
+
+      data_waiting = data.frame()
+
+      if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
+        data_waiting = do.call(rbind,
                         lapply(unique(ResRoomsDF$Agent), function(W)
                           data.frame(Agent = W,
                                             Room = "Same room")
                           )
         )
+      }else{
+        # If there exist already the dataset, then it is used and we have to check that there is already the agents
+        data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
+
+        data_waiting = data_waitingOLD[,c("Agent","Room")]
+        for(a in unique(ResRoomsDF$Agent)){
+          if(a %in% data_waitingOLD$Agent)
+            data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
+          else
+            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+        }
+
+        agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
+
+        if(length(agent_eliminated) != 0){
+          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
+        }
       }
 
-      canvasObjects$resources[[resources_type]]$waitingRooms <- data
+      canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
+
 
     })
 
