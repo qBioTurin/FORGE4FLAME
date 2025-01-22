@@ -238,9 +238,16 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     Name = gsub(" ", "", tolower(input$id_new_room))
-    length_new_room = gsub(" ", "", input$length_new_room)
-    width_new_room = gsub(" ", "", input$width_new_room)
-    height_new_room = gsub(" ", "", input$height_new_room)
+
+    length_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$length_new_room)))
+    width_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$width_new_room)))
+    height_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$height_new_room)))
+
+    if(is.na(length_new_room) || is.na(width_new_room) || is.na(height_new_room) ){
+      shinyalert(paste0("The height, the lenght and the width must be numbers."))
+      return()
+    }
+
 
     if(Name != "" && width_new_room != "" && length_new_room != "" && height_new_room != ""){
 
@@ -254,12 +261,12 @@ server <- function(input, output,session) {
         return()
       }
 
-      if(as.numeric(gsub(",", "\\.", height_new_room)) > 10){
+      if(height_new_room > 10){
         shinyalert("The maximum permitted height for a room is 10 meters.")
         return()
       }
 
-      if(as.numeric(gsub(",", "\\.", width_new_room)) < 2 || as.numeric(gsub(",", "\\.", length_new_room)) < 2 || as.numeric(gsub(",", "\\.", height_new_room)) < 2){
+      if(width_new_room < 2 ||  length_new_room < 2 ||  height_new_room < 2){
         shinyalert("The dimension of the room can not be smaller than 2x2x2.")
         return()
       }
@@ -274,15 +281,13 @@ server <- function(input, output,session) {
         return()
       }
 
-      w = as.numeric(gsub(",", "\\.", width_new_room))
-      l = as.numeric(gsub(",", "\\.", length_new_room))
-      h = as.numeric(gsub(",", "\\.", height_new_room))
+
       samp = runif(3, 0, 1)
 
       typeID = canvasObjects$types$ID[which(input$select_type == canvasObjects$types)]
 
       newRoom <- data.frame(Name = Name, ID = typeID,
-                            type=input$select_type, w = w, l = l, h = h,
+                            type=input$select_type, w = width_new_room, l = length_new_room, h = height_new_room,
                             colorFill = paste0("rgba(", round(255*samp[1]), ", ", round(255*samp[2]), ", ", round(255*samp[3]),", 1)"))
 
       if(is.null(canvasObjects$rooms)) {
@@ -2546,7 +2551,7 @@ server <- function(input, output,session) {
     # Generate selectizeInput for each relevant agent
     if(!is.null(rooms) && dim(rooms)[1]>1 ){
       ListSel = lapply(relevantAgents, function(agent) {
-        # aggionrare i selectize dei waiting se esista già una selezione!
+        # aggionrare i selectize dei waiting se esiste già una selezione!
         waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
 
         if(!is.null(waitingRooms))
@@ -2582,7 +2587,7 @@ server <- function(input, output,session) {
       waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
     })
 
-    if( length(selectW) > 0 ){
+    if(length(selectW) > 0 ){
       waitingRooms = do.call(rbind,
                              lapply(selectW, function(W)
                                data.frame(Agent = gsub(pattern = "selectInput_WaitingRoomSelect_",replacement = "",x = W),
@@ -2609,6 +2614,7 @@ server <- function(input, output,session) {
   })
 
   observe({
+    #give a default to resources and waitingrooms
     resources_type = req(input$selectInput_resources_type)
     ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
 
@@ -2647,6 +2653,41 @@ server <- function(input, output,session) {
       }
 
       canvasObjects$resources[[resources_type]]$roomResource <- data
+    })
+
+    isolate({
+
+      data_waiting = data.frame()
+
+      if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
+        data_waiting = do.call(rbind,
+                        lapply(unique(ResRoomsDF$Agent), function(W)
+                          data.frame(Agent = W,
+                                            Room = "Same room")
+                          )
+        )
+      }else{
+        # If there exist already the dataset, then it is used and we have to check that there is already the agents
+        data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
+
+        data_waiting = data_waitingOLD[,c("Agent","Room")]
+        for(a in unique(ResRoomsDF$Agent)){
+          if(a %in% data_waitingOLD$Agent)
+            data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
+          else
+            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+        }
+
+        agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
+
+        if(length(agent_eliminated) != 0){
+          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
+        }
+      }
+
+      canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
+
+
     })
 
   })
