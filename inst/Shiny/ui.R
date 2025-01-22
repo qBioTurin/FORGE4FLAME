@@ -18,7 +18,7 @@ library(ggplot2)
 library(tidyr)
 library(htmltools)
 
-source(system.file("Shiny","Rfunctions.R", package = "F4F"))
+source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
 
 jsCode <- '

@@ -1,5 +1,5 @@
 
-source(system.file("Shiny","Rfunctions.R", package = "F4F"))
+source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
 options(shiny.maxRequestSize=2^30)
 
