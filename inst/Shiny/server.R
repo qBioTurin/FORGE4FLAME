@@ -2551,7 +2551,7 @@ server <- function(input, output,session) {
     # Generate selectizeInput for each relevant agent
     if(!is.null(rooms) && dim(rooms)[1]>1 ){
       ListSel = lapply(relevantAgents, function(agent) {
-        # aggionrare i selectize dei waiting se esista già una selezione!
+        # aggionrare i selectize dei waiting se esiste già una selezione!
         waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
 
         if(!is.null(waitingRooms))
@@ -2572,25 +2572,8 @@ server <- function(input, output,session) {
         )
 
       })
-    }else if(!is.null(rooms)){
-      ListSel = lapply(relevantAgents, function(agent) {
-        #set same room to all rooms by default. For flame
-          roomSelected = "Same Room"
-
-          choicesRoom = c("Same room","Skip room",unique( rooms$NameTypeArea ) )
-
-
-        selectizeInput(
-          inputId = paste0("selectInput_WaitingRoomSelect_", agent),
-          label = paste0("Select second choice room ", agent, ":"),
-          choices = choicesRoom,
-          selected = roomSelected
-        )
-
-      })
-
-    }
-      #ListSel = NULL
+    }else
+      ListSel = NULL
 
     return(ListSel)
   })
@@ -2604,7 +2587,7 @@ server <- function(input, output,session) {
       waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
     })
 
-    if( length(selectW) > 0 ){
+    if(length(selectW) > 0 ){
       waitingRooms = do.call(rbind,
                              lapply(selectW, function(W)
                                data.frame(Agent = gsub(pattern = "selectInput_WaitingRoomSelect_",replacement = "",x = W),
@@ -2631,6 +2614,7 @@ server <- function(input, output,session) {
   })
 
   observe({
+    #give a default to resources and waitingrooms
     resources_type = req(input$selectInput_resources_type)
     ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
 
@@ -2669,6 +2653,23 @@ server <- function(input, output,session) {
       }
 
       canvasObjects$resources[[resources_type]]$roomResource <- data
+    })
+
+    isolate({
+      if(dim(rooms)[1]==0){
+        data = data.frame()
+      } else if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
+        uni =
+        data = do.call(rbind,
+                        lapply(unique(ResRoomsDF$Agent), function(W)
+                          data.frame(Agent = W,
+                                            Room = "Same room")
+                          )
+        )
+      }
+
+      canvasObjects$resources[[resources_type]]$waitingRooms <- data
+
     })
 
   })
