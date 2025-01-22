@@ -357,7 +357,7 @@ server <- function(input, output,session) {
   observeEvent(canvasObjects$roomsINcanvas, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
+    rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Waitingroom")
 
     roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
     updateSelectizeInput(session = session, "Det_select_room_flow",
@@ -2169,18 +2169,24 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    if(!is.null(canvasObjects$agents) && is.null(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime)){
-      isolate({
-        UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,input$ckbox_entranceFlow)
-      })
-      canvasObjects$agents[[input$id_new_agent]]$entry_type <- input$ckbox_entranceFlow
+    if(!is.null(canvasObjects$agents) && is.null(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime) && InfoApp$NumTabsFlow == 1){
+      Agent <- input$id_new_agent
+
+      InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
+      canvasObjects$agents[[Agent]]$entry_type <- input$ckbox_entranceFlow
+
+
+      selectToUpdate = grep(pattern = "Select_TimeDetFlow_",x = names(input),value = T)
+      UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
+      for(i in selectToUpdate) updateSelectInput(session = session,inputId = i, choices = InfoApp$tabs_ids)
+
       return()
     }
 
     if(!canvasObjects$cancel_button_selected && input$id_new_agent != "" && input$ckbox_entranceFlow != canvasObjects$agents[[input$id_new_agent]]$entry_type){
       showModal(modalDialog(
         title = "Important message",
-        "Do you want to update all the information about the agent time slots?",
+        "Do you want to update all the agent's time slot information? Existing data will be overwritten, and if you select 'Daily Rate,' only the first flow will be retained.",
         easyClose = TRUE,
         footer= tagList(actionButton("confirmUpdates", "Update"),
                         actionButton("cancelAction", "Cancel")
@@ -2204,12 +2210,30 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     input$id_new_agent-> Agent
+    InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
     canvasObjects$agents[[Agent]]$entry_type <- input$ckbox_entranceFlow
     canvasObjects$agents[[Agent]]$EntryExitTime <- NULL
 
-    isolate({
-      UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,input$ckbox_entranceFlow)
-    })
+    FlowIDs <- 2:InfoApp$NumTabsFlow
+    if(InfoApp$NumTabsFlow > 1){
+      removeTab(inputId = "DetFlow_tabs", target=paste0(FlowIDs, " flow"), session = session)
+      InfoApp$tabs_ids <- InfoApp$tabs_ids[!InfoApp$tabs_ids %in% FlowIDs]
+
+      InfoApp$NumTabsFlow = 1
+    }
+
+    Agent <- input$id_new_agent
+    if(Agent != ""){
+      AgentInfo <- canvasObjects$agents[[Agent]]
+
+      AgentInfo$DeterFlow <- AgentInfo$DeterFlow[which(!AgentInfo$DeterFlow$FlowID != "1 flow"),]
+
+      canvasObjects$agents[[Agent]] <- AgentInfo
+
+      selectToUpdate = grep(pattern = "Select_TimeDetFlow_",x = names(input),value = T)
+      UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
+      for(i in selectToUpdate) updateSelectInput(session = session,inputId = i, choices = InfoApp$tabs_ids)
+    }
 
     removeModal()
   })
@@ -2577,7 +2601,7 @@ server <- function(input, output,session) {
     if(!is.null(allResRooms()) ){
       choices <- unique( allResRooms()$Room )
       choices <- choices[!grepl(paste0("Spawnroom", collapse = "|"), choices)]
-      choices <- choices[!grepl(paste0("Fillingroom", collapse = "|"), choices)]
+      #choices <- choices[!grepl(paste0("Fillingroom", collapse = "|"), choices)]
       choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
 
       updateSelectizeInput(session, "selectInput_resources_type", choices = choices, server = TRUE)

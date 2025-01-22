@@ -1,10 +1,10 @@
 generate_obj <- function(temp_directory){
   fileConn = file(file.path(temp_directory, 'room.obj'), 'w+')
-  
+
   length = 1
   width = 1
   height = 1
-  
+
   # Generate vertices
   vertices = list(
     c(0, 0, 0),
@@ -16,7 +16,7 @@ generate_obj <- function(temp_directory){
     c(length, height, 0),
     c(length, height, width)
   )
-  
+
   # Generate triangles
   faces = list(
     c(1, 2, 3),
@@ -28,17 +28,17 @@ generate_obj <- function(temp_directory){
     c(2, 7, 6),
     c(7, 8, 6)
   )
-  
+
   for (vertex in vertices)
     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-  
+
   for (face in faces)
     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-  
+
   close(fileConn)
-  
+
   fileConn = file(file.path(temp_directory, 'fillingroom.obj'), 'w+')
-  
+
   # Generate vertices
   vertices = list(
     c(0, 0, 0),
@@ -50,7 +50,7 @@ generate_obj <- function(temp_directory){
     c(length, height, 0),
     c(length, height, width)
   )
-  
+
   # Generate triangles
   faces = list(
     c(1, 2, 3),
@@ -64,13 +64,13 @@ generate_obj <- function(temp_directory){
     c(4, 6, 5),
     c(6, 8, 5)
   )
-  
+
   for (vertex in vertices)
     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-  
+
   for (face in faces)
     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-  
+
   close(fileConn)
 }
 
@@ -78,14 +78,14 @@ find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
   # plus two since we have to consider the borders
   target_rows= 2 + target_rows
   target_cols= 2 + target_cols
-  
+
   for (start_row in 1:(nrow(mat)-target_rows+1)) {
     for (start_col in 1:(ncol(mat)-target_cols+1)) {
       end_row <- start_row + target_rows - 1
       end_col <- start_col + target_cols - 1
-      
+
       submatrix <- mat[start_row:end_row, start_col:end_col]
-      
+
       if (all(submatrix == 1)) {
         return(c(start_row-1, start_col-1))
       }
@@ -97,29 +97,29 @@ find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
 CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   matrixCanvas = canvasObjects$matrixCanvas
   roomNames = canvasObjects$rooms
-  
-  
+
+
   ## wall and room id defnition
   if(!is.null(canvasObjects$roomsINcanvas)){
     rooms = canvasObjects$roomsINcanvas %>% filter(CanvasID == canvas)
     for(i in rooms$ID){
       r = rooms %>% filter(ID == i)
-      
+
       x = r$x
       y = r$y
-      
+
       ## wall definition as 0
       matrixCanvas[y, x + 0:(r$l+1)] = 0
       matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
       matrixCanvas[y + 0:(r$w+1), x] = 0
       matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
-      
+
       ## inside the walls the matrix with 1
       if(FullRoom)
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = i
       else
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = 1
-      
+
       ## door position definition as 2
       if(r$door == "top"){
         r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l+1)/2)
@@ -151,7 +151,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
         matrixCanvas[r$center_y, r$center_x] = roomNames$ID[roomNames$Name == r$Name]
     }
   }
-  
+
   ## movement node definition as 3
   if(!is.null(canvasObjects$nodesINcanvas)){
     nodes = canvasObjects$nodesINcanvas %>% filter(CanvasID == canvas)
@@ -160,7 +160,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       matrixCanvas[r$y, r$x] = 3
     }
   }
-  
+
   return(matrixCanvas)
 }
 
@@ -177,7 +177,7 @@ command_addRoomObject = function(newroom){
                newroom$h,",",
                newroom$colorFill,",",
                newroom$colorBorder,", \" ",
-               newroom$Name,"\" , \"",newroom$door,"\");") 
+               newroom$Name,"\" , \"",newroom$door,"\");")
   paste0(txt,"
           // Aggiungi il nuovo oggetto Square all'array arrayObject
          FloorArray[\"",newroom$CanvasID,"\"].arrayObject.push(newRoom);"
@@ -188,48 +188,48 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   messNames = names(mess)
   for(i in messNames)
     canvasObjects[[i]] = mess[[i]]
-  
+
   ### UPDATING THE CANVAS ####
   # deleting everything from canvas
   js$clearCanvas()
   # update the canvas dimension
   js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
-  
+
   for(floor in canvasObjects$floors$Name){
     runjs(paste0("
                  FloorArray[\"", floor, "\"] = new FloorManager(\"", floor, "\");"))
   }
-  
+
   selected = ""
   if(nrow(canvasObjects$floors) != 0){
     selected = canvasObjects$floors$Name[1]
   }
-  
+
   updateSelectizeInput(inputId = "canvas_selector",
                        selected = selected,
                        choices = c("", canvasObjects$floors$Name) )
-  
+
   if(!is.null(canvasObjects$rooms)){
     output$length <- renderText({
       "Length of selected room (length refers to the wall with the door): "
     })
-    
+
     output$width <- renderText({
       "Width of selected room: "
     })
-    
+
     output$height <- renderText({
       "Height of selected room: "
     })
   }
-  
+
   # draw rooms
   if(!is.null(canvasObjects$roomsINcanvas)){
     for(r_id in canvasObjects$roomsINcanvas$ID){
       newroom = canvasObjects$roomsINcanvas %>% filter(ID == r_id)
       runjs( command_addRoomObject( newroom) )
     }
-    
+
     # update types
     updateSelectizeInput(inputId = "select_type",choices = unique(canvasObjects$types$Name) )
     updateSelectInput(inputId = "selectInput_color_type",
@@ -253,29 +253,29 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   updateSelectizeInput(inputId = "id_new_agent",choices = unique(names(canvasObjects$agents)), selected = "")
   updateSelectizeInput(inputId = "id_agents_to_copy",choices = unique(names(canvasObjects$agents)), selected = "")
-  
+
   classes <- c()
   for(i in 1:length(canvasObjects$agents)){
     classes <- c(canvasObjects$agents[[i]]$Class, classes)
   }
 
   updateSelectizeInput(inputId = "id_class_agent",choices = unique(classes))
-  
+
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
     selected = canvasObjects$disease$Name
-  
+
     updateTextInput(session, inputId = "beta_aerosol", value=canvasObjects$disease$beta_aerosol)
     updateTextInput(session, inputId = "beta_contact", value=canvasObjects$disease$beta_contact)
-    
+
     params <- parse_distribution(canvasObjects$disease$gamma_time, canvasObjects$disease$gamma_dist)
     gamma_dist <- canvasObjects$disease$gamma_dist
     gamma_a <- params[[1]]
     gamma_b <- params[[2]]
     tab <- if(gamma_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-    
+
     update_distribution("gamma", gamma_dist, gamma_a, gamma_b, tab)
-    
+
 
     if(grepl("E", selected)){
       params <- parse_distribution(canvasObjects$disease$alpha_time, canvasObjects$disease$alpha_dist)
@@ -284,43 +284,43 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
       alpha_b <- params[[2]]
       tab <- if(alpha_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
 
-      
+
       update_distribution("alpha", alpha_dist, alpha_a, alpha_b, tab)
     }
-      
-    
+
+
     if(grepl("D", selected)){
       params <- parse_distribution(canvasObjects$disease$lambda_time, canvasObjects$disease$lambda_dist)
       lambda_dist <- canvasObjects$disease$lambda_dist
       lambda_a <- params[[1]]
       lambda_b <- params[[2]]
       tab <- if(lambda_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-      
+
       update_distribution("lambda", lambda_dist, lambda_a, lambda_b, tab)
     }
 
-      
+
     if(selected[length(selected)] == "S"){
       params <- parse_distribution(canvasObjects$disease$nu_time, canvasObjects$disease$nu_dist)
       nu_dist <- canvasObjects$disease$nu_dist
       nu_a <- params[[1]]
       nu_b <- params[[2]]
       tab <- if(nu_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-      
+
       update_distribution("nu", nu_dist, nu_a, nu_b, tab)
     }
   }
-  
+
   updateSelectizeInput(inputId = "disease_model",
                        selected = selected)
-  
+
   updateTextInput(session, inputId = "seed", value = canvasObjects$starting$seed)
   updateRadioButtons(session, inputId = "initial_day", selected = canvasObjects$starting$day)
   updateTextInput(session, inputId = "nrun", value = canvasObjects$starting$nrun)
   updateTextInput(session, inputId = "initial_time", value = canvasObjects$starting$time)
   updateTextInput(session, inputId = "simulation_days", value = canvasObjects$starting$simulation_days)
   updateSelectizeInput(session, inputId = "step", choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60), selected = as.numeric(canvasObjects$starting$step))
-  
+
   updateRadioButtons(session, inputId = "ventilation_type", selected = canvasObjects$whatif$ventilation_type)
   if(canvasObjects$whatif$ventilation_type == "Global"){
     updateSelectizeInput(session = session, "ventilation_global",
@@ -330,28 +330,28 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
   updateSelectizeInput(session = session, "room_ventilation",
                        choices = roomsAvailable, selected = "")
-  
+
   updateRadioButtons(session, inputId = "mask_type", selected = canvasObjects$whatif$mask_type)
   if(canvasObjects$whatif$mask_type == "Global"){
     updateSelectizeInput(session = session, "mask_global",
                          selected = canvasObjects$whatif$mask_value)
-    
+
     updateSelectizeInput(session = session, "mask_fraction_global",
                          selected = canvasObjects$whatif$mask_fraction)
   }
   updateSelectizeInput(session = session, "agent_mask",
                        choices = names(canvasObjects$agents), selected = "")
-  
+
   updateRadioButtons(session, inputId = "vaccination_type", selected = canvasObjects$whatif$vaccination_type)
   if(canvasObjects$whatif$vaccination_type == "Global"){
     updateSelectizeInput(session = session, "vaccination_global",
                          selected = canvasObjects$whatif$vaccination_value)
-    
+
     updateSelectizeInput(session = session, "vaccination_efficacy_global",
                          selected = canvasObjects$whatif$vaccination_efficacy)
   }
   updateTextInput(session = session, "agent_vaccination", value = "")
-  
+
   updateRadioButtons(session, inputId = "swab_type", selected = canvasObjects$whatif$swab_type)
   updateRadioButtons(session, inputId = "swab_sensitivity", selected = canvasObjects$whatif$swab_sensitivity)
   updateRadioButtons(session, inputId = "swab_specificity", selected = canvasObjects$whatif$swab_specificity)
@@ -360,16 +360,16 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     update_distribution("swab_global", canvasObjects$whatif$swab_dist, canvasObjects$whatif$swab_a, canvasObjects$whatif$swab_b, tab)
   }
   updateTextInput(session = session, "agent_swab", value = "")
-  
+
   updateRadioButtons(session, inputId = "quarantine_type", selected = canvasObjects$whatif$quarantine_type)
   updateTextInput(session = session, "agent_quarantine", value = "")
 
   if(canvasObjects$whatif$quarantine_type == "Global"){
     tab <- if(canvasObjects$whatif$quarantine_days_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
     update_distribution("quarantine_global", canvasObjects$whatif$quarantine_days_dist, canvasObjects$whatif$quarantine_days_a, quarantine_days_b, tab)
-  
+
     updateRadioButtons(session, inputId = "quarantine_swab_type_global", selected = canvasObjects$whatif$quarantine_swab_days_type)
-    
+
     tab <- if(canvasObjects$whatif$quarantine_swab_days_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
     update_distribution("quarantine_swab_global", canvasObjects$whatif$quarantine_swab_days_dist, canvasObjects$whatif$quarantine_swab_days_a, quarantine_swab_days_b, tab)
     updateTextInput(session = session, "room_quarantine_global", value = canvasObjects$whatif$room_for_quarantine)
@@ -379,20 +379,20 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
                        choices = roomsAvailable)
   updateSelectizeInput(session = session, "room_quarantine_specific",
                        choices = roomsAvailable)
-  
+
   updateRadioButtons(session, inputId = "external_screening_type", selected = canvasObjects$whatif$external_screening_type)
   if(canvasObjects$whatif$external_screening_type == "Global"){
     updateRadioButtons(session, inputId = "external_screening_first_global", selected = canvasObjects$whatif$external_screening_first)
     updateRadioButtons(session, inputId = "external_screening_second_global", selected = canvasObjects$whatif$external_screening_second)
   }
   updateTextInput(session = session, "agent_external_screening", value = "")
-  
+
   updateTextInput(session, inputId = "virus_variant", value = canvasObjects$virus_variant)
   updateTextInput(session, inputId = "virus_severity", value = canvasObjects$virus_severity)
-  
+
   updateRadioButtons(session, inputId = "initial_infected_type", selected = canvasObjects$whatif$initial_infected_type)
   if(canvasObjects$whatif$initial_infected_type == "Global" || canvasObjects$whatif$initial_infected_type == "Random"){
-    updateTextInput(session = session, "initial_infected_global", value = canvasObjects$whatif$initial_infected) 
+    updateTextInput(session = session, "initial_infected_global", value = canvasObjects$whatif$initial_infected)
   }
 
   if(!is.null(canvasObjects$outside_contagion)){
@@ -403,44 +403,43 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
         labs(title = "Outside contagion", x = "Day", y = "Percentage") +
         theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22))
     })
-    
+
     showElement("outside_contagion_plot")
   }
-  
+
   "The file has been uploaded with success!"
 }
 
 UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, ckbox_entranceFlow){
   Agent = input$id_new_agent
   EntryExitTime= canvasObjects$agents[[Agent]]$EntryExitTime
-  FlowID = canvasObjects$agents[[Agent]]$DeterFlow$FlowID 
+  FlowID = canvasObjects$agents[[Agent]]$DeterFlow$FlowID
   entry_type = canvasObjects$agents[[Agent]]$entry_type
 
-  
-  NumTabs =  InfoApp$NumTabsTimeSlot
+  NumTabs = InfoApp$NumTabsTimeSlot
   #if i change type from one agent to another I have to remove all tabs type
   if(length(NumTabs) > 0){
     #if it's the first agent ever we click on we remove the default void slot
     if(InfoApp$oldAgentType == ""){
       removeTab(inputId = "Rate_tabs", target = "1 slot")
       removeTab(inputId = "Time_tabs", target = "1 slot")
-      
+
     }
     if(InfoApp$oldAgentType == "Time window"){
       for( i in NumTabs) {
         removeTab(inputId = "Time_tabs", target = paste0(i, " slot"))
       }
-    } 
+    }
     else if(InfoApp$oldAgentType == "Daily Rate"){
       for( i in NumTabs) {
         removeTab(inputId = "Rate_tabs", target = paste0(i, " slot"))
       }
     }
   }
-   
-  
+
+
   InfoApp$NumTabsTimeSlot = numeric(0)
-  
+
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",
               tabPanel(paste0(1," slot"),
@@ -456,13 +455,13 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                                                  choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                  selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
                               )
-                              
+
                        )
               )
     )
     InfoApp$NumTabsTimeSlot = 1
     showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
-    
+
     updateTextInput(inputId = "num_agent", value = 0)
     disable("num_agent")
   }else if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Time window"){
@@ -486,13 +485,13 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                                                  choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                  selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
                               )
-                              
+
                        )
               )
     )
     InfoApp$NumTabsTimeSlot = 1
     showTab(inputId = "Time_tabs", target = paste0(1, " slot"), select = T)
-    
+
     enable("num_agent")
   }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){
       updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
@@ -501,7 +500,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       for(i in (slots) ){
         InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
         df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
-        
+
         appendTab(inputId = "Time_tabs",
                   tabPanel(paste0(i," slot"),
                            value = paste0(i," slot"),
@@ -516,7 +515,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                                   checkboxGroupInput(paste0("selectedDays_",i), "Select Days of the Week",
                                                      choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                      selected = df$Days
-                                  )   
+                                  )
                            )
                   )
         )
@@ -531,15 +530,15 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       for(i in (slots) ){
         InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
         df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
-        
-        
+
+
         params <- parse_distribution(unique(df$RateTime), unique(df$RateDist))
         rate_dist <- unique(df$RateDist)
         rate_a <- params[[1]]
         rate_b <- params[[2]]
         if(i == min(slots))
           tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-        
+
         appendTab(inputId = "Rate_tabs",
                   tabPanel(paste0(i," slot"),
                            value = paste0(i," slot"),
@@ -553,18 +552,18 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                                   checkboxGroupInput(paste0("selectedDaysRate_",i), "Select Days of the Week",
                                                      choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                      selected = df$Days
-                                  )   
+                                  )
                            )
                   )
         )
-        
+
         # update_distribution(paste0("daily_rate_", i), rate_dist, rate_a, rate_b, tab)
       }
       showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
       showTab(inputId = paste0("DistTime_tabs_daily_rate_", slots[1]), target = tab, select = T)
       # if(tab == "StocTime_tab")
       #   updateSelectInput(inputId = paste0("DistStoc_id_daily_rate_", slots[1]), selected = rate_dist)
-      
+
       updateTextInput(inputId = "num_agent", value = 0)
       disable("num_agent")
     }
@@ -579,7 +578,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                              tabPanel("Stochastic",
                                       value = "StocTime_tab",
                                       selectizeInput(inputId = paste0("DistStoc_id_", id),
-                                                     label = "Distribution:", 
+                                                     label = "Distribution:",
                                                      choices = c("Exponential","Uniform","Truncated Positive Normal"),
                                                      selected = selected_dist),
                                       conditionalPanel(
@@ -588,7 +587,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                                  label = "Value:",
                                                  placeholder = "value",
                                                  value = a)
-                                         
+
                                       ),
                                       conditionalPanel(
                                         condition = paste0("input.DistStoc_id_", id, " == 'Uniform'"),
@@ -598,7 +597,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                           ),
                                           column(width = 4,
                                                  textInput(inputId = paste0("DistStoc_UnifRate_b_", id), label = "b:", placeholder = "value", value = b)
-                                                  
+
                                           )
                                         )
                                       ),
@@ -610,7 +609,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                           ),
                                           column(width = 4,
                                                  textInput(inputId = paste0("DistStoc_NormRate_sd_", id), label = "Sd:", placeholder = "value", value = b)
-                                                  
+
                                           )
                                          )
                                        )
@@ -624,7 +623,7 @@ check_distribution_parameters <- function(input, suffix){
   if(input[[paste0("DistTime_tabs_", suffix)]] == "DetTime_tab"){
     if(input[[paste0("DetTime_", suffix)]] == "")
       return(list(NULL, NULL))
-    
+
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
       shinyalert("You must specify a time > 0 (in minutessssss).")
@@ -634,11 +633,11 @@ check_distribution_parameters <- function(input, suffix){
     new_dist = "Deterministic"
   }else if(input[[paste0("DistTime_tabs_", suffix)]] == "StocTime_tab"){
     new_dist = input[[paste0("DistStoc_id_", suffix)]]
-    
+
     if(input[[paste0("DistStoc_id_", suffix)]] == 'Exponential'){
       if(input[[paste0("DistStoc_ExpRate_", suffix)]] == "")
         return(list(NULL, NULL))
-      
+
       if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]])) <= 0 ){
         shinyalert("You must specify a time > 0 (in minutes).")
         return(list(NULL, NULL))
@@ -647,7 +646,7 @@ check_distribution_parameters <- function(input, suffix){
     }else if(input[[paste0("DistStoc_id_", suffix)]]== 'Uniform'){
       if(input[[paste0("DistStoc_UnifRate_a_", suffix)]] == "" || input[[paste0("DistStoc_UnifRate_b_", suffix)]] == "")
         return(list(NULL, NULL))
-        
+
       if( is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]]))) ||
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]]))) ||
           as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]])) >= as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]])) ||
@@ -659,7 +658,7 @@ check_distribution_parameters <- function(input, suffix){
     }else if(input[[paste0("DistStoc_id_", suffix)]] == 'Truncated Positive Normal'){
       if(input[[paste0("DistStoc_NormRate_m_", suffix)]] == "" || input[[paste0("DistStoc_NormRate_sd_", suffix)]] == "")
         return(list(NULL, NULL))
-        
+
       if( is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
           as.numeric(input[[paste0("DistStoc_NormRate_m_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_NormRate_sd_", suffix)]]) < 0){
@@ -669,7 +668,7 @@ check_distribution_parameters <- function(input, suffix){
       new_time = paste0("Mean = ",input[[paste0("DistStoc_NormRate_m_", suffix)]] ,"; Sd = ",input[[paste0("DistStoc_NormRate_sd_", suffix)]])
     }
   }
-  
+
   return(list(new_dist, new_time))
 }
 
@@ -677,18 +676,18 @@ parse_distribution <- function(time, dist){
   # Deterministic or exponential: n
   a <- time
   b <- 0.0
-  
+
   # Uniform: a = n; b = m
   # Truncated Positive Normal: Mean = n; Sd = m
   if(dist == 'Uniform' || dist == 'Truncated Positive Normal'){
     params <- str_split(time, ";")
     a <- params[[1]][1]
     b <- params[[1]][2]
-    
+
     a = str_split(a, "=")[[1]][2]
     b = str_split(b, "=")[[1]][2]
   }
-  
+
   return(list(as.double(gsub(",", "\\.", a)), as.double(gsub(",", "\\.", b))))
 }
 
@@ -696,7 +695,7 @@ update_distribution <- function(id, dist, a, b, tab){
   showTab(inputId = paste0("DistTime_tabs_", id), target = tab, select = T)
   if(tab == "StocTime_tab")
     updateSelectInput(inputId = paste0("DistStoc_id_", id), selected = dist)
-  
+
   if(dist == "Deterministic"){
     updateTextInput(inputId = paste0("DetTime_", id), value = a)
   }

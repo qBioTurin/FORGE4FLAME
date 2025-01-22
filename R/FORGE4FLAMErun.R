@@ -62,9 +62,4 @@ FORGE4FLAME.run <-function(FromDocker = F)
 
     shiny::runApp(app)
   }
-
-  # runApp(
-  #   appDir = system.file("Shiny", package = "FORGE4FLAME"),
-  #   launch.browser = T
-  # )
 }
