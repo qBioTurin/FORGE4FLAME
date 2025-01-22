@@ -238,9 +238,16 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     Name = gsub(" ", "", tolower(input$id_new_room))
-    length_new_room = gsub(" ", "", input$length_new_room)
-    width_new_room = gsub(" ", "", input$width_new_room)
-    height_new_room = gsub(" ", "", input$height_new_room)
+
+    length_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$length_new_room)))
+    width_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$width_new_room)))
+    height_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$height_new_room)))
+
+    if(is.na(length_new_room) || is.na(width_new_room) || is.na(height_new_room) ){
+      shinyalert(paste0("The height, the lenght and the width must be numbers."))
+      return()
+    }
+
 
     if(Name != "" && width_new_room != "" && length_new_room != "" && height_new_room != ""){
 
@@ -254,12 +261,12 @@ server <- function(input, output,session) {
         return()
       }
 
-      if(as.numeric(gsub(",", "\\.", height_new_room)) > 10){
+      if(height_new_room > 10){
         shinyalert("The maximum permitted height for a room is 10 meters.")
         return()
       }
 
-      if(as.numeric(gsub(",", "\\.", width_new_room)) < 2 || as.numeric(gsub(",", "\\.", length_new_room)) < 2 || as.numeric(gsub(",", "\\.", height_new_room)) < 2){
+      if(width_new_room < 2 ||  length_new_room < 2 ||  height_new_room < 2){
         shinyalert("The dimension of the room can not be smaller than 2x2x2.")
         return()
       }
@@ -274,15 +281,13 @@ server <- function(input, output,session) {
         return()
       }
 
-      w = as.numeric(gsub(",", "\\.", width_new_room))
-      l = as.numeric(gsub(",", "\\.", length_new_room))
-      h = as.numeric(gsub(",", "\\.", height_new_room))
+
       samp = runif(3, 0, 1)
 
       typeID = canvasObjects$types$ID[which(input$select_type == canvasObjects$types)]
 
       newRoom <- data.frame(Name = Name, ID = typeID,
-                            type=input$select_type, w = w, l = l, h = h,
+                            type=input$select_type, w = width_new_room, l = length_new_room, h = height_new_room,
                             colorFill = paste0("rgba(", round(255*samp[1]), ", ", round(255*samp[2]), ", ", round(255*samp[3]),", 1)"))
 
       if(is.null(canvasObjects$rooms)) {
@@ -2567,8 +2572,25 @@ server <- function(input, output,session) {
         )
 
       })
-    }else
-      ListSel = NULL
+    }else if(!is.null(rooms)){
+      ListSel = lapply(relevantAgents, function(agent) {
+        #set same room to all rooms by default. For flame
+          roomSelected = "Same Room"
+
+          choicesRoom = c("Same room","Skip room",unique( rooms$NameTypeArea ) )
+
+
+        selectizeInput(
+          inputId = paste0("selectInput_WaitingRoomSelect_", agent),
+          label = paste0("Select second choice room ", agent, ":"),
+          choices = choicesRoom,
+          selected = roomSelected
+        )
+
+      })
+
+    }
+      #ListSel = NULL
 
     return(ListSel)
   })
