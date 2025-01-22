@@ -320,9 +320,9 @@ ui <- dashboardPage(
         fluidRow(
           column(12,
                  # Include the Canvas.js script here
-                 includeCSS(system.file("Shiny","www/dragANDdrop.css", package = "F4F")),
-                 includeHTML(system.file("Shiny","www/dragANDdrop.html", package = "F4F")),
-                 includeScript(system.file("Shiny","www/Canvas.js", package = "F4F"))
+                 includeCSS(system.file("Shiny","www/dragANDdrop.css", package = "FORGE4FLAME")),
+                 includeHTML(system.file("Shiny","www/dragANDdrop.html", package = "FORGE4FLAME")),
+                 includeScript(system.file("Shiny","www/Canvas.js", package = "FORGE4FLAME"))
           )
         )
       ),

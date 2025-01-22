@@ -2707,7 +2707,7 @@ server <- function(input, output,session) {
   output$description <- renderText({
     disease_model <- input$disease_model
 
-    file_path <- paste0(system.file("Shiny","Descriptions", package = "F4F"),
+    file_path <- paste0(system.file("Shiny","Descriptions", package = "FORGE4FLAME"),
                         "/", disease_model, "_description.txt")
 
     # Leggi il testo dal file corrispondente
