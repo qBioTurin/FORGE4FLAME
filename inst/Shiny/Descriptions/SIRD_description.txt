@@ -1,9 +1,1 @@
-The SIRD model is an extension of the SIR model, it inlcudes four compartments:
-
-Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with infected individuals or share a closed space with infected individuals, he/she can contract the disease and move to the infected compartment.
-
-Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
-
-Recovered (R): Encompasses individuals who have recovered from the infection and gained immunity.
-
-Dead (D): Represents the individuals who have died from the disease.
+The SIRD model is an extension of the SIR model that incorporates four compartments. The first compartment, susceptible (S), represents individuals who are vulnerable to the disease. These individuals can contract the disease and move to the infected compartment when they come into contact with infected persons or share a closed space with them. The second compartment, infected (I), includes individuals who are currently infected and capable of transmitting the disease to those who are susceptible. The third compartment, recovered (R), consists of individuals who have recovered from the infection and acquired immunity. Finally, the dead (D) compartment represents individuals who have succumbed to the disease. This expanded model provides a more comprehensive framework for analyzing the dynamics of infectious diseases by accounting for mortality alongside susceptibility, infection, and recovery.

@@ -1,13 +1,3 @@
-The SEIRDS model is an extension of the SEIRD model, it inlcudes five compartments:
+The SEIRDS model is an extension of the SEIRD model that introduces the possibility of waning immunity, adding a dynamic aspect to the compartmental framework. It includes five compartments. The first compartment, susceptible (S), represents individuals who are vulnerable to the disease. These individuals can contract the disease and transition to the exposed compartment upon contact with infected individuals or sharing a closed space with them. The second compartment, exposed (E), consists of individuals who have been infected but are in an incubation period, during which they cannot yet transmit the disease. The third compartment, infected (I), includes individuals who are actively infected and capable of spreading the disease to susceptible individuals. The fourth compartment, recovered (R), represents individuals who have overcome the infection and gained immunity. The fifth compartment, dead (D), accounts for individuals who have died as a result of the disease.
 
-Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with infected individuals or share a closed space with infected individuals, he/she can contract the disease and move to the exposed compartment.
-
-Exposed (E): Represents the individuals who have been infected but are not yet infectious themselves. These individuals are in an incubation period, during which they can infect others but are not yet infectious themselves.
-
-Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
-
-Recovered (R): Encompasses individuals who have recovered from the infection and gained immunity.
-
-Dead (D): Represents the individuals who have died from the disease.
-
-The difference between SEIRDS and SEIRD is that individuals in the SEIRDS model lose their immunity after a certain period of time, and become susceptible again.
+Unlike the SEIRD model, the SEIRDS model assumes that immunity is temporary. After a certain period, individuals in the recovered compartment lose their immunity and return to the susceptible compartment, re-entering the cycle. This feature makes the SEIRDS model particularly relevant for analyzing diseases where immunity wanes over time.

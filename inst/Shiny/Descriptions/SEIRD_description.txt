@@ -1,11 +1,1 @@
-The SEIRD model is an extension of the SEIR model, it inlcudes five compartments:
-
-Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with infected individuals or share a closed space with infected individuals, he/she can contract the disease and move to the exposed compartment.
-
-Exposed (E): Represents the individuals who have been infected but are not yet infectious themselves. These individuals are in an incubation period, during which they can infect others but are not yet infectious themselves.
-
-Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
-
-Recovered (R): Encompasses individuals who have recovered from the infection and gained immunity.
-
-Dead (D): Represents the individuals who have died from the disease.
+The SEIRD model is an extension of the SEIR model that incorporates five compartments, providing a comprehensive framework for analyzing disease dynamics. The first compartment, susceptible (S), includes individuals who are vulnerable to the disease. These individuals can contract the disease and transition to the exposed compartment upon contact with infected individuals or sharing a confined space with them. The second compartment, exposed (E), consists of individuals who have been infected but are in an incubation period during which they cannot yet transmit the disease. The third compartment, infected (I), includes individuals who are actively infected and capable of spreading the disease to susceptible individuals. The fourth compartment, recovered (R), represents individuals who have overcome the infection and gained immunity. Lastly, the dead (D) compartment accounts for individuals who have died as a result of the disease. This expanded model is particularly useful for studying infectious diseases with an incubation phase and associated mortality.

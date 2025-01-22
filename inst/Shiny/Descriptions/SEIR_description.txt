@@ -1,9 +1,1 @@
-The SEIR model is an extension of the SIR model, it inlcudes four compartments:
-
-Susceptible (S): Represents the individuals who are susceptible to the disease. When a susceptible person comes into contact with infected individuals or share a closed space with infected individuals, he/she can contract the disease and move to the exposed compartment.
-
-Exposed (E): Represents the individuals who have been infected but are not yet infectious themselves. These individuals are in an incubation period, during which they can infect others but are not yet infectious themselves.
-
-Infected (I): Signifies the individuals who are infected and have the potential to transmit the disease to susceptible individuals.
-
-Recovered (R): Encompasses individuals who have recovered from the infection and gained immunity.
+The SEIR model is an extension of the SIR model that introduces a fourth compartment, providing a more detailed representation of disease dynamics. The first compartment, susceptible (S), includes individuals who are vulnerable to the disease. These individuals can contract the disease and transition to the exposed compartment when they come into contact with infected individuals or share a closed space with them. The second compartment, exposed (E), represents individuals who have been infected but are not yet infectious themselves. During this incubation period, they cannot transmit the disease to others. The third compartment, infected (I), consists of individuals who are actively infected and capable of transmitting the disease to susceptible individuals. The final compartment, recovered (R), includes individuals who have recovered from the infection and gained immunity. By accounting for the incubation period, the SEIR model offers a more refined framework for studying diseases with a latent phase before infectiousness.
