@@ -10,13 +10,13 @@ server <- function(input, output,session) {
                                  nodesINcanvas = NULL,
                                  pathINcanvas = NULL,
                                  types = data.frame(Name=c("Normal","Stair","Spawnroom","Fillingroom","Waitingroom"),
-                                                    ID=c(4, 5, 6, 7,8),
+                                                    ID=c(4, 5, 6, 7, 8),
                                                     Color=c(
                                                       "rgba(255, 0, 0, 1)", #Red
                                                       "rgba(0, 255, 0, 1)", #Green
                                                       "rgba(0, 0, 255, 1)",#Blue
                                                       "rgba(0, 0, 0, 1)", #Black
-                                                      "rgba(0, 100, 30, 1)" #boh
+                                                      "rgba(0, 100, 30, 1)"
                                                     )
                                  ),
                                  canvasDimension = data.frame(canvasWidth = 1000,
