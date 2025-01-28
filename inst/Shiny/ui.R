@@ -110,6 +110,7 @@ ui <- dashboardPage(
                 #menuItem("Advanced", tabName = "advanced", icon = icon("code")),
                 menuItem("Configuration", tabName = "configuration", icon = icon("flag-checkered")),
                 menuItem("Settings", tabName = "settings", icon = icon("cogs")),
+                menuItem("Run", tabName = "run", icon = icon("play")),
                 menuItem("2D visualisation", tabName = "2dvisual", icon = icon("file-video"))
     )
   ),
@@ -438,7 +439,18 @@ ui <- dashboardPage(
                   title = h3("Set resources"),
                   width = 12,
                   collapsible = T,
-
+                  fluidRow(
+                    column(4,
+                           textInput(inputId = "textInput_resources_global",
+                                       label = "Select global resources for each room and agent type:", value = 0)
+                    ),
+                    column(4,
+                           uiOutput("selectInput_alternative_resources_global")
+                    ),
+                    column(1,
+                           actionButton("set_resources", "Set", style="margin-top:25px;")
+                    )
+                  ),
                   fluidRow(
                     column(4,
                            selectInput(inputId = "selectInput_resources_type",
@@ -1706,6 +1718,11 @@ ui <- dashboardPage(
                         offset = 1,
                         width = 1,
                         textInput(inputId = "initial_time", label = "Initial time:", placeholder = "hh:mm", value = "00:00")
+                      ),
+                      column(
+                        offset = 2,
+                        width = 2,
+                        textInput(inputId = "prun", label = "Number of parallel simulations (when not using the visualisation):", value = "10")
                       )
                     ),
                     fluidRow(
@@ -1720,6 +1737,39 @@ ui <- dashboardPage(
                       )
                     )
                 ))
+      ),
+      tabItem(tabName = "run",
+              fluidRow(
+                box(width = 12,
+                    title = h3("Run models"),
+                    fluidRow(
+                          fluidRow(
+                            column(
+                              3,
+                              offset = 1,
+                              selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker", "Slurm"), selected = "Docker")
+                            )
+                          ),
+                          fluidRow(
+                            column(2,
+                                   offset = 1,
+                                   conditionalPanel(condition="input.run_type != 'Slurm'",
+                                                    radioButtons("radio_group", "Select model to run:", choices = c("No model available"), selected = "")
+                                   ),
+                                   conditionalPanel(condition="input.run_type == 'Slurm'",
+                                                    checkboxGroupInput("checkbox_group", "Select model(s) to run:", choices = c("No model available"), selected = "")
+                                   )
+                            )
+                          ),
+                          fluidRow(
+                            column(2,
+                                   offset = 1,
+                                   actionButton("run", "Run")
+                            )
+                          )
+                    )
+                  )
+              )
       ),
       tabItem(tabName = "2dvisual",
               fluidRow(

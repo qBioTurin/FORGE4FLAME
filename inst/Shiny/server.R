@@ -1357,7 +1357,7 @@ server <- function(input, output,session) {
 
     enable("rds_generation")
 
-    if(!dir.exists("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/")){
+    if(!dir.exists("../FLAMEGPU-FORGE4FLAME/resources/f4f/")){
       output$flame_link <- renderText({
         paste0("The directory ", gsub("ShinyEnvironment", "", getwd()), "/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exitst. Check you are in the correct directory.")
       })
@@ -1413,8 +1413,8 @@ server <- function(input, output,session) {
   observeEvent(input$save_text, {
     removeModal()
 
-    if(!dir.exists(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))){
-      system(paste0("mkdir inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
+    if(!dir.exists(paste0("../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))){
+      system(paste0("mkdir ../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
     }
 
     matricesCanvas <- list()
@@ -1426,16 +1426,22 @@ server <- function(input, output,session) {
     canvasObjects$TwoDVisual <- NULL
 
     file_name <- glue("WHOLEmodel.RDs")
-    saveRDS(reactiveValuesToList(canvasObjects), file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    saveRDS(reactiveValuesToList(canvasObjects), file=file.path(paste0("../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     file_name <- glue("WHOLEmodel.json")
-    write_json(x = reactiveValuesToList(canvasObjects), path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    write_json(x = reactiveValuesToList(canvasObjects), path = file.path(paste0("../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     if(canvasObjects$whatif$outside_contagion_file != "") {
-      write_csv(x = canvasObjects$outside_contagion, file = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), canvasObjects$whatif$outside_contagion_file))
+      write_csv(x = canvasObjects$outside_contagion, file = file.path(paste0("../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), canvasObjects$whatif$outside_contagion_file))
     }
 
-    shinyalert("Success", paste0("Model linked to FLAME GPU 2 in resources/f4f/", input$popup_text ), "success", 1000)
+    models <- dir("../FLAMEGPU-FORGE4FLAME/resources/f4f/")
+    models <- models[which(models != "obj")]
+
+    updateRadioButtons(session, "radio_group", choices = models)
+    updateCheckboxGroupInput(session, "checkbox_group", choices = models)
+
+    shinyalert("Success", paste0("Model linked to FLAME GPU 2 in inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text ), "success", 1000)
   })
 
   ### Load: ####
@@ -2525,13 +2531,61 @@ server <- function(input, output,session) {
   allResRooms <- reactive({
     do.call(rbind,
             lapply(names(canvasObjects$agents), function(agent) {
-              rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
-                             canvasObjects$agents[[agent]]$RandFlow$Room)
+              rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
+                             canvasObjects$agents[[agent]]$RandFlow$Room))
+              rooms <- rooms[rooms != "Do nothing"]
               if(length(rooms)>0)
                 data.frame(Agent = agent , Room =  rooms)
               else NULL
             })
     )
+  })
+
+  output$selectInput_alternative_resources_global <- renderUI({
+    # Generate selectizeInput for each relevant agent
+    choicesRoom = c("Same room", "Skip room")
+
+    if(!is.null(canvasObjects$roomsINcanvas)){
+      rooms = canvasObjects$roomsINcanvas %>%
+        select(type, Name, area) %>%
+        filter(! type %in% c("Spawnroom", "Fillingroom", "Stair") ) %>%
+        mutate(NameTypeArea = paste0(type," - ",area)) %>%
+        distinct()
+
+      # Generate selectizeInput for each relevant agent
+      choicesRoom = c("Same room","Skip room",unique(rooms$NameTypeArea) )
+    }
+
+    selectizeInput(
+      inputId = "selectInput_alternative_resources_global",
+      label = "Select second choice for each agent:",
+      choices = choicesRoom,
+      selected = "Same room"
+    )
+  })
+
+  observeEvent(input$set_resources, {
+    if(!is.null(canvasObjects$roomsINcanvas)){
+      if(input$textInput_resources_global != "" &&
+         !is.null(input$textInput_resources_global) &&
+         !grepl("^[0-9]+$", input$textInput_resources_global) &&
+         input$textInput_resources_global >= 0){
+        shinyalert("You must specify a numeric value greater or equals than 0 (>= 0) for the global number of resources.")
+        return()
+      }
+
+      for(i in 1:length(canvasObjects$resources)){
+        if(!is.null(canvasObjects$resources[[i]]$waitingRooms)){
+          canvasObjects$resources[[i]]$waitingRooms$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRooms))
+        }
+
+        for(column in names(canvasObjects$resources[[i]]$roomResource)){
+          if(column != "room"){
+            canvasObjects$resources[[i]]$roomResource[column] <- input$textInput_resources_global
+          }
+        }
+      }
+    }
   })
 
   # Generate dynamic selectizeInput based on the selected room
@@ -2614,81 +2668,84 @@ server <- function(input, output,session) {
   })
 
   observe({
-    #give a default to resources and waitingrooms
-    resources_type = req(input$selectInput_resources_type)
-    ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
+    #Give a default to resources and alternative room
+    if(!is.null(canvasObjects$roomsINcanvas)){
+      roomsAvailable <- canvasObjects$roomsINcanvas %>%
+        filter(!type %in% c("Spawnroom", "Fillingroom", "Stair"))
+      for(resources_type in paste0(roomsAvailable$type, "-", roomsAvailable$area)){ #unique(allResRooms()$Room)){
+        ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
 
-    rooms = canvasObjects$roomsINcanvas %>%
-      select(type, Name, area ) %>%
-      mutate(TypeArea = paste0(type,"-",area)) %>%
-      filter(TypeArea == resources_type) %>%
-      distinct()
+        rooms = canvasObjects$roomsINcanvas %>%
+          select(type, Name, area ) %>%
+          mutate(TypeArea = paste0(type,"-",area)) %>%
+          filter(TypeArea == resources_type) %>%
+          distinct()
 
-    isolate({
-      if(dim(rooms)[1]==0){
-        data = data.frame()
-      }else if(is.null(canvasObjects$resources[[resources_type]]$roomResource)){
-        data = data.frame(room = rooms$Name, MAX = 0 )
-        for(a in unique(ResRoomsDF$Agent))
-          data[,a] = 0
-      }else{
-        # If there exist already the dataset, then it is used and we have to check that there is already the agents
-        dataOLD = canvasObjects$resources[[resources_type]]$roomResource
+        isolate({
+          if(dim(rooms)[1]==0){
+            data = data.frame()
+          }else if(is.null(canvasObjects$resources[[resources_type]]$roomResource)){
+            data = data.frame(room = rooms$Name, MAX = 0 )
+            for(a in unique(ResRoomsDF$Agent))
+              data[,a] = 0
+          }else{
+            # If there exist already the dataset, then it is used and we have to check that there is already the agents
+            dataOLD = canvasObjects$resources[[resources_type]]$roomResource
 
-        data = dataOLD[,c("room","MAX")]
-        for(a in unique(ResRoomsDF$Agent)){
-          if(a %in% colnames(dataOLD))
-            data[,a] = dataOLD[,a]
-          else
-            data[,a] = 0
-        }
-        # filter the rooms already present to keep only the new added in the canvas
-        dataNEW = rooms %>% filter(!Name %in% dataOLD$room)
+            data = dataOLD[,c("room","MAX")]
+            for(a in unique(ResRoomsDF$Agent)){
+              if(a %in% colnames(dataOLD))
+                data[,a] = dataOLD[,a]
+              else
+                data[,a] = 0
+            }
+            # filter the rooms already present to keep only the new added in the canvas
+            dataNEW = rooms %>% filter(!Name %in% dataOLD$room)
 
-        if(dim(dataNEW)[1]> 0 ){
-          dataNew = setNames(data.frame(matrix(0, ncol = length(colnames(dataOLD)), nrow = dim(dataNEW)[1])), colnames(dataOLD))
-          dataNew$room = dataNEW$Name
-          data = rbind(data,dataNew )
-        }
+            if(dim(dataNEW)[1]> 0 ){
+              dataNew = setNames(data.frame(matrix(0, ncol = length(colnames(dataOLD)), nrow = dim(dataNEW)[1])), colnames(dataOLD))
+              dataNew$room = dataNEW$Name
+              data = rbind(data,dataNew )
+            }
+          }
+
+          canvasObjects$resources[[resources_type]]$roomResource <- data
+        })
+
+        isolate({
+
+          data_waiting = data.frame()
+
+          if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
+            data_waiting = do.call(rbind,
+                            lapply(unique(ResRoomsDF$Agent), function(W)
+                              data.frame(Agent = W,
+                                                Room = "Same room")
+                              )
+            )
+          }else{
+            # If there exist already the dataset, then it is used and we have to check that there is already the agents
+            data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
+
+            data_waiting = data_waitingOLD[,c("Agent","Room")]
+            for(a in unique(ResRoomsDF$Agent)){
+              if(a %in% data_waitingOLD$Agent)
+                data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
+              else
+                data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+            }
+
+            agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
+
+            if(length(agent_eliminated) != 0){
+              data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
+            }
+          }
+
+          canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
+        })
       }
-
-      canvasObjects$resources[[resources_type]]$roomResource <- data
-    })
-
-    isolate({
-
-      data_waiting = data.frame()
-
-      if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
-        data_waiting = do.call(rbind,
-                        lapply(unique(ResRoomsDF$Agent), function(W)
-                          data.frame(Agent = W,
-                                            Room = "Same room")
-                          )
-        )
-      }else{
-        # If there exist already the dataset, then it is used and we have to check that there is already the agents
-        data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
-
-        data_waiting = data_waitingOLD[,c("Agent","Room")]
-        for(a in unique(ResRoomsDF$Agent)){
-          if(a %in% data_waitingOLD$Agent)
-            data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
-          else
-            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
-        }
-
-        agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
-
-        if(length(agent_eliminated) != 0){
-          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
-        }
-      }
-
-      canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
-
-
-    })
+    }
 
   })
 
@@ -2697,7 +2754,8 @@ server <- function(input, output,session) {
     output$RoomAgentResTable <- DT::renderDataTable(
       DT::datatable(canvasObjects$resources[[input$selectInput_resources_type]]$roomResource,
                     options = list(
-                      dom = 't'  # Display only the table, not the default elements (e.g., search bar, length menu)
+                      dom = 't',  # Display only the table, not the default elements (e.g., search bar, length menu)
+                      scrollX = TRUE
                     ),
                     editable = list(target = 'cell', disable = list(columns = c(0))),
                     selection = 'single',
@@ -4190,6 +4248,20 @@ server <- function(input, output,session) {
     }
 
     canvasObjects$starting$nrun <- nrun
+  })
+
+  observe({
+    models <- dir("../FLAMEGPU-FORGE4FLAME/resources/f4f/")
+    models <- models[which(models != "obj")]
+
+    if(length(models) == 0){
+      updateRadioButtons(session, "radio_group", choices = c("No model available"), selected = "")
+      updateCheckboxGroupInput(session, "checkbox_group", choices = c("No model available"), selected = "")
+    }
+    else{
+      updateRadioButtons(session, "radio_group", choices = models)
+      updateCheckboxGroupInput(session, "checkbox_group", choices = models)
+    }
   })
 
   #### 2D visualisation ####
