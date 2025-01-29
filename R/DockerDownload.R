@@ -16,7 +16,7 @@
 downloadContainers <- function(containers.file=NULL, tag = "latest"){
   if (is.null(containers.file))
   {
-    containers.file = system.file("Containers","containersNames.txt", package = "F4F")
+    containers.file = system.file("Containers", "containersNames.txt", package = "FORGE4FLAME")
     containers <- read.table(containers.file,
                              header = TRUE,
                              row.names = 1)
@@ -25,7 +25,7 @@ downloadContainers <- function(containers.file=NULL, tag = "latest"){
                              header = TRUE,
                              row.names = 1)
   }
-  
+
 
     # curr.tag <- gsub(pattern = "([[:alpha:]]+){1}(/F4F){1}(-[[:alpha:]]+:){1}",
     #                  replacement = "",
@@ -34,13 +34,13 @@ downloadContainers <- function(containers.file=NULL, tag = "latest"){
     # containers$names <- gsub(pattern = curr.tag,
     #                          replacement = tag,
     #                          x = containers$names)
-  
+
   userid=system("id -u", intern = TRUE)
   username=system("id -un", intern = TRUE)
-  
+
   for (i in dim(containers)[1]:1)
   {
-    status <- system(paste("docker pull ",containers[i,1],
+    status <- system(paste("docker pull ", containers[i,1],
                            sep = ""))
     if (status)
     {
@@ -51,9 +51,9 @@ downloadContainers <- function(containers.file=NULL, tag = "latest"){
         return(status)
     }
   }
-  
+
   write.table(containers,
-              paste(path.package(package = "F4F"),"Containers/containersNames.txt",
+              paste(path.package(package = "FORGE4FLAME"),"Containers/containersNames.txt",
                     sep = "/"))
 
   }

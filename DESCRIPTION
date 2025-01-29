@@ -7,10 +7,10 @@ Authors@R:
     person("Simone", "Pernice", email = "simone.pernice@unito.it", role = c("aut", "cre"))
 Description: Forge4Flame (F4F) is a user-friendly R Shiny dashboard designed 
     to streamline the creation of FLAME GPU 2 ABMs, automatically generating 
-    the necessary code. With its intuitive interface, users can easily define 
-    key components, including the model’s environment, the agents interacting 
-    within it, the disease model, and other essential elements for agent-based 
-    simulations.
+    the necessary code for designing and executing ABMs. With its intuitive
+    interface, users can easily define key components, including the model’s
+    environment, the agents interacting within it, the disease model, and other
+    essential elements for agent-based simulations.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

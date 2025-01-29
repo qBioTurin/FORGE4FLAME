@@ -251,15 +251,15 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
   }
 
-  updateSelectizeInput(inputId = "id_new_agent",choices = unique(names(canvasObjects$agents)), selected = "")
-  updateSelectizeInput(inputId = "id_agents_to_copy",choices = unique(names(canvasObjects$agents)), selected = "")
+  updateSelectizeInput(inputId = "id_new_agent", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
+  updateSelectizeInput(inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
 
   classes <- c()
   for(i in 1:length(canvasObjects$agents)){
     classes <- c(canvasObjects$agents[[i]]$Class, classes)
   }
 
-  updateSelectizeInput(inputId = "id_class_agent",choices = unique(classes))
+  updateSelectizeInput(inputId = "id_class_agent", choices = if(length(classes) > 0) unique(classes) else "")
 
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
@@ -340,7 +340,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
                          selected = canvasObjects$whatif$mask_fraction)
   }
   updateSelectizeInput(session = session, "agent_mask",
-                       choices = names(canvasObjects$agents), selected = "")
+                       choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
 
   updateRadioButtons(session, inputId = "vaccination_type", selected = canvasObjects$whatif$vaccination_type)
   if(canvasObjects$whatif$vaccination_type == "Global"){
@@ -350,7 +350,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     updateSelectizeInput(session = session, "vaccination_efficacy_global",
                          selected = canvasObjects$whatif$vaccination_efficacy)
   }
-  updateTextInput(session = session, "agent_vaccination", value = "")
+  updateSelectizeInput(session = session, "agent_vaccination", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "")
 
   updateRadioButtons(session, inputId = "swab_type", selected = canvasObjects$whatif$swab_type)
   updateRadioButtons(session, inputId = "swab_sensitivity", selected = canvasObjects$whatif$swab_sensitivity)
@@ -359,10 +359,10 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     tab <- if(canvasObjects$whatif$swab_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
     update_distribution("swab_global", canvasObjects$whatif$swab_dist, canvasObjects$whatif$swab_a, canvasObjects$whatif$swab_b, tab)
   }
-  updateTextInput(session = session, "agent_swab", value = "")
+  updateSelectizeInput(session = session, "agent_swab", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "")
 
   updateRadioButtons(session, inputId = "quarantine_type", selected = canvasObjects$whatif$quarantine_type)
-  updateTextInput(session = session, "agent_quarantine", value = "")
+  updateSelectizeInput(session = session, "agent_quarantine", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "")
 
   if(canvasObjects$whatif$quarantine_type == "Global"){
     tab <- if(canvasObjects$whatif$quarantine_days_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
@@ -374,7 +374,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     update_distribution("quarantine_swab_global", canvasObjects$whatif$quarantine_swab_days_dist, canvasObjects$whatif$quarantine_swab_days_a, quarantine_swab_days_b, tab)
     updateTextInput(session = session, "room_quarantine_global", value = canvasObjects$whatif$room_for_quarantine)
   }
-  updateTextInput(session = session, "agent_quarantine", value = "")
+  updateSelectizeInput(session = session, "agent_quarantine", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "")
   updateSelectizeInput(session = session, "room_quarantine_global",
                        choices = roomsAvailable)
   updateSelectizeInput(session = session, "room_quarantine_specific",
@@ -385,7 +385,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     updateRadioButtons(session, inputId = "external_screening_first_global", selected = canvasObjects$whatif$external_screening_first)
     updateRadioButtons(session, inputId = "external_screening_second_global", selected = canvasObjects$whatif$external_screening_second)
   }
-  updateTextInput(session = session, "agent_external_screening", value = "")
+  updateSelectizeInput(session = session, "agent_external_screening", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "")
 
   updateTextInput(session, inputId = "virus_variant", value = canvasObjects$virus_variant)
   updateTextInput(session, inputId = "virus_severity", value = canvasObjects$virus_severity)

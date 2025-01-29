@@ -50,7 +50,7 @@ server <- function(input, output,session) {
                                  resources = NULL,
                                  color = "Room",
                                  matricesCanvas = NULL,
-                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100),
+                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100, prun=10),
                                  rooms_whatif = NULL,
                                  agents_whatif = NULL,
                                  whatif = data.frame(ventilation_type="Global", ventilation_value="0 (no ventilation)",
@@ -4248,6 +4248,21 @@ server <- function(input, output,session) {
     }
 
     canvasObjects$starting$nrun <- nrun
+  })
+
+  prun <- debounce(reactive({input$prun}), 1000L)
+
+  observeEvent(prun(),{
+    disable("rds_generation")
+    disable("flamegpu_connection")
+    prun <- input$prun
+
+    if(prun == "" || !grepl("(^[0-9]+).*", prun) || prun <= 0){
+      shinyalert("You must specify a number greater than 0 (> 0).")
+      return()
+    }
+
+    canvasObjects$starting$prun <- prun
   })
 
   observe({
