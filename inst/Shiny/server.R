@@ -1735,6 +1735,11 @@ server <- function(input, output,session) {
         updateSelectizeInput(session = session, "agent_initial_infected",
                              choices = c("", names(canvasObjects$agents)))
       }
+
+      for(i in 1:length(WHOLEmodel$resources)){
+        WHOLEmodel$resources[[i]]$roomResource <- WHOLEmodel$resources[[i]]$roomResource[, which(!names(WHOLEmodel$resources[[i]]$roomResource) == Agent)]
+        WHOLEmodel$resources[[i]]$waitingRooms[which(!WHOLEmodel$resources[[i]]$waitingRooms$Agent == Agent),]
+      }
     }
   })
 

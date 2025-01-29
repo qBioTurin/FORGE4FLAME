@@ -1,34 +1,31 @@
-# Immagine base di Shiny Server
-FROM rocker/shiny:latest
-
+# Immagine base di R con RStudio
+FROM rocker/rstudio:latest
 # Dipendenze di sistema necessarie
+# Aggiorna e installa le dipendenze di sistema necessarie
 RUN apt-get update && apt-get install -y \
-    libfftw3-dev
+    libfftw3-dev \
+    libmagick++-dev \
+    git \
+    sudo
 
-# Pacchetti R necessari
-RUN R -e "install.packages(c('remotes', 'shiny', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
+# Installa devtools e pacchetti R necessari
+RUN R -e "install.packages(c('devtools', 'remotes', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
 
 # Installa BiocManager e EBImage
 RUN R -e "install.packages('BiocManager', repos='http://cran.rstudio.com/')"
 RUN R -e "BiocManager::install('EBImage', force=TRUE)"
 
-# Installa devtools e EBImageExtra
-RUN R -e "install.packages('devtools')"
-RUN R -e "devtools::install_github('ornelles/EBImageExtra', force=TRUE)"
-RUN R -e "devtools::install_github('qBioTurin/F4F', auth_token = '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', ref='main', dependencies=TRUE, force=TRUE)"
+# Clona e installa EBImageExtra dal repository GitHub
+RUN git clone https://github.com/ornelles/EBImageExtra.git /usr/local/src/EBImageExtra
+RUN R -e "devtools::install('/usr/local/src/EBImageExtra', dependencies = TRUE, force = TRUE)"
 
-# Copia gli script dell'applicazione nel container
-RUN mkdir -p /srv/shiny-server/F4F
-RUN cp -r /usr/local/lib/R/site-library/F4F/* /srv/shiny-server/F4F/
+# Clona il repository FORGE4FLAME
+RUN git clone https://francescosiv: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@github.com/qBioTurin/FORGE4FLAME.git /usr/local/src/FORGE4FLAME
 
-# Copia il file app.R nel container
-COPY app.R /srv/shiny-server/
+# Installa il pacchetto R dal repository clonato
+RUN R -e "devtools::install('/usr/local/src/FORGE4FLAME', dependencies = TRUE, force = TRUE)"
 
-# Imposta i permessi corretti per Shiny Server
-RUN chown -R shiny:shiny /srv/shiny-server
-
-# Espone la porta per Shiny Server
-EXPOSE 3838
-
-# Comando per eseguire automaticamente l'applicazione Shiny
-CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app.R', host = '0.0.0.0', port = 3838)"]
+# Copia gli script nel container
+COPY . /home/rstudio/
+# Imposta la directory di lavoro
+WORKDIR /home/rstudio/
