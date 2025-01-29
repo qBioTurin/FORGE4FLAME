@@ -4034,9 +4034,11 @@ server <- function(input, output,session) {
     }
     else{
       agents_name <- c()
-      for(a in 1:length(canvasObjects$agents)){
-        if(canvasObjects$agents[[a]]$entry_type == "Time window")
-          agents_name <- c(agents_name, names(canvasObjects$agents)[a])
+      if(!is.null(canvasObjects$agents)){
+        for(a in 1:length(canvasObjects$agents)){
+          if(canvasObjects$agents[[a]]$entry_type == "Time window")
+            agents_name <- c(agents_name, names(canvasObjects$agents)[a])
+        }
       }
       updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", agents_name))
 

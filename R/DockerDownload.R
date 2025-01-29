@@ -13,47 +13,33 @@
 #' }
 #' @export
 
-downloadContainers <- function(containers.file=NULL, tag = "latest"){
-  if (is.null(containers.file))
-  {
-    containers.file = system.file("Containers", "containersNames.txt", package = "FORGE4FLAME")
-    containers <- read.table(containers.file,
-                             header = TRUE,
-                             row.names = 1)
-  } else {
-    containers <- read.table(containers.file,
-                             header = TRUE,
-                             row.names = 1)
+downloadContainers <- function(containers.file = NULL, tag = "latest") {
+  if(is.null(containers.file)) {
+    containers.file <- system.file("Containers", "containersNames.txt", package = "FORGE4FLAME")
   }
 
+  if (!file.exists(containers.file)) {
+    stop("The specified containers file does not exist.")
+  }
 
-    # curr.tag <- gsub(pattern = "([[:alpha:]]+){1}(/F4F){1}(-[[:alpha:]]+:){1}",
-    #                  replacement = "",
-    #                  x = containers$names)
-    # curr.tag <- unique(curr.tag)
-    # containers$names <- gsub(pattern = curr.tag,
-    #                          replacement = tag,
-    #                          x = containers$names)
+  containers <- read.table(containers.file)
 
-  userid=system("id -u", intern = TRUE)
-  username=system("id -un", intern = TRUE)
+  userid <- system("id -u", intern = TRUE)
+  username <- system("id -un", intern = TRUE)
 
-  for (i in dim(containers)[1]:1)
-  {
-    status <- system(paste("docker pull ", containers[i,1],
-                           sep = ""))
-    if (status)
-    {
-      containers <- containers[-i]
-    }
-    else
-    {
-        return(status)
+  failed_containers <- c()
+
+  for (i in seq(1, nrow(containers), 1)) {
+    status <- system(paste("docker pull", containers[i, 1]))
+
+    if (status != 0) {  # If docker pull fails
+      failed_containers <- rbind(failed_containers, containers[i, , drop = FALSE])
     }
   }
 
-  write.table(containers,
-              paste(path.package(package = "FORGE4FLAME"),"Containers/containersNames.txt",
-                    sep = "/"))
-
+  # Save the updated container list if some failed
+  if (length(failed_containers) > 0) {
+    output_file <- file.path(path.package("FORGE4FLAME"), "Containers", "containersNames.txt")
+    write.table(failed_containers, output_file, row.names = TRUE, quote = FALSE)
   }
+}

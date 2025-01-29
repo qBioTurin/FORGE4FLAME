@@ -406,6 +406,25 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
     showElement("outside_contagion_plot")
   }
+  else{
+    hideElement("outside_contagion_plot")
+  }
+
+  # Resources
+  if(!is.null(canvasObjects$agents)){
+    allResRooms <- do.call(rbind,
+              lapply(names(canvasObjects$agents), function(agent) {
+                rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
+                                 canvasObjects$agents[[agent]]$RandFlow$Room))
+                rooms <- rooms[rooms != "Do nothing"]
+                if(length(rooms)>0)
+                  data.frame(Agent = agent , Room =  rooms)
+                else NULL
+              })
+      )
+
+    updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms else "")
+  }
 
   "The file has been uploaded with success!"
 }
