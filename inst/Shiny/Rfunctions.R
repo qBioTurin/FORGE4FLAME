@@ -768,6 +768,14 @@ FromToMatrices.generation = function(WHOLEmodel){
 
   names(AgentMeasuresFromTo) = unique(WHOLEmodel$agents_whatif$Measure)
 
+  # set initial infected agents as default zero
+
+  initial_infected= matrix(0,ncol = 1, nrow = length(agents), dimnames = list(agents = agents))
+
+  initial_infected[WHOLEmodel$initial_infected$Type,1] = WHOLEmodel$initial_infected$Number
+
+  ####
   return(list(AgentMeasuresFromTo = AgentMeasuresFromTo,
-              RoomsMeasuresFromTo = MeasuresFromTo))
+              RoomsMeasuresFromTo = MeasuresFromTo,
+              initial_infected = initial_infected))
 }

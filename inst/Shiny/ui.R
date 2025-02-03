@@ -111,7 +111,7 @@ ui <- dashboardPage(
                 #menuItem("Advanced", tabName = "advanced", icon = icon("code")),
                 menuItem("Configuration", tabName = "configuration", icon = icon("flag-checkered")),
                 menuItem("Settings", tabName = "settings", icon = icon("cogs")),
-                menuItem("2D visualisation", tabName = "2dvisual", icon = icon("file-video"))
+                menuItem("2D visualisation", tabName = "post_process", icon = icon("file-video"))
     )
   ),
   dashboardBody(
@@ -179,8 +179,8 @@ ui <- dashboardPage(
                       <img class='home' src='Settings.png' alt=Settings page', width='100%'>
                     </li>
                     <li class='home'>
-                      <b>2D Visualisation</b>: visualise a simulation log in 2D.
-                      <img class='home' src='2DVisualisation.png' alt=2D visualisation page', width='100%'>
+                      <b>Post Processing</b>: Post Processing of the simulations.
+                      <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
                     </li>
                   </ul>
                 </h2>
@@ -1509,10 +1509,10 @@ ui <- dashboardPage(
                     )
                 ))
       ),
-      tabItem(tabName = "2dvisual",
+      tabItem(tabName = "post_process",
               fluidRow(
                 box(width = 12,
-                    title = h3("2D visualisation of the simulation"),
+                    title = h3("Post Processing of the simulation"),
                     fluidRow(
                       box(width = 12,
                           title = div(class = "icon-container", style="margin-top:20px",

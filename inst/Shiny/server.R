@@ -1383,6 +1383,7 @@ server <- function(input, output,session) {
       out = FromToMatrices.generation(model)
       model$rooms_whatif = out$RoomsMeasuresFromTo
       model$agents_whatif = out$AgentMeasuresFromTo
+      model$initial_infected = out$initial_infected
       write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
 
       generate_obj(paste0(temp_directory, "/obj"))
@@ -1432,6 +1433,7 @@ server <- function(input, output,session) {
     out = FromToMatrices.generation(model)
     model$rooms_whatif = out$RoomsMeasuresFromTo
     model$agents_whatif = out$AgentMeasuresFromTo
+    model$initial_infected = out$initial_infected
     file_name <- glue("WHOLEmodel.json")
     write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
