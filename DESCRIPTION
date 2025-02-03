@@ -36,4 +36,5 @@ Imports:
     shiny,
     shinyWidgets,
     htmltools,
-    DT
+    DT,
+    shinyFiles

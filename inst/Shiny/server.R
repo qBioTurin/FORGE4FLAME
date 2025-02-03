@@ -3359,7 +3359,7 @@ server <- function(input, output,session) {
 
   ##########
 
-  ### Load csv: ###
+  ### Load csv: ####
   observeEvent(input$LoadCSV_Button_OutsideContagion,{
     disable("rds_generation")
     disable("flamegpu_connection")
@@ -3492,7 +3492,45 @@ server <- function(input, output,session) {
 
   #### 2D visualisation ####
 
-  observeEvent(input$LoadCSVsimul_Button,{
+  required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
+                      "evolution.csv","host_rng_state.txt", "INFO.csv" )
+  # Allow user to select a folder
+  wdFolders = str_split(string = dirname(getwd()),pattern = "/")
+  wdFolders= paste0(wdFolders[[1]][1:3],collapse = "/")
+  shinyDirChoose(input, "dir", roots = c(wd = wdFolders), filetypes = c('', 'csv','txt'))
+
+  # Get the selected folder path
+  dirPath <- reactive({
+    req(input$dir)
+    parseDirPath(roots = c(wd = wdFolders), input$dir)
+  })
+
+  # Display the selected folder path
+  output$dirPath <- renderText({
+    dirPath()
+  })
+
+
+  # Check for required files in subfolders
+  valid_subfolders <- reactive({
+    req(dirPath())
+    subfolders <- list.dirs(dirPath(), recursive = FALSE)
+    valid <- sapply(subfolders, function(subfolder) {
+      all(file.exists(file.path(subfolder, required_files)))
+    })
+    subfolders[valid]
+  })
+
+  # Create a dropdown to select a subfolder
+  output$subfolderUI <- renderUI({
+    if(length(valid_subfolders()) == 0 ){
+      shinyalert("No valid folder is present in the selected folder.",type = "error")
+      return()
+    }
+    selectInput("selectedSubfolder", "Select Subfolder", choices = basename(valid_subfolders()))
+  })
+
+  observeEvent(input$selectedSubfolder,{
     disable("rds_generation")
     disable("flamegpu_connection")
 
@@ -3502,13 +3540,13 @@ server <- function(input, output,session) {
         return()
       }
 
-      if(is.null(input$CSVsimulImport) || !file.exists(input$CSVsimulImport$datapath) || !grepl(".csv", input$CSVsimulImport$datapath)){
-        shinyalert("Error","Please select one csv file.", "error", 5000)
-        return()
-      }
+      dataframe <- read_csv("/Users/simonepernice/Desktop/simulation/School/seed123456789/evolution.csv")
 
-      dataframe <- read_csv(input$CSVsimulImport$datapath)
-      colnames(dataframe) <- c("seed", "time", "id", "agent_type", "x", "y", "z", "disease_state", "week_day", "flow_index", "steps", "events", "quarantine")
+      CSVdatapath = paste0(dirPath(), "/" , input$selectedSubfolder,"/AGENT_POSITION_AND_STATUS.csv")
+
+      dataframe <- read_csv(CSVdatapath)
+      colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
+                                "disease_state")
 
       # Check the the file is actually generated in the correct format
 
@@ -3722,6 +3760,61 @@ server <- function(input, output,session) {
   })
   #### END 2D visualisation ####
 
+  #### query ####
+  csv_data <- reactive({
+    req(dirPath())
+    subfolders <- list.dirs(dirPath(), recursive = FALSE)
+    csv_files <- file.path(subfolders, "evolution.csv")
+    data_list <- lapply(csv_files, function(file) {
+      if (file.exists(file)) {
+        f = read_csv(file)
+        f$Folder= basename(dirname(file))
+        f
+      } else {
+        NULL
+      }
+    })
+    data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+    if (length(data_list) == 0) return(NULL)
+    do.call(rbind, data_list)
+  })
+
+  output$PostProc_filters <- renderUI({
+    req(csv_data())
+    df <- csv_data()
+    name_cols <- colnames(df%>% select(-Seed,-Folder))
+
+    lapply(name_cols, function(col) {
+      values = unique(df[[col]])
+      sliderInput(
+        inputId = paste0("filter_", col),
+        label = paste("Select range for", col),
+        min = min(values, na.rm = TRUE),
+        max = max(values, na.rm = TRUE),
+        value = range(values, na.rm = TRUE)
+      )
+    })
+  })
+
+  filtered_data <- reactive({
+    req(csv_data())
+    df <- csv_data()
+    name_cols <- colnames(df%>% select(-Seed,-Folder))
+
+    for (col in name_cols) {
+      input_id <- paste0("filter_", col)
+      if (!is.null(input[[input_id]])) {
+        df <- df[df[[col]] >= input[[input_id]][1] & df[[col]] <= input[[input_id]][2], ]
+      }
+    }
+    df
+  })
+
+  output$PostProc_table <- renderTable({
+    data.frame(FolderNames = paste(unique(filtered_data()$Folder) ) )
+  })
+
+  #### end query posto processing ####
 
   observeEvent(input$run,{
 

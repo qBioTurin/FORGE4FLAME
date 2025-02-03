@@ -18,6 +18,7 @@ library(ggplot2)
 library(tidyr)
 library(htmltools)
 library(DT)
+library(shinyFiles)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -111,7 +112,7 @@ ui <- dashboardPage(
                 #menuItem("Advanced", tabName = "advanced", icon = icon("code")),
                 menuItem("Configuration", tabName = "configuration", icon = icon("flag-checkered")),
                 menuItem("Settings", tabName = "settings", icon = icon("cogs")),
-                menuItem("2D visualisation", tabName = "post_process", icon = icon("file-video"))
+                menuItem("Post Processing", tabName = "post_process", icon = icon("file-video"))
     )
   ),
   dashboardBody(
@@ -979,7 +980,7 @@ ui <- dashboardPage(
                     title =  div(class = "icon-container",
                                  h5(tags$b("Saved Countermeasures"), icon("info-circle")),
                                  div(class = "icon-text", "To remove rows in the tables, double click on it.")
-                                 ),
+                    ),
                     fluidRow(
                       column(width = 10,offset = 1,
                              DT::DTOutput("rooms_whatif")),
@@ -1372,12 +1373,12 @@ ui <- dashboardPage(
                         width = 2,
                         radioButtons(inputId = "initial_infected_type",
                                      label =
-                                     div(class = "icon-container",
-                                         h5(tags$b("Intial infected: "), icon("info-circle")),
-                                         div(class = "icon-text", "Set the initial number of infected considering the agents with an entry flow set as 'Time Window'.\n
+                                       div(class = "icon-container",
+                                           h5(tags$b("Intial infected: "), icon("info-circle")),
+                                           div(class = "icon-text", "Set the initial number of infected considering the agents with an entry flow set as 'Time Window'.\n
                                              Random means that the number of initial infected agents is sampled considering all the agents.\n
                                              Global means that thenumber id used to set the initial number of infected agents for all the agents type.")
-                                     ),
+                                       ),
                                      choices = c("Random", "Global", "Different for each agent"),
                                      selected = "Random"
                         )
@@ -1521,63 +1522,82 @@ ui <- dashboardPage(
                           ),
                           fluidRow(
                             column(
-                              8,
+                              width = 4,
                               offset = 1,
-                              fileInput(
-                                inputId = "CSVsimulImport",
-                                label = "",
-                                placeholder = "Select an csv file.",
-                                width = "100%",
-                                multiple = F
-                              )
+                              shinyDirButton("dir", "Select Folder", "Upload"),
+                              uiOutput("subfolderUI")
+                              # fileInput(
+                              #   inputId = "CSVsimulImport",
+                              #   label = "",
+                              #   placeholder = "Select an csv file.",
+                              #   width = "100%",
+                              #   multiple = F
+                              # )
                             ),
                             column(
-                              1,
+                              width = 6,
                               style = "margin-top: 20px;",
-                              actionButton(
-                                label = "Load",
-                                icon = shiny::icon("upload"),
-                                inputId = "LoadCSVsimul_Button"
-                              )
+                              verbatimTextOutput("dirPath")
+                              # actionButton(
+                              #   label = "Load",
+                              #   icon = shiny::icon("upload"),
+                              #   inputId = "LoadCSVsimul_Button"
+                              # )
                             )
                           )
                       )
                     ),
                     fluidRow(
-                      box(width = 12,
+                      box(width = 12,collapsed = F,collapsible = T,
                           title = div(class = "icon-container", style="margin-top:20px",
-                                      h3("Features ", icon("info-circle")),
-                                      div(class = "icon-text", "....")
+                                      h3("Query on Disease Status", icon("info-circle")),
+                                      div(class = "icon-text", "Find the simulations with defined specification on the disease.")
                           ),
                           fluidRow(
-                            column(2,
-                                   selectizeInput("visualFloor_select","Select floor to visualise:", choices = "All")
+                            column(width = 6,
+                                   uiOutput("PostProc_filters")
                             ),
-                            column(2,
-                                   selectizeInput("visualAgent_select","Select agent type to visualise:", choices = "All")
-                            ),
-                            conditionalPanel( "input.visualAgent_select != 'All'",
-                                              column(2,
-                                                     selectizeInput("visualAgentID_select", "Select agent id to visualise:", choices = "All")
-                                              )
-                            ),
-                            column(2,
-                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area"))
-                            ),
-                            column(2,
-                                   radioButtons("visualLabel_select","Show in the room:",
-                                                selected = "None",
-                                                choices = c("None","Name", "Type", "Area","Agent ID"))
+                            column(width = 5,
+                                   tableOutput("PostProc_table")
                             )
-
                           )
                       )
                     ),
                     fluidRow(
-                      box(width = 12,
+                      box(width = 12,collapsed = F,collapsible = T,
                           title = div(class = "icon-container", style="margin-top:20px",
-                                      h3("2D Visualisation ", icon("info-circle")),
-                                      div(class = "icon-text", "....")
+                                      h3("2D Visualisation", icon("info-circle")),
+                                      div(class = "icon-text", "2D visulisation of the agents moving in the modeled system")
+                          ),
+                          fluidRow(
+                            box(width = 10,collapsed = T,collapsible = T,
+                                title = div(class = "icon-container", style="margin-top:20px",
+                                            h3("Features ", icon("info-circle")),
+                                            div(class = "icon-text", "....")
+                                ),
+                                fluidRow(
+                                  column(2,
+                                         selectizeInput("visualFloor_select","Select floor to visualise:", choices = "All")
+                                  ),
+                                  column(2,
+                                         selectizeInput("visualAgent_select","Select agent type to visualise:", choices = "All")
+                                  ),
+                                  conditionalPanel( "input.visualAgent_select != 'All'",
+                                                    column(2,
+                                                           selectizeInput("visualAgentID_select", "Select agent id to visualise:", choices = "All")
+                                                    )
+                                  ),
+                                  column(2,
+                                         selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area"))
+                                  ),
+                                  column(2,
+                                         radioButtons("visualLabel_select","Show in the room:",
+                                                      selected = "None",
+                                                      choices = c("None","Name", "Type", "Area","Agent ID"))
+                                  )
+
+                                )
+                            )
                           ),
                           fluidRow(
                             column(12,
