@@ -592,7 +592,10 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            fluidRow(column(5, tags$h4("Random flow"))),
+            fluidRow(column(5, div(class = "icon-container",
+                                   h4("Random flow ", icon("info-circle")),
+                                   div(class = "icon-text", "A random event should occur infrequently and last for a short duration (few minutes).")
+            ))),
             fluidRow(
               column(2,offset = 1,
                      selectizeInput(inputId= "Rand_select_room_flow",

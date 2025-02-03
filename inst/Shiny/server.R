@@ -571,7 +571,7 @@ server <- function(input, output,session) {
 
         runjs( command_addRoomObject( newroom) )
 
-        rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
+        rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
         roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
         updateSelectizeInput(session = session, "room_ventilation",
                              choices = roomsAvailable)

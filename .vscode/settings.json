@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "cmath": "cpp",
+        "atomic": "cpp",
+        "utility": "cpp",
+        "iterator": "cpp"
+    }
+}
