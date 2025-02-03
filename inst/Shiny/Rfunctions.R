@@ -321,79 +321,13 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateTextInput(session, inputId = "simulation_days", value = canvasObjects$starting$simulation_days)
   updateSelectizeInput(session, inputId = "step", choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60), selected = as.numeric(canvasObjects$starting$step))
 
-  updateRadioButtons(session, inputId = "ventilation_type", selected = canvasObjects$whatif$ventilation_type)
-  if(canvasObjects$whatif$ventilation_type == "Global"){
-    updateSelectizeInput(session = session, "ventilation_global",
-                         selected = canvasObjects$whatif$ventilation_value)
-  }
+
   rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
   roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
   updateSelectizeInput(session = session, "room_ventilation",
                        choices = roomsAvailable, selected = "")
 
-  updateRadioButtons(session, inputId = "mask_type", selected = canvasObjects$whatif$mask_type)
-  if(canvasObjects$whatif$mask_type == "Global"){
-    updateSelectizeInput(session = session, "mask_global",
-                         selected = canvasObjects$whatif$mask_value)
 
-    updateSelectizeInput(session = session, "mask_fraction_global",
-                         selected = canvasObjects$whatif$mask_fraction)
-  }
-  updateSelectizeInput(session = session, "agent_mask",
-                       choices = names(canvasObjects$agents), selected = "")
-
-  updateRadioButtons(session, inputId = "vaccination_type", selected = canvasObjects$whatif$vaccination_type)
-  if(canvasObjects$whatif$vaccination_type == "Global"){
-    updateSelectizeInput(session = session, "vaccination_global",
-                         selected = canvasObjects$whatif$vaccination_value)
-
-    updateSelectizeInput(session = session, "vaccination_efficacy_global",
-                         selected = canvasObjects$whatif$vaccination_efficacy)
-  }
-  updateTextInput(session = session, "agent_vaccination", value = "")
-
-  updateRadioButtons(session, inputId = "swab_type", selected = canvasObjects$whatif$swab_type)
-  updateRadioButtons(session, inputId = "swab_sensitivity", selected = canvasObjects$whatif$swab_sensitivity)
-  updateRadioButtons(session, inputId = "swab_specificity", selected = canvasObjects$whatif$swab_specificity)
-  if(canvasObjects$whatif$swab_type == "Global"){
-    tab <- if(canvasObjects$whatif$swab_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-    update_distribution("swab_global", canvasObjects$whatif$swab_dist, canvasObjects$whatif$swab_a, canvasObjects$whatif$swab_b, tab)
-  }
-  updateTextInput(session = session, "agent_swab", value = "")
-
-  updateRadioButtons(session, inputId = "quarantine_type", selected = canvasObjects$whatif$quarantine_type)
-  updateTextInput(session = session, "agent_quarantine", value = "")
-
-  if(canvasObjects$whatif$quarantine_type == "Global"){
-    tab <- if(canvasObjects$whatif$quarantine_days_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-    update_distribution("quarantine_global", canvasObjects$whatif$quarantine_days_dist, canvasObjects$whatif$quarantine_days_a, quarantine_days_b, tab)
-
-    updateRadioButtons(session, inputId = "quarantine_swab_type_global", selected = canvasObjects$whatif$quarantine_swab_days_type)
-
-    tab <- if(canvasObjects$whatif$quarantine_swab_days_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-    update_distribution("quarantine_swab_global", canvasObjects$whatif$quarantine_swab_days_dist, canvasObjects$whatif$quarantine_swab_days_a, quarantine_swab_days_b, tab)
-    updateTextInput(session = session, "room_quarantine_global", value = canvasObjects$whatif$room_for_quarantine)
-  }
-  updateTextInput(session = session, "agent_quarantine", value = "")
-  updateSelectizeInput(session = session, "room_quarantine_global",
-                       choices = roomsAvailable)
-  updateSelectizeInput(session = session, "room_quarantine_specific",
-                       choices = roomsAvailable)
-
-  updateRadioButtons(session, inputId = "external_screening_type", selected = canvasObjects$whatif$external_screening_type)
-  if(canvasObjects$whatif$external_screening_type == "Global"){
-    updateRadioButtons(session, inputId = "external_screening_first_global", selected = canvasObjects$whatif$external_screening_first)
-    updateRadioButtons(session, inputId = "external_screening_second_global", selected = canvasObjects$whatif$external_screening_second)
-  }
-  updateTextInput(session = session, "agent_external_screening", value = "")
-
-  updateTextInput(session, inputId = "virus_variant", value = canvasObjects$virus_variant)
-  updateTextInput(session, inputId = "virus_severity", value = canvasObjects$virus_severity)
-
-  updateRadioButtons(session, inputId = "initial_infected_type", selected = canvasObjects$whatif$initial_infected_type)
-  if(canvasObjects$whatif$initial_infected_type == "Global" || canvasObjects$whatif$initial_infected_type == "Random"){
-    updateTextInput(session = session, "initial_infected_global", value = canvasObjects$whatif$initial_infected)
-  }
 
   if(!is.null(canvasObjects$outside_contagion)){
     output$outside_contagion_plot <- renderPlot({
@@ -713,4 +647,127 @@ update_distribution <- function(id, dist, a, b, tab){
     updateTextInput(inputId = paste0("DistStoc_NormRate_m_", id), value = a)
     updateTextInput(inputId = paste0("DistStoc_NormRate_sd_", id), value = b)
   }
+}
+
+FromToMatrices.generation = function(WHOLEmodel){
+
+  maxN = as.numeric(WHOLEmodel$starting$simulation_days)
+
+  ## defualt values
+  default_params = data.frame(
+    Measure = "Ventilation",
+    Type = "Global",
+    Parameters = "0",
+    From = 1,
+    To = maxN,
+    stringsAsFactors = FALSE
+  )
+
+  WHOLEmodel$rooms_whatif = rbind(default_params,WHOLEmodel$rooms_whatif)
+  ## rooms_whatif as in the OLD version
+  rooms_whatif = WHOLEmodel$rooms_whatif  %>% distinct() %>% tidyr::spread(value = "Parameters", key = "Measure") %>% select(-From, -To)
+  split = str_split(rooms_whatif$Type,pattern = "-")%>%
+    as.data.frame() %>%
+    t %>%
+    data.frame(stringsAsFactors = F)
+  rooms_whatif$Type= split %>% pull(1)
+  rooms_whatif$Area= split %>% pull(2)
+
+  ## From_to matrix generation rooms
+
+  rooms = WHOLEmodel$roomsINcanvas %>% mutate(Type= paste0(type,"-",area)) %>% select(Type) %>% distinct() %>% pull()
+  rooms_fromto= matrix(0,ncol = maxN, nrow = length(rooms), dimnames = list(rooms = rooms, days= 1:maxN))
+
+  MeasuresFromTo = lapply( unique(WHOLEmodel$rooms_whatif$Measure),function(m,fromto){
+    rooms_whatif = WHOLEmodel$rooms_whatif %>% filter(Measure == m)
+
+    global = rooms_whatif %>% filter(Type == "Global")
+    if(dim(global)[1] >0){
+      for(i in seq_along(global[,1])){
+        glob_specific = global[i,]
+        fromto[,glob_specific$From:glob_specific$To] = glob_specific$Parameters
+      }
+    }
+
+    room_specific = rooms_whatif %>% filter(Type != "Global")
+    if(dim(room_specific)[1] >0){
+      for(i in seq_along(room_specific[,1])){
+        r_specific = room_specific[i,]
+        fromto[r_specific$Type,r_specific$From:r_specific$To] = r_specific$Parameters
+      }
+    }
+
+    return(fromto)
+  },fromto = rooms_fromto)
+  names(MeasuresFromTo) = unique(WHOLEmodel$rooms_whatif$Measure)
+
+  ## From_to matrix generation Agents
+  agents = names( WHOLEmodel$agents )
+  agents_fromto= matrix(0,ncol = maxN, nrow = length(agents), dimnames = list(agents = agents, days= 1:maxN))
+
+  agent_default <- data.frame(
+    Measure = c("Mask","Vaccination","Swab","Quarantine","External screening"),
+    Type = "Global",
+    Parameters = c( "Type: No mask; Fraction: 0",
+                    "Efficacy: 1; Fraction: 0; Coverage: 0",
+                    "Sensitivity: 1; Specificity: 1; Dist: Deterministic, 0, 0 ",
+                    "Dist. Days: Deterministic, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0 ",
+                    "First: 0; Second: 0" ),
+    From = 1,
+    To = 10,
+    stringsAsFactors = FALSE
+  )
+
+  WHOLEmodel$agents_whatif = rbind(agent_default,WHOLEmodel$agents_whatif)
+  AgentMeasuresFromTo = lapply( unique(WHOLEmodel$agents_whatif$Measure),function(m,fromto){
+    agents_whatif = WHOLEmodel$agents_whatif %>% filter(Measure == m) %>% rename(Name = Type)
+
+    # parsing the parameters
+    params = str_split(agents_whatif[,"Parameters"],pattern = "; ")%>%
+      as.data.frame() %>%
+      t %>%
+      data.frame(stringsAsFactors = F)
+
+    colnames(params)= str_split(params[1,],pattern = ": ")%>%
+      as.data.frame() %>%
+      t %>%
+      data.frame(stringsAsFactors = F) %>% pull(1)
+    rownames(params) = NULL
+
+    for(j in 1:nrow(params))
+      params[j,] = gsub(x = params[j,],replacement = "",pattern = paste0(paste0(colnames(params),": "),collapse = "||"))
+
+    agents_whatif = cbind(agents_whatif %>% select(-Parameters), params)
+
+    fromto = lapply(names(params),function(i,fromto_p){
+      a_specific = agents_whatif[,c("Name","From","To",i) ]
+
+      global = a_specific %>% filter(Name == "Global")
+      if(dim(global)[1] >0){
+        for(ii in seq_along(global[,1])){
+          glob_specific = global[ii,]
+          fromto_p[,glob_specific$From:glob_specific$To] = glob_specific[,i]
+        }
+      }
+
+      agent_specific = a_specific %>% filter(Name != "Global")
+      if(dim(agent_specific)[1] >0){
+
+        for(ii in seq_along(a_specific[,1])){
+          specific = a_specific[ii,]
+          fromto_p[,specific$From:specific$To] = specific[,i]
+        }
+      }
+
+      return(fromto_p)
+    },fromto_p = fromto)
+    names(fromto)= names(params)
+
+    return(fromto)
+  },fromto = agents_fromto)
+
+  names(AgentMeasuresFromTo) = unique(WHOLEmodel$agents_whatif$Measure)
+
+  return(list(AgentMeasuresFromTo = AgentMeasuresFromTo,
+              RoomsMeasuresFromTo = MeasuresFromTo))
 }

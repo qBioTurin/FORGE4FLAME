@@ -25,42 +25,53 @@ server <- function(input, output,session) {
                                  selectedId = 1,
                                  floors = NULL,
                                  areas = data.frame(Name=c("None"),#
-                                                           # "Senology",
-                                                           # "Ophthalmology",
-                                                           # "Surgery",
-                                                           # "Urology",
-                                                           # "Orthopaedics",
-                                                           # "Analgesic Therapy",
-                                                           # "Dermosurgery",
-                                                           # "Radiology"),
+                                                    # "Senology",
+                                                    # "Ophthalmology",
+                                                    # "Surgery",
+                                                    # "Urology",
+                                                    # "Orthopaedics",
+                                                    # "Analgesic Therapy",
+                                                    # "Dermosurgery",
+                                                    # "Radiology"),
                                                     ID=c(-1),#,0,1,2,3,4,5,6,7),
                                                     Color=c(
                                                       "rgba(0, 0, 0, 1)") #Black
-                                                      # "rgba(255, 0, 0, 1)", #Red
-                                                      # "rgba(0, 255, 0, 1)", #Green
-                                                      # "rgba(0, 0, 255, 1)", #Blue
-                                                      # "rgba(255, 255, 0, 1)",
-                                                      # "rgba(0, 255, 255, 1)",
-                                                      # "rgba(255, 0, 255, 1)",
-                                                      # "rgba(100, 100, 100, 1)",
-                                                      # "rgba(200, 100, 100, 1)"
-                                                    ),
+                                                    # "rgba(255, 0, 0, 1)", #Red
+                                                    # "rgba(0, 255, 0, 1)", #Green
+                                                    # "rgba(0, 0, 255, 1)", #Blue
+                                                    # "rgba(255, 255, 0, 1)",
+                                                    # "rgba(0, 255, 255, 1)",
+                                                    # "rgba(255, 0, 255, 1)",
+                                                    # "rgba(100, 100, 100, 1)",
+                                                    # "rgba(200, 100, 100, 1)"
+                                 ),
                                  agents = NULL,
                                  disease = NULL,
                                  resources = NULL,
                                  color = "Room",
                                  matricesCanvas = NULL,
                                  starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100),
-                                 rooms_whatif = NULL,
-                                 agents_whatif = NULL,
-                                 whatif = data.frame(ventilation_type="Global", ventilation_value="0 (no ventilation)",
-                                                     mask_type="Global", mask_value="No mask", mask_fraction=0,
-                                                     vaccination_type="Global", vaccination_value=0, vaccination_efficacy=1,
-                                                     swab_type="No swab", swab_dist="Deterministic", swab_a=0, swab_b=0, swab_sensitivity=1, swab_specificity=1,
-                                                     quarantine_type="No quarantine", quarantine_days_dist="Deterministic", quarantine_days_a=0, quarantine_days_b=0, quarantine_swab_days_type="No swab", quarantine_swab_days_dist="Deterministic", quarantine_swab_days_a=0, quarantine_swab_days_b=0, room_for_quarantine="Spawnroom-None",
-                                                     external_screening_type="No external screening", external_screening_first=0, external_screening_second=0,
-                                                     initial_infected_type = "Global", initial_infected = 1,
-                                                     outside_contagion_file=""),
+                                 rooms_whatif = data.frame(
+                                   Measure = character(),
+                                   Type = character(),
+                                   Parameters = character(),
+                                   From = numeric(),
+                                   To = numeric(),
+                                   stringsAsFactors = FALSE
+                                 ),
+                                 agents_whatif = data.frame(
+                                   Measure = character(),
+                                   Type = character(),
+                                   Parameters = character(),
+                                   From = numeric(),
+                                   To = numeric(),
+                                   stringsAsFactors = FALSE
+                                 ),
+                                 initial_infected = data.frame(
+                                   Type = character(),
+                                   Number = numeric(),
+                                   stringsAsFactors = FALSE
+                                 ),
                                  outside_contagion=NULL,
                                  virus_variant = 1,
                                  virus_severity = 0,
@@ -553,18 +564,12 @@ server <- function(input, output,session) {
                              CanvasID = input$canvas_selector
         )
 
-        newroom_whatif <- data.frame(type=roomSelected$type, area = input$select_area, ventilation=0)
-
         if(is.null(canvasObjects$roomsINcanvas)){
           canvasObjects$roomsINcanvas = newroom
-          canvasObjects$rooms_whatif <- newroom_whatif
         }
         else{
           newroom$ID = max(canvasObjects$roomsINcanvas$ID, 1) + 1
           canvasObjects$roomsINcanvas = rbind(canvasObjects$roomsINcanvas, newroom)
-
-          if(nrow(canvasObjects$rooms_whatif %>% filter(type == input$select_type, area == input$select_area)) == 0)
-            canvasObjects$rooms_whatif = rbind(canvasObjects$rooms_whatif, newroom_whatif)
         }
 
         canvasObjects$selectedId = newroom$ID
@@ -575,9 +580,7 @@ server <- function(input, output,session) {
         roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
         updateSelectizeInput(session = session, "room_ventilation",
                              choices = roomsAvailable)
-        updateSelectizeInput(session = session, "room_quarantine_global",
-                             choices = roomsAvailable)
-        updateSelectizeInput(session = session, "room_quarantine_specific",
+        updateSelectizeInput(session = session, "room_quarantine",
                              choices = roomsAvailable)
       }
 
@@ -603,8 +606,7 @@ server <- function(input, output,session) {
       filter(ID != objectDelete$ID)
 
     if(nrow(canvasObjects$roomsINcanvas %>% filter(type == objectDelete$type, area == objectDelete$area)) == 0)
-      canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>%
-      filter(type != objectDelete$type, area != objectDelete$area)
+      canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != paste0( objectDelete$type,"-", objectDelete$area) )
 
     ## if the room is present in Agents Flow then we have to remove them
     ## when there are this type of room anymore
@@ -642,9 +644,7 @@ server <- function(input, output,session) {
     roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
     updateSelectizeInput(session = session, "room_ventilation",
                          choices = roomsAvailable)
-    updateSelectizeInput(session = session, "room_quarantine_global",
-                         choices = roomsAvailable)
-    updateSelectizeInput(session = session, "room_quarantine_specific",
+    updateSelectizeInput(session = session, "room_quarantine",
                          choices = roomsAvailable)
   }
 
@@ -776,11 +776,11 @@ server <- function(input, output,session) {
       {
         room = canvasObjects$rooms %>% filter(Name == name)
         colourpicker::colourInput(paste0("col_",room$Name),
-                    paste0("Select colour for " , room$Name),
-                    gsub(pattern = ", 1\\)",replacement = "\\)",
-                         gsub(pattern = "rgba",replacement = "rgb",room$colorFill)
-                    ),
-                    allowTransparent = T)
+                                  paste0("Select colour for " , room$Name),
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",room$colorFill)
+                                  ),
+                                  allowTransparent = T)
       })
       do.call(tagList, col_output_list)
     }
@@ -862,11 +862,11 @@ server <- function(input, output,session) {
       canvasObjects$areas$Color[canvasObjects$areas$Name == name] -> color
       div(
         colourpicker::colourInput(paste0("col_area_",name),
-                    paste0("Select colour for " , name),
-                    gsub(pattern = ", 1\\)",replacement = "\\)",
-                         gsub(pattern = "rgba",replacement = "rgb",color)
-                    ),
-                    allowTransparent = T)
+                                  paste0("Select colour for " , name),
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",color)
+                                  ),
+                                  allowTransparent = T)
       )
     }
   })
@@ -949,11 +949,11 @@ server <- function(input, output,session) {
       canvasObjects$types$Color[canvasObjects$types$Name == name] -> color
       div(
         colourpicker::colourInput(paste0("col_type_",name),
-                    paste0("Select colour for " , name),
-                    gsub(pattern = ", 1\\)",replacement = "\\)",
-                         gsub(pattern = "rgba",replacement = "rgb",color)
-                    ),
-                    allowTransparent = T)
+                                  paste0("Select colour for " , name),
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",color)
+                                  ),
+                                  allowTransparent = T)
       )
     }
   })
@@ -1425,11 +1425,16 @@ server <- function(input, output,session) {
 
     canvasObjects$TwoDVisual <- NULL
 
-    file_name <- glue("WHOLEmodel.RDs")
-    saveRDS(reactiveValuesToList(canvasObjects), file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    model = reactiveValuesToList(canvasObjects)
 
+    file_name <- glue("WHOLEmodel.RDs")
+    saveRDS(model, file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+
+    out = FromToMatrices.generation(model)
+    model$rooms_whatif = out$RoomsMeasuresFromTo
+    model$agents_whatif = out$AgentMeasuresFromTo
     file_name <- glue("WHOLEmodel.json")
-    write_json(x = reactiveValuesToList(canvasObjects), path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     if(canvasObjects$whatif$outside_contagion_file != "") {
       write_csv(x = canvasObjects$outside_contagion, file = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), canvasObjects$whatif$outside_contagion_file))
@@ -1488,24 +1493,24 @@ server <- function(input, output,session) {
 
     # output$LoadingError_RDs <- renderText(
     isolate({
-        if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
-          shinyalert("Error","Please select one RDs file.", "error", 5000)
-          return()
-        }
+      if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
+        shinyalert("Error","Please select one RDs file.", "error", 5000)
+        return()
+      }
 
-        mess = readRDS(input$RDsImport$datapath)
-        messNames = names(mess)
+      mess = readRDS(input$RDsImport$datapath)
+      messNames = names(mess)
 
-        if(!all(messNames %in% names(canvasObjectsSTART)) ){
-          shinyalert("Error",
-                     paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
-                     "error", 5000)
-          return()
-        }
+      if(!all(messNames %in% names(canvasObjectsSTART)) ){
+        shinyalert("Error",
+                   paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
+                   "error", 5000)
+        return()
+      }
 
-        textSucc = UpdatingData(input,output,canvasObjects,mess,areasColor, session)
-        shinyalert("Success", textSucc, "success", 1000)
-        updateTabsetPanel(session, "SideTabs", selected = "canvas_tab")
+      textSucc = UpdatingData(input,output,canvasObjects,mess,areasColor, session)
+      shinyalert("Success", textSucc, "success", 1000)
+      updateTabsetPanel(session, "SideTabs", selected = "canvas_tab")
 
       UpdatingData(input,output,canvasObjects,mess,areasColor, session)
     })
@@ -1537,23 +1542,14 @@ server <- function(input, output,session) {
         NumAgent = "1"
       )
 
-      new_agent_whatif <- data.frame(name=Agent,
-                                     mask=canvasObjects$whatif$mask_value, mask_fraction=canvasObjects$whatif$mask_fraction,
-                                     vaccination=canvasObjects$whatif$vaccination_value, vaccination_efficacy=canvasObjects$whatif$vaccination_efficacy,
-                                     swab_dist=canvasObjects$whatif$swab_dist, swab_a=canvasObjects$whatif$swab_a, swab_b=canvasObjects$whatif$swab_b,
-                                     quarantine_days_dist=canvasObjects$whatif$quarantine_days_dist, quarantine_days_a=canvasObjects$whatif$quarantine_days_a, quarantine_days_b=canvasObjects$whatif$quarantine_days_b, quarantine_swab_days_dist=canvasObjects$whatif$quarantine_swab_days_dist, quarantine_swab_days_a=canvasObjects$whatif$quarantine_swab_days_a, quarantine_swab_days_b=canvasObjects$whatif$quarantine_swab_days_b, room_for_quarantine=canvasObjects$whatif$room_for_quarantine,
-                                     external_screening_first=canvasObjects$whatif$external_screening_first, external_screening_second=canvasObjects$whatif$external_screening_second,
-                                     initial_infected=canvasObjects$whatif$initial_infected)
 
       if(is.null(canvasObjects$agents)){
         canvasObjects$agents[[1]] = new_agent
-        canvasObjects$agents_whatif <- new_agent_whatif
         names(canvasObjects$agents) = Agent
         canvasObjects$agents[[Agent]]$entry_type <- "Time window"
       }
       else if(! Agent %in% names(canvasObjects$agents) ){
         canvasObjects$agents[[Agent]] = new_agent
-        canvasObjects$agents_whatif <- rbind(canvasObjects$agents_whatif, new_agent_whatif)
         canvasObjects$agents[[Agent]]$entry_type <- "Time window"
       }
 
@@ -1575,14 +1571,12 @@ server <- function(input, output,session) {
 
       ## Updating the flows tabs ##
       # first we have to remove all the tabs
-       if(length(InfoApp$tabs_ids) >0){
-         for( i in InfoApp$tabs_ids){
-           removeTab(inputId = "DetFlow_tabs", target = i )
-         }
-         InfoApp$tabs_ids <- c()
+      if(length(InfoApp$tabs_ids) >0){
+        for( i in InfoApp$tabs_ids){
+          removeTab(inputId = "DetFlow_tabs", target = i )
         }
-
-
+        InfoApp$tabs_ids <- c()
+      }
 
       InfoApp$NumTabsFlow = 0
       input$DetFlow_tabs
@@ -1597,7 +1591,7 @@ server <- function(input, output,session) {
                       paste0(substring(unique(FlowTabs)[NumFlow], 1, 1), " flow"),
                       uiOutput( paste0("UIDetFlows",Agent,"_",substring(unique(FlowTabs)[NumFlow], 1, 1), " flow") )
                     )
-                  )
+          )
           InfoApp$tabs_ids <- append(InfoApp$tabs_ids, unique(FlowTabs)[NumFlow])
         }
         showTab(inputId = "DetFlow_tabs", target = FlowTabs[order(FlowTabs)[1]])
@@ -1624,24 +1618,6 @@ server <- function(input, output,session) {
       #   InfoApp$NumTabsTimeSlot <- length(unique(canvasObjects$agents[[Agent]]$EntryExitTime$Name))
 
       ### END updating
-
-      updateSelectizeInput(session = session, "agent_mask",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_vaccination",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_swab",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_quarantine",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_external_screening",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_initial_infected",
-                           choices = c("", names(canvasObjects$agents)))
 
       shinyjs::show(id = "rand_description")
       InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
@@ -1805,7 +1781,7 @@ server <- function(input, output,session) {
                     uiOutput( paste0("UIDetFlows",Agent,"_",NumFlow, " flow") )
                   )
         )
-      InfoApp$tabs_ids <- append(InfoApp$tabs_ids, unique(FlowTabs)[NumFlow])
+        InfoApp$tabs_ids <- append(InfoApp$tabs_ids, unique(FlowTabs)[NumFlow])
       }
       showTab(inputId = "DetFlow_tabs", target =  FlowTabs[order(FlowTabs)[1]])
     }else{
@@ -1938,7 +1914,7 @@ server <- function(input, output,session) {
       }
       #else just add one on the tab number
       else {
-         NumFlow = InfoApp$NumTabsFlow
+        NumFlow = InfoApp$NumTabsFlow
       }
 
       InfoApp$tabs_ids <- append(InfoApp$tabs_ids, paste0(NumFlow+1, " flow"))
@@ -2527,19 +2503,23 @@ server <- function(input, output,session) {
             lapply(names(canvasObjects$agents), function(agent) {
               rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
                              canvasObjects$agents[[agent]]$RandFlow$Room)
-              if(length(rooms)>0)
-                data.frame(Agent = agent , Room =  rooms)
+              if(length(rooms)>0){
+                rbind(
+                  data.frame(Agent = agent , Room =  canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
+                  data.frame(Agent = agent , Room =   canvasObjects$agents[[agent]]$RandFlow$Room, Flow = "Rand")
+                )
+                }
               else NULL
             })
     )
   })
 
   # Generate dynamic selectizeInput based on the selected room
-  output$dynamicSelectizeInputs_waitingRooms <- renderUI({
+  output$dynamicSelectizeInputs_waitingRoomsDeter <- renderUI({
 
     resources_type = req(input$selectInput_resources_type)
 
-    ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
+    ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type) %>% filter(Flow == "Deter")
 
     rooms = canvasObjects$roomsINcanvas %>%
       select(type, Name, area ) %>%
@@ -2552,7 +2532,7 @@ server <- function(input, output,session) {
     if(!is.null(rooms) && dim(rooms)[1]>1 ){
       ListSel = lapply(relevantAgents, function(agent) {
         # aggionrare i selectize dei waiting se esiste già una selezione!
-        waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
+        waitingRooms = canvasObjects$resources[[resources_type]]$waitingRoomsDeter
 
         if(!is.null(waitingRooms))
           waitingRooms = waitingRooms %>% filter(Agent == agent)
@@ -2565,8 +2545,8 @@ server <- function(input, output,session) {
           roomSelected = choicesRoom[1]
 
         selectizeInput(
-          inputId = paste0("selectInput_WaitingRoomSelect_", agent),
-          label = paste0("Select second choice room ", agent, ":"),
+          inputId = paste0("selectInput_WaitingRoomDeterSelect_", agent),
+          label = paste0("Select second choice room in Deterministic Flow for ", agent, ":"),
           choices = choicesRoom,
           selected = roomSelected
         )
@@ -2577,31 +2557,93 @@ server <- function(input, output,session) {
 
     return(ListSel)
   })
+  output$dynamicSelectizeInputs_waitingRoomsRand <- renderUI({
 
+    resources_type = req(input$selectInput_resources_type)
+
+    ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type) %>% filter(Flow == "Rand")
+
+    rooms = canvasObjects$roomsINcanvas %>%
+      select(type, Name, area ) %>%
+      filter(! type %in% c("Spawnroom", "Fillingroom", "Stair") ) %>%
+      mutate(NameTypeArea = paste0(type," - ",area)) %>%
+      distinct()
+    relevantAgents <- unique(ResRoomsDF$Agent)
+
+    # Generate selectizeInput for each relevant agent
+    if(!is.null(rooms) && dim(rooms)[1]>1 ){
+      ListSel = lapply(relevantAgents, function(agent) {
+        # aggionrare i selectize dei waiting se esiste già una selezione!
+        waitingRooms = canvasObjects$resources[[resources_type]]$waitingRoomsRand
+
+        if(!is.null(waitingRooms))
+          waitingRooms = waitingRooms %>% filter(Agent == agent)
+
+        choicesRoom = c("Same room","Skip room",unique( rooms$NameTypeArea ) )
+
+        if(!is.null(waitingRooms) && dim(waitingRooms)[1] > 0  )
+          roomSelected = waitingRooms$Room
+        else
+          roomSelected = choicesRoom[1]
+
+        selectizeInput(
+          inputId = paste0("selectInput_WaitingRoomRandSelect_", agent),
+          label = paste0("Select second choice room in Random Flow for ", agent, ":"),
+          choices = choicesRoom,
+          selected = roomSelected
+        )
+
+      })
+    }else
+      ListSel = NULL
+
+    return(ListSel)
+  })
   observe({
-
-    selectW = grep(x = names(input),pattern = "selectInput_WaitingRoomSelect_",value = T)
+    selectW = grep(x = names(input),pattern = "selectInput_WaitingRoomDeterSelect_",value = T)
 
     isolate({
       resources_type = input$selectInput_resources_type
-      waitingRooms = canvasObjects$resources[[resources_type]]$waitingRooms
+      waitingRooms = canvasObjects$resources[[resources_type]]$waitingRoomsDeter
     })
 
     if(length(selectW) > 0 ){
       waitingRooms = do.call(rbind,
                              lapply(selectW, function(W)
-                               data.frame(Agent = gsub(pattern = "selectInput_WaitingRoomSelect_",replacement = "",x = W),
+                               data.frame(Agent = gsub(pattern = "selectInput_WaitingRoomDeterSelect_",replacement = "",x = W),
                                           Room = input[[W]] )
                              )
       )
     }
 
     isolate({
-      waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRooms
+      waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsDeter
     })
 
   })
+  observe({
+    selectW = grep(x = names(input),pattern = "selectInput_WaitingRoomRandSelect_",value = T)
 
+    isolate({
+      resources_type = input$selectInput_resources_type
+      waitingRooms = canvasObjects$resources[[resources_type]]$waitingRoomsRand
+
+    })
+
+    if(length(selectW) > 0 ){
+      waitingRooms = do.call(rbind,
+                             lapply(selectW, function(W)
+                               data.frame(Agent = gsub(pattern = "selectInput_WaitingRoomRandSelect_",replacement = "",x = W),
+                                          Room = input[[W]] )
+                             )
+      )
+    }
+
+    isolate({
+      waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsRand
+    })
+
+  })
   observe({
     if(!is.null(allResRooms()) ){
       choices <- unique( allResRooms()$Room )
@@ -2657,14 +2699,15 @@ server <- function(input, output,session) {
 
     isolate({
 
+      ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
       data_waiting = data.frame()
 
       if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
         data_waiting = do.call(rbind,
-                        lapply(unique(ResRoomsDF$Agent), function(W)
-                          data.frame(Agent = W,
+                               lapply(unique(ResRoomsDF$Agent), function(W)
+                                 data.frame(Agent = W,
                                             Room = "Same room")
-                          )
+                               )
         )
       }else{
         # If there exist already the dataset, then it is used and we have to check that there is already the agents
@@ -2720,12 +2763,12 @@ server <- function(input, output,session) {
     canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- newValue
 
 
-     if (is.na(newValue) || newValue < 0) {
-       showNotification("Please enter a positive numeric value.", type = "error")
-        isolate({
-          canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- oldValue
-          })
-     }
+    if (is.na(newValue) || newValue < 0) {
+      showNotification("Please enter a positive numeric value.", type = "error")
+      isolate({
+        canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- oldValue
+      })
+    }
 
   })
 
@@ -2840,778 +2883,220 @@ server <- function(input, output,session) {
       text
     }})
 
-  output$ventilation_model_value <- renderText({
-    text <- ""
+  ####  Save what-if #####
+  add_data <- function(measure, parameters, type, from, to,data) {
 
-    if(!is.null(canvasObjects$roomsINcanvas)){
-      if(canvasObjects$whatif$ventilation_type == "Global" && input$ventilation_global != ""){
-        text <- paste0("Ventilation: Global; ", canvasObjects$whatif$ventilation_value)
-      }
-      else{
-        text <- "Ventilation: Specific; "
+    # Check if the exact row already exists
+    duplicate_row <- subset(data, Measure == measure & Parameters == parameters & Type == type & From == from & To == to)
+    if (nrow(duplicate_row) > 0) {
+      shinyalert::shinyalert("This entry already exists!", type = "error")
+      return(NULL)
+    }
 
-        rooms = canvasObjects$rooms_whatif %>% filter(type != "Fillingroom", type != "Stair")
-        rooms <- unique(rooms[c("type", "area", "ventilation")])
-
-        for(r in 1:nrow(rooms)){
-          ventilation_string = switch(paste(rooms$ventilation[r]),
-                                      "0" = "0 (no ventilation)",
-                                      "0.3" = "0.3 (poorly ventilated)",
-                                      "1" = "1 (domestic)",
-                                      "3" = "3 (offices/schools)",
-                                      "5" = "5 (well ventilated)",
-                                      "10" = "10 (typical maximum)",
-                                      "20" = "20 (hospital setting)")
-
-          text <- paste0(text, rooms$type[r], "-", rooms$area[r], ": ", ventilation_string)
-          if(r < nrow(rooms))
-            text <- paste0(text, ", ")
-        }
+    # Check for overlapping time ranges
+    if(!is.na(to)){
+      overlap_row <- subset(data, Measure == measure & Parameters == parameters & Type == type &
+                              ((From <= to & To >= from) | (to >= From & from <= To)))
+      if (nrow(overlap_row) > 0) {
+        shinyalert::shinyalert("Time range overlaps with an existing entry!", type = "error")
+        return(NULL)
       }
     }
-    else{
-      text <- paste0(text, "No room defined.")
-    }
 
-    text
-  })
+    # If no duplicate or overlap, add new row
+    new_row <- data.frame(
+      Measure = measure,
+      Type = type,
+      Parameters = parameters,
+      From = from,
+      To = to,
+      stringsAsFactors = FALSE
+    )
 
-  observeEvent(input$ventilation_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$ventilation_type <- input$ventilation_type
-
-    if(input$ventilation_type == "Global")
-      updateSelectizeInput(session, inputId = "ventilation_global", selected = "")
-  })
-
-  observeEvent(input$ventilation_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$roomsINcanvas) && nrow(canvasObjects$roomsINcanvas) > 0 && input$ventilation_global != ""){
-      ventilation = switch(input$ventilation_global,
-                           "0 (no ventilation)" = 0,
-                           "0.3 (poorly ventilated)" = 0.3,
-                           "1 (domestic)" = 1,
-                           "3 (offices/schools)" = 3,
-                           "5 (well ventilated)" = 5,
-                           "10 (typical maximum)" = 10,
-                           "20 (hospital setting)" = 20)
-
-      for(i in 1:nrow(canvasObjects$rooms_whatif)){
-        canvasObjects$rooms_whatif$ventilation <- ventilation
-      }
-
-      canvasObjects$whatif$ventilation_value <- input$ventilation_global
-      updateSelectizeInput(session, inputId = "ventilation_specific", selected = input$ventilation_global)
-    }
-  })
-
-  observeEvent(input$ventilation_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$roomsINcanvas) && nrow(canvasObjects$roomsINcanvas) > 0 && input$room_ventilation != ""){
-      ventilation_local = switch(input$ventilation_specific,
-                                 "0 (no ventilation)" = 0,
-                                 "0.3 (poorly ventilated)" = 0.3,
-                                 "1 (domestic)" = 1,
-                                 "3 (offices/schools)" = 3,
-                                 "5 (well ventilated)" = 5,
-                                 "10 (typical maximum)" = 10,
-                                 "20 (hospital setting)" = 20)
-
-      selectedRooms <- canvasObjects$rooms_whatif %>%
-        filter(type == strsplit(input$room_ventilation, "-")[[1]][1], area == strsplit(input$room_ventilation, "-")[[1]][2])
+     return(rbind(data, new_entry))
+  }
 
 
-      canvasObjects$rooms_whatif[which(canvasObjects$rooms_whatif$type %in% selectedRooms$type & canvasObjects$rooms_whatif$area %in% selectedRooms$area), "ventilation"] <- ventilation_local
-    }
-  })
+  observeEvent(input$save_ventilation, {
+    rooms_whatif = canvasObjects$rooms_whatif
 
-  observeEvent(input$room_ventilation,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(input$room_ventilation) && input$room_ventilation != ""){
-      roomsSelected <- canvasObjects$rooms_whatif %>%
-        filter(type == strsplit(input$room_ventilation, "-")[[1]][1], area == strsplit(input$room_ventilation, "-")[[1]][2])
-
-      ventilation_string = switch(paste(unique(roomsSelected$ventilation)),
-                                  "0" = "0 (no ventilation)",
-                                  "0.3" = "0.3 (poorly ventilated)",
-                                  "1" = "1 (domestic)",
-                                  "3" = "3 (offices/schools)",
-                                  "5" = "5 (well ventilated)",
-                                  "10" = "10 (typical maximum)",
-                                  "20" = "20 (hospital setting)")
-
-      updateSelectizeInput(session, inputId = "ventilation_specific", selected = ventilation_string)
-    }
-  })
-
-  output$masks_model_value <- renderText({
-    text <- ""
-
-    if(!is.null(canvasObjects$agents)){
-      if(canvasObjects$whatif$mask_type == "Global" && (input$mask_global != "" && input$mask_fraction_global != "")){
-        text <- paste0("Mask: Global; ", canvasObjects$whatif$mask_value, " (", canvasObjects$whatif$mask_fraction, ")")
-      }
-      else{
-        text <- "Mask: Specific; "
-
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          text <- paste0(text, canvasObjects$agents_whatif$name[a], " - ", canvasObjects$agents_whatif$mask[a], " (fraction: ", canvasObjects$agents_whatif$mask_fraction[a], ")")
-          if(a < nrow(canvasObjects$agents_whatif))
-            text <- paste0(text, ", ")
-        }
-      }
-    }
-    else{
-      text <- paste0(text, "No agent defined.")
-    }
-
-    text
-  })
-
-  mask_fraction_global <- debounce(reactive({input$mask_fraction_global}), 1000L)
-
-  observeEvent(mask_fraction_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$mask_fraction_global == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$mask_fraction_global))) || as.numeric(gsub(",", "\\.", input$mask_fraction_global)) < 0 || as.numeric(gsub(",", "\\.", input$mask_fraction_global)) > 1){
-        shinyalert("Mask fraction must be a number between 0 and 1.")
-        return()
-      }
-
-      canvasObjects$whatif$mask_fraction <- gsub(",", "\\.", input$mask_fraction_global)
-
-      for(a in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$mask_fraction[a] <- gsub(",", "\\.", input$mask_fraction_global)
-      }
-
-      updateSelectizeInput(session, inputId = "mask_global", selected = canvasObjects$whatif$mask_value)
-      updateTextInput(session, inputId = "mask_fraction_specific", value = as.numeric(gsub(",", "\\.", input$mask_fraction_global)))
-    }
-  })
-
-  mask_fraction_specific <- debounce(reactive({input$mask_fraction_specific}), 1000L)
-
-  observeEvent(mask_fraction_specific(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(is.na(as.numeric(gsub(",", "\\.", input$mask_fraction_specific)))|| input$mask_fraction_specific == "" || as.numeric(gsub(",", "\\.", input$mask_fraction_specific)) < 0 || as.numeric(gsub(",", "\\.", input$mask_fraction_specific)) > 1){
-      shinyalert("Mask fraction must be a number between 0 and 1.")
+    if(as.integer(input$ventilation_time_to) < as.integer(input$ventilation_time_from) ||
+       as.integer(input$ventilation_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$ventilation_time_from) < 0){
+      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
 
-    if(!is.null(canvasObjects$agents) && input$agent_mask != ""){
-      canvasObjects$agents_whatif$mask_fraction[which(canvasObjects$agents_whatif$name == input$agent_mask)] <- gsub(",", "\\.", input$mask_fraction_specific)
+    ventilation = switch(input$ventilation_params,
+                         "0 (no ventilation)" = 0,
+                         "0.3 (poorly ventilated)" = 0.3,
+                         "1 (domestic)" = 1,
+                         "3 (offices/schools)" = 3,
+                         "5 (well ventilated)" = 5,
+                         "10 (typical maximum)" = 10,
+                         "20 (hospital setting)" = 20)
 
-      if(input$agent_mask != "" && input$agent_mask %in% canvasObjects$agents_whatif$name)
-        updateSelectizeInput(session, inputId = "mask_specific", selected = canvasObjects$agents_whatif$mask[which(canvasObjects$agents_whatif$name == input$agent_mask)])
+    new_data = add_data(type = "Ventilation",
+                        parameters = paste(ventilation),
+                        type = ifelse(input$ventilation_type != "Global", input$room_ventilation, "Global"),
+                        from = input$ventilation_time_from,
+                        to = input$ventilation_time_to,
+                        data = rooms_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$rooms_whatif = new_data
     }
+
   })
 
-  observeEvent(input$mask_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$mask_type <- input$mask_type
+  observeEvent(input$save_masks, {
+    req(input$mask_fraction)
+    req(input$mask_params)
 
-    if(input$mask_type == "Global"){
-      updateSelectizeInput(session, inputId = "mask_global", selected = "")
-      updateTextInput(session, inputId = "mask_fraction_global", value = "")
+    agents_whatif = canvasObjects$agents_whatif
+
+    if(input$mask_fraction > 1 ||input$mask_fraction < 0){
+      shinyalert("Mask fraction must be  in [0,1] ")
+      return()
     }
-    else{
-      updateSelectizeInput(session, inputId = "agent_mask", choices = canvasObjects$agents_whatif$name, selected = "")
-    }
-  })
-
-  observeEvent(input$mask_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$mask_global != ""){
-      for(a in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$mask[a] <- input$mask_global
-      }
-
-      canvasObjects$whatif$mask_value <- input$mask_global
-    }
-  })
-
-  observeEvent(input$mask_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$mask_specific != "" && input$agent_mask != "" && input$agent_mask %in% canvasObjects$agents_whatif$name){
-      canvasObjects$agents_whatif$mask[which(canvasObjects$agents_whatif$name == input$agent_mask)] <- input$mask_specific
-    }
-  })
-
-  observeEvent(input$agent_mask,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(input$agent_mask) && input$agent_mask != "" && input$agent_mask %in% canvasObjects$agents_whatif$name){
-      updateSelectizeInput(session, inputId = "mask_specific", selected = canvasObjects$agents_whatif$mask[which(canvasObjects$agents_whatif$name == input$agent_mask)])
-      updateTextInput(session, inputId = "mask_fraction_specific", value = as.numeric(gsub(",", "\\.", canvasObjects$agents_whatif$mask_fraction[which(canvasObjects$agents_whatif$name == input$agent_mask)])))
-    }
-  })
-
-  virus_variant <- debounce(reactive({input$virus_variant}), 1000L)
-
-  observeEvent(virus_variant(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$virus_variant == "" || is.na(as.numeric(gsub(",", "\\.", input$virus_variant))) || !grepl("(^[0-9]+).*", input$virus_variant) || as.numeric(gsub(",", "\\.", input$virus_variant)) < 0){
-      shinyalert("Virus variant factor must be a posivive number greater than (>=) 0.")
+    if(as.integer(input$mask_time_to) < as.integer(input$mask_time_from) ||
+       as.integer(input$mask_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$mask_time_from) < 0){
+      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
 
-    canvasObjects$virus_variant <- gsub(",", "\\.", input$virus_variant)
+    params = paste0("Type: ",input$mask_params,"; Fraction: ",input$mask_fraction)
+
+    new_data = add_data(type = "Mask",
+                        parameters = params,
+                        type = ifelse(input$mask_type != "Global", input$agent_mask, "Global"),
+                        from = input$mask_time_from,
+                        to = input$mask_time_to,
+                        data = agents_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$agents_whatif = new_data
+    }
   })
+  observeEvent(input$save_vaccination, {
+    agents_whatif = canvasObjects$agents_whatif
+    req(input$vaccination_fraction)
+    req(input$vaccination_efficacy)
 
-  virus_severity <- debounce(reactive({input$virus_severity}), 1000L)
-
-  observeEvent(virus_severity(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$virus_severity == "" || is.na(as.numeric(input$virus_severity)) || !grepl("(^[0-9]+).*", input$virus_severity) || as.numeric(gsub(",", "\\.", input$virus_severity)) < 0 || as.numeric(gsub(",", "\\.", input$virus_severity)) > 1){
-      shinyalert("Virus severity must be a number in [0, 1].")
+    if(input$vaccination_coverage < 0){
+      shinyalert(paste0("The covarage should be > 0") )
+      return()
+    }
+    if((input$vaccination_efficacy) > 1 ||
+       (input$vaccination_efficacy) < 0){
+      shinyalert(paste0("The efficacy should be in [0,1]") )
+      return()
+    }
+    if((input$vaccination_fraction) > 1 ||
+       (input$vaccination_fraction) < 0){
+      shinyalert(paste0("The fraction should be in [0,1]") )
       return()
     }
 
-    canvasObjects$virus_severity <- gsub(",", "\\.", input$virus_severity)
-  })
-
-  output$vaccination_model_value <- renderText({
-    text <- ""
-
-    if(!is.null(canvasObjects$agents)){
-      if(canvasObjects$whatif$vaccination_type == "Global" && input$vaccination_global != "" && input$vaccination_efficacy_global != ""){
-        text <- paste0("Vaccination: Global; Value: ", canvasObjects$whatif$vaccination_value, " (efficacy: ", canvasObjects$whatif$vaccination_efficacy, ")")
-      }
-      else{
-        text <- "Vaccination: Specific; "
-
-        num_agents <- 0
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          text <- paste0(text, if(num_agents > 0) ", " else "", canvasObjects$agents_whatif$name[a], ": ", canvasObjects$agents_whatif$vaccination[a], " (efficacy: ", canvasObjects$agents_whatif$vaccination_efficacy[a], ")")
-          num_agents <- num_agents + 1
-        }
-      }
-    }
-    else{
-      text <- paste0(text, "No agent defined.")
-    }
-
-    text
-  })
-
-  observeEvent(input$vaccination_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$vaccination_type <- input$vaccination_type
-
-    if(input$vaccination_type == "Global"){
-      updateTextInput(session, inputId = "vaccination_global", value = "")
-      updateTextInput(session, inputId = "vaccination_efficacy_global", value = "")
-    }
-    else{
-      updateSelectizeInput(session, inputId = "agent_vaccination", choices = c("", canvasObjects$agents_whatif$name))
-    }
-  })
-
-  vaccination_global <- debounce(reactive({input$vaccination_global}), 1000L)
-
-  observeEvent(vaccination_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$vaccination_global == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$vaccination_global))) || as.numeric(gsub(",", "\\.", input$vaccination_global)) < 0 || as.numeric(gsub(",", "\\.", input$vaccination_global)) > 1){
-        shinyalert("The fraction of vaccinated agents must be a number between 0 and 1.")
-        return()
-      }
-
-      for(a in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$vaccination[a] <- gsub(",", "\\.", input$vaccination_global)
-      }
-
-      canvasObjects$whatif$vaccination_value <- input$vaccination_global
-      updateTextInput(session, inputId = "vaccination_specific", value = input$vaccination_global)
-    }
-  })
-
-  vaccination_efficacy_global <- debounce(reactive({input$vaccination_efficacy_global}), 1000L)
-
-  observeEvent(vaccination_efficacy_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$vaccination_efficacy_global == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$vaccination_efficacy_global))) || as.numeric(gsub(",", "\\.", input$vaccination_efficacy_global)) < 0 || as.numeric(gsub(",", "\\.", input$vaccination_efficacy_global)) > 1){
-        shinyalert("The vaccination efficacy must be a number between 0 and 1.")
-        return()
-      }
-
-      for(a in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$vaccination_efficacy[a] <- gsub(",", "\\.", input$vaccination_efficacy_global)
-      }
-
-      canvasObjects$whatif$vaccination_efficacy <- gsub(",", "\\.", input$vaccination_efficacy_global)
-      updateTextInput(session, inputId = "vaccination_efficacy_specific", value = gsub(",", "\\.", input$vaccination_efficacy_global))
-    }
-  })
-
-  observeEvent(input$vaccination_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_vaccination != "" && input$agent_vaccination %in% canvasObjects$agents_whatif$name){
-      if(input$vaccination_specific == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$vaccination_specific))) || as.numeric(gsub(",", "\\.", input$vaccination_specific)) < 0 || as.numeric(gsub(",", "\\.", input$vaccination_specific)) > 1){
-        shinyalert("The fraction of vaccinated agents must be a number between 0 and 1.")
-        return()
-      }
-
-      canvasObjects$agents_whatif$vaccination[which(canvasObjects$agents_whatif$name == input$agent_vaccination)] <- gsub(",", "\\.", input$vaccination_specific)
-    }
-  })
-
-  observeEvent(input$vaccination_efficacy_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_vaccination != "" && input$agent_vaccination %in% canvasObjects$agents_whatif$name){
-      if(input$vaccination_efficacy_specific == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$vaccination_efficacy_specific))) || as.numeric(gsub(",", "\\.", input$vaccination_efficacy_specific)) < 0 || as.numeric(gsub(",", "\\.", input$vaccination_efficacy_specific)) > 1){
-        shinyalert("The vaccination efficacy must be a number between 0 and 1.")
-        return()
-      }
-
-      canvasObjects$agents_whatif$vaccination_efficacy[which(canvasObjects$agents_whatif$name == input$agent_vaccination)] <- gsub(",", "\\.", input$vaccination_efficacy_specific)
-    }
-  })
-
-  observeEvent(input$agent_vaccination,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(input$agent_vaccination) && input$agent_vaccination != "" && input$agent_vaccination %in% canvasObjects$agents_whatif$name){
-      updateTextInput(session, inputId = "vaccination_specific", value = canvasObjects$agents_whatif$vaccination[which(canvasObjects$agents_whatif$name == input$agent_vaccination)])
-      updateTextInput(session, inputId = "vaccination_efficacy_specific", value = canvasObjects$agents_whatif$vaccination_efficacy[which(canvasObjects$agents_whatif$name == input$agent_vaccination)])
-    }
-  })
-
-  output$swab_model_value <- renderText({
-    text <- ""
-
-    if(!is.null(canvasObjects$agents)){
-      suffix <- "swab_global"
-      if(canvasObjects$whatif$swab_type != "Global")
-        suffix <- "swab_specific"
-
-      if(input[[paste0("DistTime_tabs_", suffix)]] == "DetTime_tab"){
-        new_time = input[[paste0("DetTime_", suffix)]]
-        new_dist = "Deterministic"
-      }
-      else if(input[[paste0("DistTime_tabs_", suffix)]] == "StocTime_tab"){
-        new_dist = input[[paste0("DistStoc_id_", suffix)]]
-        if(input[[paste0("DistStoc_id_", suffix)]]== 'Exponential')
-          new_time = input[[paste0("DistStoc_ExpRate_", suffix)]]
-        else if(input[[paste0("DistStoc_id_", suffix)]]== 'Uniform')
-          new_time = paste0("a = ",input[[paste0("DistStoc_UnifRate_a_", suffix)]] ,"; b = ",input[[paste0("DistStoc_UnifRate_b_", suffix)]])
-        else if(input[[paste0("DistStoc_id_", suffix)]] == 'Truncated Positive Normal')
-          new_time = paste0("Mean = ",input[[paste0("DistStoc_NormRate_m_", suffix)]] ,"; Sd = ",input[[paste0("DistStoc_NormRate_sd_", suffix)]])
-      }
-
-      if(canvasObjects$whatif$swab_type == "No swab"){
-        text <- "No swab."
-      }
-      else if(canvasObjects$whatif$swab_type == "Global" &&
-              (input[[paste0("DetTime_", suffix)]] != "" ||
-               input[[paste0("DistStoc_ExpRate_", suffix)]] != "" ||
-               (input[[paste0("DistStoc_UnifRate_a_", suffix)]] != "" && input[[paste0("DistStoc_UnifRate_b_", suffix)]] != "") |
-               (input[[paste0("DistStoc_NormRate_m_", suffix)]] != "" && input[[paste0("DistStoc_NormRate_sd_", suffix)]] != ""))){
-        text <- paste0("Swab: Global; ", new_dist, " (", new_time, ")")
-      }
-      else{
-        text <- "Swab: Specific; "
-
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          new_time <- canvasObjects$agents_whatif$swab_a[a]
-
-          if(canvasObjects$agents_whatif$swab_dist[a] == 'No swab'){
-            text <- paste0(text, canvasObjects$agents_whatif$name[a], ": No swab")
-          }
-          else{
-            if(canvasObjects$agents_whatif$swab_dist[a] == 'Uniform'){
-              new_time <- paste0("a = ",canvasObjects$agents_whatif$swab_a[a] ,"; b = ",canvasObjects$agents_whatif$swab_b[a])
-            }else if(canvasObjects$agents_whatif$swab_dist[a] == 'Truncated Positive Normal'){
-              new_time = paste0("Mean = ",canvasObjects$agents_whatif$swab_a[a] ,"; Sd = ",canvasObjects$agents_whatif$swab_b[a])
-            }
-
-            text <- paste0(text, canvasObjects$agents_whatif$name[a], ": ", canvasObjects$agents_whatif$swab_dist[a], " (", new_time, ")")
-          }
-
-          if(a < nrow(canvasObjects$agents_whatif))
-            text <- paste0(text, ", ")
-        }
-      }
-    }
-    else{
-      text <- paste0(text, "No agent defined.")
-    }
-
-    text
-  })
-
-  swab_sensitivity <- debounce(reactive({input$swab_sensitivity}), 1000L)
-
-  observeEvent(swab_sensitivity(), {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    sensitivity <- input$swab_sensitivity
-
-    if(sensitivity == "" || is.na(gsub(",", "\\.", as.numeric(gsub(",", "\\.", sensitivity)))) || sensitivity < 0 || sensitivity > 1){
-      shinyalert("The swab sensitivity must be a number in [0, 1].")
+    if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$vaccination_time_to) < 0){
+      shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
       return()
     }
 
-    canvasObjects$whatif$swab_sensitivity <- gsub(",", "\\.", sensitivity)
+    params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
+
+    new_data = add_data(type = "Vaccination",
+                        parameters = params,
+                        type = ifelse(input$vaccination_type != "Global", input$agent_vaccination, "Global"),
+                        from = input$vaccination_time_from,
+                        to = NaN,
+                        data = agents_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$agents_whatif = new_data
+    }
   })
+  observeEvent(input$save_swab, {
+    agents_whatif = canvasObjects$agents_whatif
 
-  swab_specificity <- debounce(reactive({input$swab_specificity}), 1000L)
-
-  observeEvent(swab_specificity(), {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    specificity <- input$swab_specificity
-
-    if(specificity == "" || is.na(gsub(",", "\\.", as.numeric(gsub(",", "\\.", specificity)))) || specificity < 0 || specificity > 1){
-      shinyalert("The swab specificity must be a number in [0, 1].")
+    if(as.integer(input$swab_time_to) < as.integer(input$swab_time_from) ||
+       as.integer(input$swab_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$swab_time_from) < 0){
+      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
 
-    canvasObjects$whatif$swab_specificity <- gsub(",", "\\.", specificity)
-  })
+    paramstext = paste0("Sensitivity: ",input$swab_sensitivity,"; Specificity: ",input$swab_specificity)
 
-  observeEvent(input$swab_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$swab_type <- input$swab_type
-
-    if(!is.null(canvasObjects$agents)){
-      if(input$swab_type == "No swab"){
-        for(agent in 1:nrow(canvasObjects$agents_whatif)){
-          canvasObjects$agents_whatif$swab_dist[agent] <- input$swab_type
-        }
-      }
-      else if(input$swab_type == "Global"){
-        updateTextInput(inputId = "DetTime_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_swab_specific", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_swab_specific", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_swab_specific", value = "")
-      }
-      else{
-        updateSelectizeInput(session, inputId = "agent_swab", choices = c("", canvasObjects$agents_whatif$name))
-
-        updateTextInput(inputId = "DetTime_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_swab_global", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_swab_global", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_swab_global", value = "")
-      }
-    }
-  })
-
-  toListen_swab_global <- debounce(
-    reactive({
-      list(input$DetTime_swab_global,
-           input$DistStoc_ExpRate_swab_global,
-           input$DistStoc_UnifRate_a_swab_global, input$DistStoc_UnifRate_b_swab_global,
-           input$DistStoc_NormRate_m_swab_global, input$DistStoc_NormRate_sd_swab_global)
-    }), 2000L)
-
-  observeEvent(toListen_swab_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      swab_global <- check_distribution_parameters(input, "swab_global")
+    if(input$swab_type == "Global" ||
+       (input$swab_type == "Different for each agent" & input$swab_type_specific != "No swab")
+    ){
+      swab_global <- check_distribution_parameters(input, "swab_days")
       new_dist <- swab_global[[1]]
       new_time <- swab_global[[2]]
 
       if(is.null(new_time) && is.null(new_dist))
         return()
 
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
+      if(new_dist == "Deterministic"){
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+      }else{
+        params <- parse_distribution(new_time, new_dist)
+        a <- params[[1]]
+        b <- params[[2]]
 
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$swab_dist[agent] <- new_dist
-        canvasObjects$agents_whatif$swab_a[agent] <- a
-        canvasObjects$agents_whatif$swab_b[agent] <- b
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
       }
 
-      canvasObjects$whatif$swab_dist <- new_dist
-      canvasObjects$whatif$swab_a <- a
-      canvasObjects$whatif$swab_b <- b
     }
+
+    new_data = add_data(type = "Swab",
+                        parameters = paramstext,
+                        type = ifelse(input$swab_type != "Global", input$agent_swab, "Global"),
+                        from = input$swab_time_from,
+                        to = input$swab_time_to,
+                        data = agents_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$agents_whatif = new_data
+    }
+
+    updateTextInput(inputId = "DetTime_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_ExpRate_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_a_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_b_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_m_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_sd_swab_global", value = "")
   })
+  observeEvent(input$save_quarantine, {
+    agents_whatif = canvasObjects$agents_whatif
 
-  toListen_swab_specific <- debounce(
-    reactive({
-      list(input$DetTime_swab_specific,
-           input$DistStoc_ExpRate_swab_specific,
-           input$DistStoc_UnifRate_a_swab_specific, input$DistStoc_UnifRate_b_swab_specific,
-           input$DistStoc_NormRate_m_swab_specific, input$DistStoc_NormRate_sd_swab_specific)
-    }), 2000L)
+    req(input$quarantine_type != "No quarantine")
 
-  observeEvent(toListen_swab_specific(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(input$agent_swab) && input$agent_swab != "" && input$agent_swab %in% canvasObjects$agents_whatif$name){
-      swab_specific <- check_distribution_parameters(input, "swab_specific")
-      new_dist <- swab_specific[[1]]
-      new_time <- swab_specific[[2]]
+    if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
+       as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$quarantine_time_from) < 0){
+      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      return()
+    }
 
-      if(is.null(new_time) && is.null(new_dist))
+    quarantine_global <- check_distribution_parameters(input, "quarantine_global")
+    new_dist <- quarantine_global[[1]]
+    new_time <- quarantine_global[[2]]
+
+    if(is.null(new_time) && is.null(new_dist))
+      return()
+
+    if(new_dist == "Deterministic"){
+      if(as.numeric(new_time) < 1){
+        shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
         return()
-
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
-
-      canvasObjects$agents_whatif$swab_dist[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- new_dist
-      canvasObjects$agents_whatif$swab_a[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- a
-      canvasObjects$agents_whatif$swab_b[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- b
-    }
-  })
-
-  observeEvent(input$swab_type_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$swab_type_specific == "No swab" && input$agent_swab != "" && input$agent_swab %in% canvasObjects$agents_whatif$name){
-      canvasObjects$agents_whatif$swab_dist[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- "No swab"
-      canvasObjects$agents_whatif$swab_a[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- 0
-      canvasObjects$agents_whatif$swab_b[which(canvasObjects$agents_whatif$name == input$agent_swab)] <- 0
-    }
-  })
-
-  observeEvent(input$agent_swab,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(input$agent_swab) && input$agent_swab != "" && input$agent_swab %in% canvasObjects$agents_whatif$name){
-      updateTextInput(session, inputId = "swab_specific", value = canvasObjects$agents_whatif$swab_rate[which(canvasObjects$agents_whatif$name == input$agent_swab)])
-    }
-  })
-
-  output$quarantine_model_value <- renderText({
-    text <- ""
-
-    quarantine_global_condition <- input$DetTime_quarantine_global != "" ||
-      input$DistStoc_ExpRate_quarantine_global != "" ||
-      (input$DistStoc_UnifRate_a_quarantine_global != "" && input$DistStoc_UnifRate_b_quarantine_global != "") ||
-      (input$DistStoc_NormRate_m_quarantine_global != "" && input$DistStoc_NormRate_sd_quarantine_global != "")
-
-    quarantine_swab_global_condition <- input$DetTime_quarantine_swab_global != "" ||
-      input$DistStoc_ExpRate_quarantine_swab_global != "" ||
-      (input$DistStoc_UnifRate_a_quarantine_swab_global != "" && input$DistStoc_UnifRate_b_quarantine_swab_global != "") ||
-      (input$DistStoc_NormRate_m_quarantine_swab_global != "" && input$DistStoc_NormRate_sd_quarantine_swab_global != "")
-
-    if(!is.null(canvasObjects$agents)){
-      if(canvasObjects$whatif$quarantine_type == "No quarantine"){
-        text <- "No quarantine."
       }
-      else if(canvasObjects$whatif$quarantine_type == "Global" &&
-              (quarantine_global_condition || quarantine_swab_global_condition || input$room_quarantine_global != "")){
-        quarantine_text <- "quarantine: specific;"
-        quarantine_swab_text <- "swab: specific;"
-        room_quarantine_text <- "room: specific;"
+      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time)
 
-        if(quarantine_global_condition){
-          new_time_quarantine <- canvasObjects$whatif$quarantine_days_a
-
-          if(canvasObjects$whatif$quarantine_days_dist == 'Uniform'){
-            new_time_quarantine <- paste0("a = ", canvasObjects$whatif$quarantine_days_a ,"; b = ",canvasObjects$whatif$quarantine_days_b)
-          }else if(canvasObjects$whatif$quarantine_days_dist == 'Truncated Positive Normal'){
-            new_time_quarantine = paste0("Mean = ",canvasObjects$whatif$quarantine_days_a ,"; Sd = ",canvasObjects$whatif$quarantine_days_b)
-          }
-
-          quarantine_text <- paste0("quarantine days: ", canvasObjects$whatif$quarantine_days_dist, " (", new_time_quarantine, ");")
-        }
-
-        if(quarantine_swab_global_condition){
-          new_time_quarantine_swab <- canvasObjects$whatif$quarantine_swab_days_a
-
-          if(canvasObjects$whatif$quarantine_swab_days_dist == 'Uniform'){
-            new_time_quarantine_swab <- paste0("a = ",canvasObjects$whatif$quarantine_swab_days_a ,"; b = ",canvasObjects$whatif$quarantine_swab_days_b)
-          }else if(canvasObjects$whatif$quarantine_swab_days_dist == 'Truncated Positive Normal'){
-            new_time_quarantine_swab = paste0("Mean = ",canvasObjects$whatif$quarantine_swab_days_a ,"; Sd = ",canvasObjects$whatif$quarantine_swab_days_b)
-          }
-
-          quarantine_swab_text <- paste0("swab: ", canvasObjects$whatif$quarantine_swab_days_dist, " (", new_time_quarantine_swab, ");")
-        }
-
-        if(input$room_quarantine_global != ""){
-          room_quarantine_text <- paste0("room: ", canvasObjects$whatif$room_for_quarantine)
-        }
-
-        text <- paste0("Quarantine: Global; ", quarantine_text, " ", quarantine_swab_text, " ", room_quarantine_text)
-      }
-      else{
-        text <- "Quarantine: Specific; "
-
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          if(canvasObjects$agents_whatif$quarantine_days_dist[a] == 'No quarantine'){
-            text_quarantine_days <- "No quarantine"
-            text_quarantine_room <- "None"
-            new_time_quarantine <- ""
-            new_time_quarantine_swab <- ""
-          }
-          else{
-            new_time_quarantine <- canvasObjects$agents_whatif$quarantine_days_a[a]
-            new_time_quarantine_swab <- canvasObjects$agents_whatif$quarantine_swab_days_a[a]
-
-            if(canvasObjects$agents_whatif$quarantine_days_dist[a] == 'Uniform'){
-              new_time_quarantine <- paste0("a = ",canvasObjects$agents_whatif$quarantine_days_a[a] ,"; b = ",canvasObjects$agents_whatif$quarantine_days_b[a])
-            }else if(canvasObjects$agents_whatif$quarantine_days_dist[a] == 'Truncated Positive Normal'){
-              new_time_quarantine = paste0("Mean = ",canvasObjects$agents_whatif$quarantine_days_a[a] ,"; Sd = ",canvasObjects$agents_whatif$quarantine_days_b[a])
-            }
-
-            text_quarantine_days <- paste0(canvasObjects$agents_whatif$quarantine_days_dist[a], " (", new_time_quarantine, ")")
-            text_quarantine_room <- canvasObjects$agents_whatif$room_for_quarantine[a]
-          }
-
-          if(canvasObjects$agents_whatif$quarantine_swab_days_dist[a] == 'No swab'){
-            text_quarantine_swab_days <- "No swab"
-            new_time_quarantine_swab <- ""
-          }
-          else{
-            if(canvasObjects$agents_whatif$quarantine_swab_days_dist[a] == 'Uniform'){
-              new_time_quarantine_swab <- paste0("a = ",canvasObjects$agents_whatif$quarantine_swab_days_a[a] ,"; b = ",canvasObjects$agents_whatif$quarantine_swab_days_b[a])
-            }else if(canvasObjects$agents_whatif$quarantine_swab_days_dist[a] == 'Truncated Positive Normal'){
-              new_time_quarantine_swab = paste0("Mean = ",canvasObjects$agents_whatif$quarantine_swab_days_a[a] ,"; Sd = ",canvasObjects$agents_whatif$quarantine_swab_days_b[a])
-            }
-
-            text_quarantine_swab_days <- paste0(canvasObjects$agents_whatif$quarantine_swab_days_dist[a], " (", new_time_quarantine_swab, ");")
-          }
-
-          text <- paste0(text, canvasObjects$agents_whatif$name[a], ": quarantine days: ", text_quarantine_days, "; swab: ", text_quarantine_swab_days, " room: ", text_quarantine_room)
-          if(a < nrow(canvasObjects$agents_whatif))
-            text <- paste0(text, ", ")
-        }
-      }
-    }
-    else{
-      text <- paste0(text, "No agent defined.")
-    }
-
-    text
-  })
-
-  observeEvent(input$quarantine_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$quarantine_type <- input$quarantine_type
-
-    if(!is.null(canvasObjects$agents)){
-      if(input$quarantine_type == "No quarantine"){
-        for(agent in 1:nrow(canvasObjects$agents_whatif)){
-          canvasObjects$agents_whatif$quarantine_days_dist[agent] <- "No quarantine"
-          canvasObjects$agents_whatif$quarantine_swab_days_dist[agent] <- "No swab"
-        }
-      }
-      else if(input$quarantine_type == "Global"){
-        updateTextInput(inputId = "DetTime_quarantine_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_quarantine_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_specific", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_specific", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_specific", value = "")
-
-
-        updateTextInput(inputId = "DetTime_quarantine_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_quarantine_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_swab_specific", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_swab_specific", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_swab_specific", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_swab_specific", value = "")
-
-
-        updateSelectizeInput(inputId = "room_quarantine_specific", selected = "")
-        updateSelectizeInput(inputId = "agent_quarantine", selected = "")
-      }
-      else{
-        updateSelectizeInput(session, inputId = "agent_quarantine", choices = c("", canvasObjects$agents_whatif$name))
-
-        updateTextInput(inputId = "DetTime_quarantine_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_quarantine_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_global", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_global", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_global", value = "")
-
-
-        updateTextInput(inputId = "DetTime_quarantine_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_ExpRate_quarantine_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_swab_global", value = "")
-        updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_swab_global", value = "")
-
-        updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_swab_global", value = "")
-        updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_swab_global", value = "")
-
-        updateSelectizeInput(inputId = "room_quarantine_global", selected = "")
-      }
-    }
-  })
-
-  toListen_quarantine_global <- debounce(
-    reactive({
-      list(input$DetTime_quarantine_global,
-           input$DistStoc_ExpRate_quarantine_global,
-           input$DistStoc_UnifRate_a_quarantine_global, input$DistStoc_UnifRate_b_quarantine_global,
-           input$DistStoc_NormRate_m_quarantine_global, input$DistStoc_NormRate_sd_quarantine_global)
-    }), 2000L)
-
-  observeEvent(toListen_quarantine_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      quarantine_global <- check_distribution_parameters(input, "quarantine_global")
-      new_dist <- quarantine_global[[1]]
-      new_time <- quarantine_global[[2]]
-
-      if(is.null(new_time) && is.null(new_dist))
-        return()
-
+    }else{
       params <- parse_distribution(new_time, new_dist)
       a <- params[[1]]
       b <- params[[2]]
@@ -3621,30 +3106,13 @@ server <- function(input, output,session) {
         return()
       }
 
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$quarantine_days_dist[agent] <- new_dist
-        canvasObjects$agents_whatif$quarantine_days_a[agent] <- a
-        canvasObjects$agents_whatif$quarantine_days_b[agent] <- b
-      }
-
-      canvasObjects$whatif$quarantine_days_dist <- new_dist
-      canvasObjects$whatif$quarantine_days_a <- a
-      canvasObjects$whatif$quarantine_days_b <- b
+      paramstext = paste0( "Dist.Days: ", new_dist,", ",a,", ",b)
     }
-  })
 
-  toListen_quarantine_swab_global <- debounce(
-    reactive({
-      list(input$DetTime_quarantine_swab_global,
-           input$DistStoc_ExpRate_quarantine_swab_global,
-           input$DistStoc_UnifRate_a_quarantine_swab_global, input$DistStoc_UnifRate_b_quarantine_swab_global,
-           input$DistStoc_NormRate_m_quarantine_swab_global, input$DistStoc_NormRate_sd_quarantine_swab_global)
-    }), 2000L)
+    paramstext = paste0(paramstext, "; Q.Room: ", input$room_quarantine)
 
-  observeEvent(toListen_quarantine_swab_global(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
+    if((input$quarantine_type == "Different for each agent" & input$quarantine_swab_type_global != "No swab")
+    ){
       quarantine_swab_global <- check_distribution_parameters(input, "quarantine_swab_global")
       new_dist <- quarantine_swab_global[[1]]
       new_time <- quarantine_swab_global[[2]]
@@ -3652,419 +3120,248 @@ server <- function(input, output,session) {
       if(is.null(new_time) && is.null(new_dist))
         return()
 
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
+      if(new_dist == "Deterministic"){
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+      }else{
+        params <- parse_distribution(new_time, new_dist)
+        a <- params[[1]]
+        b <- params[[2]]
 
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$quarantine_swab_days_dist[agent] <- new_dist
-        canvasObjects$agents_whatif$quarantine_swab_days_a[agent] <- a
-        canvasObjects$agents_whatif$quarantine_swab_days_b[agent] <- b
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
       }
+    }
 
-      canvasObjects$whatif$quarantine_swab_days_dist <- new_dist
-      canvasObjects$whatif$quarantine_swab_days_a <- a
-      canvasObjects$whatif$quarantine_swab_days_b <- b
+    new_data = add_data(type = "Quarantine",
+                        parameters = paramstext,
+                        type = ifelse(input$quarantine_type != "Global", input$agent_quarantine, "Global"),
+                        from = input$quarantine_time_from,
+                        to = input$quarantine_time_to,
+                        data = agents_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$agents_whatif = new_data
+    }
+
+    updateTextInput(inputId = "DistStoc_ExpRate_quarantine_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_global", value = "")
+    updateTextInput(inputId = "DetTime_quarantine_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_ExpRate_quarantine_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_swab_global", value = "")
+    updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_swab_global", value = "")
+
+    updateSelectizeInput(inputId = "room_quarantine_global", selected = "")
+
+  })
+  observeEvent(input$save_external_screening, {
+    agents_whatif = canvasObjects$agents_whatif
+
+    if((input$external_screening_second_global) > 1 || (input$external_screening_second_global) < 0){
+      shinyalert("External screening must be  in [0,1] ")
+      return()
+    }
+    if((input$external_screening_first_global) > 1 || (input$external_screening_first_global) < 0){
+      shinyalert("External screening must be  in [0,1] ")
+      return()
+    }
+
+    if(as.integer(input$external_screening_time_to) < as.integer(input$external_screening_time_from) ||
+       as.integer(input$external_screening_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+       as.integer(input$external_screening_time_from) < 0){
+      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      return()
+    }
+
+    params = paste0("First: ",input$external_screening_first_global,"; Second: ",input$external_screening_second_global)
+
+    new_data = add_data(type = "External screening",
+                        parameters = params,
+                        type = ifelse(input$external_screening_type != "Global", input$agent_external_screening, "Global"),
+                        from = input$external_screening_time_from,
+                        to = input$external_screening_time_to,
+                        data = agents_whatif )
+
+    if( !is.null(new_data) ){
+      canvasObjects$agents_whatif = new_data
     }
   })
+  observeEvent(input$save_virus,{
 
-  observeEvent(input$room_quarantine_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$room_quarantine_global != "" && !is.null(canvasObjects$agents)){
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$room_for_quarantine[agent] <- input$room_quarantine_global
-      }
+    req(input$virus_variant)
+    req(input$virus_severity)
 
-      canvasObjects$whatif$room_for_quarantine <- input$room_quarantine_global
+    if((input$virus_severity) > 1 || (input$virus_severity) < 0){
+      shinyalert("Virus severity must be  in [0,1] ")
+      return()
     }
+    if((input$virus_variant) > 1 || (input$virus_variant) < 0){
+      shinyalert("Virus severity must be  in [0,1] ")
+      return()
+    }
+
+    canvasObjects$virus_variant <-  input$virus_variant
+    canvasObjects$virus_severity <-  input$virus_severity
   })
+  observeEvent(input$save_initial_infected,{
+    canvasObjects$initial_infected -> initial_infected
+    req(input$virus_variant)
+    req(input$virus_severity)
 
-  observeEvent(input$quarantine_swab_type_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$quarantine_swab_type_global == "No swab" && !is.null(canvasObjects$agents)){
-      canvasObjects$whatif$quarantine_swab_days_dist <- "No swab"
-      canvasObjects$whatif$quarantine_swab_days_a <- 0
-      canvasObjects$whatif$quarantine_swab_days_b <- 0
-
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$quarantine_swab_days_dist[agent] <- "No swab"
-        canvasObjects$agents_whatif$quarantine_swab_days_a[agent] <- 0
-        canvasObjects$agents_whatif$quarantine_swab_days_b[agent] <- 0
-      }
-    }
-    canvasObjects$whatif$quarantine_swab_days_type <- input$quarantine_swab_type_global
-  })
-
-  toListen_quarantine_specific <- debounce(
-    reactive({
-      list(input$DetTime_quarantine_specific,
-           input$DistStoc_ExpRate_quarantine_specific,
-           input$DistStoc_UnifRate_a_quarantine_specific, input$DistStoc_UnifRate_b_quarantine_specific,
-           input$DistStoc_NormRate_m_quarantine_specific, input$DistStoc_NormRate_sd_quarantine_specific)
-    }), 2000L)
-
-  observeEvent(toListen_quarantine_specific(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      quarantine_specific <- check_distribution_parameters(input, "quarantine_specific")
-      new_dist <- quarantine_specific[[1]]
-      new_time <- quarantine_specific[[2]]
-
-      if(is.null(new_time) && is.null(new_dist))
-        return()
-
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
-
-      if(a < 1){
-        shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
-        return()
-      }
-
-      canvasObjects$agents_whatif$quarantine_days_dist[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- new_dist
-      canvasObjects$agents_whatif$quarantine_days_a[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- a
-      canvasObjects$agents_whatif$quarantine_days_b[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- b
-    }
-  })
-
-  toListen_quarantine_swab_specific <- debounce(
-    reactive({
-      list(input$DetTime_quarantine_swab_specific,
-           input$DistStoc_ExpRate_quarantine_swab_specific,
-           input$DistStoc_UnifRate_a_quarantine_swab_specific, input$DistStoc_UnifRate_b_quarantine_swab_specific,
-           input$DistStoc_NormRate_m_quarantine_swab_specific, input$DistStoc_NormRate_sd_quarantine_swab_specific)
-    }), 2000L)
-
-  observeEvent(toListen_quarantine_swab_specific(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      quarantine_swab_specific <- check_distribution_parameters(input, "quarantine_swab_specific")
-      new_dist <- quarantine_swab_specific[[1]]
-      new_time <- quarantine_swab_specific[[2]]
-
-      if(is.null(new_time) && is.null(new_dist))
-        return()
-
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
-
-      canvasObjects$agents_whatif$quarantine_swab_days_dist[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- new_dist
-      canvasObjects$agents_whatif$quarantine_swab_days_a[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- a
-      canvasObjects$agents_whatif$quarantine_swab_days_b[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- b
-    }
-  })
-
-  observeEvent(input$quarantine_type_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$quarantine_type_specific == "No quarantine" && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      canvasObjects$agents_whatif$quarantine_days_dist[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- "No quarantine"
-      canvasObjects$agents_whatif$quarantine_days_a[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-      canvasObjects$agents_whatif$quarantine_days_b[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-
-      canvasObjects$agents_whatif$quarantine_swab_days_dist[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- "No swab"
-      canvasObjects$agents_whatif$quarantine_swab_days_a[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-      canvasObjects$agents_whatif$quarantine_swab_days_b[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-    }
-  })
-
-  observeEvent(input$quarantine_swab_type_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$quarantine_swab_type_specific == "No swab" && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      canvasObjects$agents_whatif$quarantine_swab_days_dist[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- "No swab"
-      canvasObjects$agents_whatif$quarantine_swab_days_a[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-      canvasObjects$agents_whatif$quarantine_swab_days_b[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- 0
-    }
-  })
-
-  observeEvent(input$room_quarantine_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$room_quarantine_specific != "" && !is.null(canvasObjects$agents) && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      canvasObjects$agents_whatif$room_for_quarantine[which(canvasObjects$agents_whatif$name == input$agent_quarantine)] <- input$room_quarantine_specific
-    }
-  })
-
-  observeEvent(input$agent_quarantine,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$agent_quarantine != "" && !is.null(canvasObjects$agents) && input$agent_quarantine != "" && input$agent_quarantine %in% canvasObjects$agents_whatif$name){
-      updateSelectizeInput(inputId = "room_quarantine_specific", selected = canvasObjects$agents_whatif$room_for_quarantine[which(canvasObjects$agents_whatif$name == input$agent_quarantine)])
-    }
-  })
-
-  output$external_screening_model_value <- renderText({
-    text <- ""
-
-    if(!is.null(canvasObjects$agents)){
-      if(canvasObjects$whatif$external_screening_type == "No external screening"){
-        text <- "No external screening."
-      }
-      else if(canvasObjects$whatif$external_screening_type == "Global" &&
-              input$external_screening_first_global != "" || input$external_screening_second_global != ""){
-        if(input$external_screening_first_global != "")
-          text <- paste0("External screening: Global; first probability ", canvasObjects$whatif$external_screening_first, "; second probability: specific")
-        if(input$external_screening_second_global != "")
-          text <- paste0("External screening: Global; first probability: specific; second probability ", canvasObjects$whatif$external_screening_second)
-        if(input$external_screening_first_global != "" && input$external_screening_second_global != "")
-          text <- paste0("External screening: Global; first probability ", canvasObjects$whatif$external_screening_first, "; second probability ", canvasObjects$whatif$external_screening_second)
-      }
-      else{
-        text <- "External screening: Specific; "
-
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          text <- paste0(text, canvasObjects$agents_whatif$name[a], ": first probability ", canvasObjects$agents_whatif$external_screening_first[a], "; second probability ", canvasObjects$agents_whatif$external_screening_second[a])
-          if(a < nrow(canvasObjects$agents_whatif))
-            text <- paste0(text, ", ")
-        }
-      }
-    }
-    else{
-      text <- paste0(text, "No agent defined.")
+    if(is.na(as.integer(input$initial_infected_global)) || as.integer(input$initial_infected_global) < 0){
+      shinyalert("Initial infected must be a number greater or equal (>=) 0.")
+      return()
     }
 
-    text
-  })
-
-  observeEvent(input$external_screening_type, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    canvasObjects$whatif$external_screening_type <- input$external_screening_type
-
-    if(!is.null(canvasObjects$agents)){
-      if(input$external_screening_type == "No external screening"){
-        for(agent in 1:nrow(canvasObjects$agents_whatif)){
-          canvasObjects$agents_whatif$external_screening_first[agent] <- 0
-          canvasObjects$agents_whatif$external_screening_second[agent] <- 0
-        }
-      }
-      else if(input$external_screening_type == "Global"){
-        updateTextInput(inputId = "external_screening_first_specific", value = "")
-        updateTextInput(inputId = "external_screening_second_specific", value = "")
-
-        updateSelectizeInput(inputId = "agent_external_screening", selected = "")
-      }
-      else{
-        updateSelectizeInput(session, inputId = "agent_external_screening", choices = c("", canvasObjects$agents_whatif$name))
-
-        updateTextInput(inputId = "external_screening_first_global", value = "")
-        updateTextInput(inputId = "external_screening_second_global", value = "")
-      }
-    }
-  })
-
-  observeEvent(input$external_screening_first_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$external_screening_first_global == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$external_screening_first_global))) || as.numeric(gsub(",", "\\.", input$external_screening_first_global)) < 0 || as.numeric(gsub(",", "\\.", input$external_screening_first_global)) > 1){
-        shinyalert("External screening probability must be a number between 0 and 1.")
-        return()
-      }
-
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$external_screening_first[agent] <- gsub(",", "\\.", input$external_screening_first_global)
-      }
-
-      canvasObjects$whatif$external_screening_first <- gsub(",", "\\.", input$external_screening_first_global)
-    }
-  })
-
-  observeEvent(input$external_screening_second_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$external_screening_second_global == "")
-        return()
-
-      if(is.na(as.numeric(gsub(",", "\\.", input$external_screening_second_global))) || as.numeric(gsub(",", "\\.", input$external_screening_second_global)) < 0 || as.numeric(gsub(",", "\\.", input$external_screening_second_global)) > 1){
-        shinyalert("External screening probability must be a number between 0 and 1.")
-        return()
-      }
-
-      for(agent in 1:nrow(canvasObjects$agents_whatif)){
-        canvasObjects$agents_whatif$external_screening_second[agent] <- gsub(",", "\\.", input$external_screening_second_global)
-      }
-
-      canvasObjects$whatif$external_screening_second <- gsub(",", "\\.", input$external_screening_second_global)
-    }
-  })
-
-  observeEvent(input$external_screening_first_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_external_screening %in% canvasObjects$agents_whatif$name){
-      if(input$external_screening_first_specific == "")
-        return()
-
-      if(!is.na(as.numeric(gsub(",", "\\.", input$external_screening_first_specific))) && as.numeric(gsub(",", "\\.", input$external_screening_first_specific)) >= 0 && as.numeric(gsub(",", "\\.", input$external_screening_first_specific)) <= 1)
-        canvasObjects$agents_whatif$external_screening_first[which(canvasObjects$agents_whatif$name == input$agent_external_screening)] <- gsub(",", "\\.", input$external_screening_first_specific)
-      else{
-        shinyalert("External screening probability must be a number between 0 and 1.")
-        return()
-      }
-    }
-  })
-
-  observeEvent(input$external_screening_second_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_external_screening %in% canvasObjects$agents_whatif$name){
-      if(input$external_screening_second_specific == "")
-        return()
-      if(!is.na(as.numeric(gsub(",", "\\.", input$external_screening_second_specific))) && as.numeric(gsub(",", "\\.", input$external_screening_second_specific)) >= 0 && as.numeric(gsub(",", "\\.", input$external_screening_second_specific)) <= 1)
-        canvasObjects$agents_whatif$external_screening_second[which(canvasObjects$agents_whatif$name == input$agent_external_screening)] <- gsub(",", "\\.", input$external_screening_second_specific)
-      else{
-        shinyalert("External screening probability must be a number between 0 and 1.")
-        return()
-      }
-    }
-  })
-
-  output$initial_infected_model_value <- renderText({
-    text <- ""
-
-    if(!is.null(canvasObjects$agents)){
-      if(canvasObjects$whatif$initial_infected_type == "Global" && input$initial_infected_global != ""){
-        text <- paste0("Initial infected: Global; ", canvasObjects$whatif$initial_infected, " infected for each agent type")
-      }
-      else if(canvasObjects$whatif$initial_infected_type == "Random" && input$initial_infected_global != ""){
-        text <- paste0("Initial infected: Random; ", canvasObjects$whatif$initial_infected, " random infected")
-      }
-      else{
-        text <- "Initial infected: Specific; "
-
-        num_agents <- 0
-        for(a in 1:nrow(canvasObjects$agents_whatif)){
-          if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-            text <- paste0(text, if(num_agents > 0) ", " else "", canvasObjects$agents_whatif$name[a], ": ", canvasObjects$agents_whatif$initial_infected[a], " infected")
-            num_agents <- num_agents + 1
+    if(input$initial_infected_type == "Global"){
+      total_agents <- 0
+      for(a in 1:length(canvasObjects$agents)){
+        if(canvasObjects$agents[[a]]$entry_type == "Time window"){
+          if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
+            shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."))
+            return()
           }
         }
       }
     }
-    else{
-      text <- paste0(text, "No agent defined.")
+    else if(input$initial_infected_type == "Random"){
+      total_agents <- 0
+      for(a in 1:length(canvasObjects$agents)){
+        if(canvasObjects$agents[[a]]$entry_type == "Time window"){
+          total_agents <- total_agents + as.numeric(canvasObjects$agents[[a]]$NumAgent)
+        }
+      }
+
+      if(as.integer(input$initial_infected_global) > total_agents){
+        shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (", total_agents, ")."))
+        return()
+      }
+    }else{
+      a = input$agent_initial_infected
+      if(canvasObjects$agents[[a]]$entry_type == "Time window"){
+        if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
+          shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."))
+          return()
+        }
+      }
     }
 
-    text
+    new_row <- data.frame(
+      Type = ifelse(input$initial_infected_type != "Different for each agent", input$initial_infected_type, input$agent_initial_infected),
+      Number = input$initial_infected_global,
+      stringsAsFactors = FALSE
+    )
+
+    canvasObjects$initial_infected = rbind(initial_infected, new_row)
   })
 
-  observeEvent(input$initial_infected_type, {
+  observe({
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(input$initial_infected_type != canvasObjects$whatif$initial_infected_type){
-      updateTextInput(inputId = "initial_infected_global", value = "")
-    }
+    req(!is.null(canvasObjects$agents) && length(canvasObjects$agents)>0 )
 
-    canvasObjects$whatif$initial_infected_type <- input$initial_infected_type
+    if(input$initial_infected_type == "Different for each agent"){
+      INITagents<- c()
 
-    if(input$initial_infected_type == "Global" || input$initial_infected_type == "Random"){
-      updateTextInput(inputId = "initial_infected_specific", value = "")
-
-      updateSelectizeInput(inputId = "agent_initial_infected", selected = "")
-    }
-    else{
-      agents_name <- c()
       for(a in 1:length(canvasObjects$agents)){
         if(canvasObjects$agents[[a]]$entry_type == "Time window")
-          agents_name <- c(agents_name, names(canvasObjects$agents)[a])
+          INITagents <- c(INITagents, names(canvasObjects$agents)[a])
       }
-      updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", agents_name))
 
-      updateTextInput(inputId = "initial_infected_global", value = "")
+      updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
+
+      updateSelectizeInput(session = session, "agent_mask",
+                           choices = c("", names(canvasObjects$agents)))
+
+      updateSelectizeInput(session = session, "agent_vaccination",
+                           choices = c("", names(canvasObjects$agents)))
+
+      updateSelectizeInput(session = session, "agent_swab",
+                           choices = c("", names(canvasObjects$agents)))
+
+      updateSelectizeInput(session = session, "agent_quarantine",
+                           choices = c("", names(canvasObjects$agents)))
+
+      updateSelectizeInput(session = session, "agent_external_screening",
+                           choices = c("", names(canvasObjects$agents)))
+
     }
   })
 
-  observeEvent(input$initial_infected_global,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents)){
-      if(input$initial_infected_global == "")
-        return()
+  ########### Render the saved data table   ##########
+  output$agents_whatif <- renderDT({
+    datatable(canvasObjects$agents_whatif %>% mutate(Measure = as.factor(Measure),
+                                                    Type = as.factor(Type),
+                                                    Parameters= as.factor(Parameters) ),
+              filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
+              options = list(searching = FALSE, info = FALSE,
+                             sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+  })
+  output$rooms_whatif <- renderDT({
+    datatable(canvasObjects$rooms_whatif %>% mutate(Measure = as.factor(Measure),
+                                                    Type = as.factor(Type),
+                                                    Parameters= as.factor(Parameters) ),
+              filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
+              options = list(searching = FALSE, info = FALSE,
+                             sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+  })
 
-      if(is.na(as.integer(input$initial_infected_global)) || as.integer(input$initial_infected_global) < 0){
-        shinyalert("Initial infected must be a number greater or equal (>=) 0.")
-        return()
-      }
+  output$virus_info <- renderDT({
+    datatable( data.frame(variant = canvasObjects$virus_variant,
+                          severity = canvasObjects$virus_severity))
+  })
+  output$initialI_info <- renderDT({
+    datatable(canvasObjects$initial_infected, options = list(pageLength = 5))
+  })
 
-      if(input$initial_infected_type == "Global"){
-        total_agents <- 0
-        for(a in 1:length(canvasObjects$agents)){
-          if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-            if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
-              shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."))
-              return()
-            }
+  # Double Click to Delete Row with Confirmation
+
+  observeEvent(input$agents_whatif_cell_clicked, {
+    info <- input$agents_whatif_cell_clicked
+    if (!is.null(info$row)) {
+      shinyalert(
+        title = "Delete Entry?",
+        text = "Are you sure you want to delete this row?",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, delete it!",
+        callbackR = function(x) {
+          if (x) {
+            data <- canvasObjects$agents_whatif
+            canvasObjects$agents_whatif <- data[-info$row, ]
           }
         }
-
-        for(agent in 1:nrow(canvasObjects$agents_whatif)){
-          if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-            canvasObjects$agents_whatif$initial_infected[agent] <- as.integer(input$initial_infected_global)
+      )
+    }
+  })
+  observeEvent(input$rooms_whatif_cell_clicked, {
+    info <- input$rooms_whatif_cell_clicked
+    if (!is.null(info$row)) {
+      shinyalert(
+        title = "Delete Entry?",
+        text = "Are you sure you want to delete this row?",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, delete it!",
+        callbackR = function(x) {
+          if (x) {
+            data <- canvasObjects$rooms_whatif
+            canvasObjects$rooms_whatif <- data[-info$row, ]
           }
         }
-      }
-      else{
-        total_agents <- 0
-        for(a in 1:length(canvasObjects$agents)){
-          if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-            total_agents <- total_agents + as.numeric(canvasObjects$agents[[a]]$NumAgent)
-          }
-        }
-
-        if(as.integer(input$initial_infected_global) > total_agents){
-          shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (", total_agents, ")."))
-          return()
-        }
-
-        for(agent in 1:nrow(canvasObjects$agents_whatif)){
-          canvasObjects$agents_whatif$initial_infected[agent] <- 0
-        }
-      }
-
-      canvasObjects$whatif$initial_infected <- as.integer(input$initial_infected_global)
+      )
     }
   })
 
-  observeEvent(input$initial_infected_specific,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && input$agent_initial_infected %in% canvasObjects$agents_whatif$name){
-      if(input$initial_infected_specific == "")
-        return()
-
-      if(!is.na(as.integer(input$initial_infected_specific)) && as.integer(input$initial_infected_specific) >= 0){
-        if(as.integer(input$initial_infected_specific) > as.numeric(canvasObjects$agents[[input$agent_initial_infected]]$NumAgent)){
-          shinyalert(paste0("Initial infected for agent ", input$agent_initial_infected, " must be a number smaller or equal (<=) the number of agent of that type (", canvasObjects$agents[[input$agent_initial_infected]]$NumAgent, ")."))
-          return()
-        }
-
-        canvasObjects$agents_whatif$initial_infected[which(canvasObjects$agents_whatif$name == input$agent_initial_infected)] <- as.integer(input$initial_infected_specific)
-      }
-      else{
-        shinyalert("Initial infected must be a number greater or equal (>=) 0.")
-        return()
-      }
-    }
-  })
+  ##########
 
   ### Load csv: ###
   observeEvent(input$LoadCSV_Button_OutsideContagion,{
     disable("rds_generation")
     disable("flamegpu_connection")
-
-
 
     isolate({
       if(is.null(input$OutsideContagionImport) || !file.exists(input$OutsideContagionImport$datapath) || !grepl(".csv", input$OutsideContagionImport$datapath)){

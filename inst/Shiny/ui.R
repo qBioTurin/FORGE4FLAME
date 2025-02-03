@@ -17,6 +17,7 @@ library(stringr)
 library(ggplot2)
 library(tidyr)
 library(htmltools)
+library(DT)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -450,32 +451,13 @@ ui <- dashboardPage(
                     column(12,
                            DT::dataTableOutput("RoomAgentResTable")
                     )
-                    # column(4,
-                    #        selectInput(inputId = "selectInput_resources_room",
-                    #                    label = "Select room:",
-                    #                    choices = "")
-                    # ),
-                    # column(3,
-                    #        textInput(inputId = "resources_value", label = "Room capacity:", value = "0",
-                    #                  placeholder = "The value must be a positive integer")
-                    # )
                   ),
-                  # fluidRow(
-                  #   column(5,
-                  #          DT::dataTableOutput(outputId = 'agentResources_table')
-                  #          #uiOutput("agent_sliders")
-                  #   )
-                  # ),
                   fluidRow(
-                    # column(4,offset = 1,
-                    #        radioButtons("WhereWaitingButton",label = "Where to wait?",
-                    #                     choices = c("Same room","Skip room","Waiting room","Other room"),
-                    #                     selected = "Same room")
-                    # ),
                     column(10,offset = 1,
                            # conditionalPanel(
                            #   condition = "input.WhereWaitingButton == 'Waiting room' || input.WhereWaitingButton == 'Other room'",
-                           uiOutput("dynamicSelectizeInputs_waitingRooms")
+                           uiOutput("dynamicSelectizeInputs_waitingRoomsDeter"),
+                           uiOutput("dynamicSelectizeInputs_waitingRoomsRand")
                            # )
                     )
                   )
@@ -560,7 +542,7 @@ ui <- dashboardPage(
             ),
             conditionalPanel(
               condition="input.ckbox_entranceFlow != 'Daily Rate'",
-            fluidRow(
+              fluidRow(
                 column(1, offset = 1,
                        actionButton("add_det_flow", "Add flow"),
                 ),
@@ -991,19 +973,23 @@ ui <- dashboardPage(
               )
       ),
       tabItem(tabName = "whatif",
+              h2(tags$b("Countermeasures")),
               fluidRow(
-                box(width = 12,
-                    title = h2(tags$b("Countermeasures")))
+                box(width = 12,collapsed = F,collapsible = T,
+                    title =  div(class = "icon-container",
+                                 h5(tags$b("Saved Countermeasures"), icon("info-circle")),
+                                 div(class = "icon-text", "To remove rows in the tables, double click on it.")
+                                 ),
+                    fluidRow(
+                      column(width = 10,offset = 1,
+                             DT::DTOutput("rooms_whatif")),
+                      column(width = 10,offset = 1,
+                             DT::DTOutput("agents_whatif"))
+                    ))
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("Ventilation"),
-                    fluidRow(
-                      column(
-                        10,
-                        offset = 1,
-                        textOutput("ventilation_model_value")
-                      )),
                     fluidRow(
                       column(
                         offset = 1,
@@ -1015,25 +1001,8 @@ ui <- dashboardPage(
                         )
                       ),
                       conditionalPanel(
-                        condition = 'input.ventilation_type == "Global"',
-                        column(
-                          offset = 1,
-                          width = 2,
-                          selectizeInput(
-                            inputId = "ventilation_global",
-                            label = div(class = "icon-container",
-                                        h5(tags$b("Ventilation (in ACH): "), icon("info-circle")),
-                                        div(class = "icon-text", "For instance, 3 Air Changes per Hour (ACH) means that in 1 hour 300.000 L (or analogous 300 squared meters) of external air are entered into the considered room.")
-                            ),
-                            choices = c("0 (no ventilation)", "0.3 (poorly ventilated)", "1 (domestic)", "3 (offices/schools)", "5 (well ventilated)", "10 (typical maximum)", "20 (hospital setting)"),
-                            selected = "0 (no ventilation)"
-                          )
-                        )
-                      ),
-                      conditionalPanel(
                         condition = 'input.ventilation_type == "Different for each room"',
                         column(
-                          offset = 1,
                           width = 2,
                           selectizeInput(
                             inputId = "room_ventilation",
@@ -1041,69 +1010,34 @@ ui <- dashboardPage(
                             options = list(),
                             choices = c()
                           )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 2,
-                          selectizeInput(
-                            inputId = "ventilation_specific",
-                            label = div(class = "icon-container",
-                                        h5(tags$b("Ventilation (in ACH): "), icon("info-circle")),
-                                        div(class = "icon-text", "For instance, 3 Air Changes per Hour (ACH) means that in 1 hour 300.000 L (or analogous 300 squared meters) of external air are entered into the considered room.")
-                            ),
-                            choices = c("0 (no ventilation)", "0.3 (poorly ventilated)", "1 (domestic)", "3 (offices/schools)", "5 (well ventilated)", "10 (typical maximum)", "20 (hospital setting)"),
-                            selected = "0 (no ventilation)"
-                          )
                         )
-                      )
+                      ),
+                      column(
+                        width = 2,
+                        selectizeInput(
+                          inputId = "ventilation_params",
+                          label = div(class = "icon-container",
+                                      h5(tags$b("Ventilation (in ACH): "), icon("info-circle")),
+                                      div(class = "icon-text", "For instance, 3 Air Changes per Hour (ACH) means that in 1 hour 300.000 L (or analogous 300 squared meters) of external air are entered into the considered room.")
+                          ),
+                          choices = c("0 (no ventilation)", "0.3 (poorly ventilated)", "1 (domestic)", "3 (offices/schools)", "5 (well ventilated)", "10 (typical maximum)", "20 (hospital setting)"),
+                          selected = "0 (no ventilation)"
+                        )
+                      ),
+                      column(1, numericInput(inputId = "ventilation_time_from", label = "From (time):", value = 0, min = 0)),
+                      column(1, numericInput(inputId = "ventilation_time_to", label = "To (time):", value = 0, min = 0)),
+                      column(1, actionButton("save_ventilation", "Save"))
                     ))
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("Masks"),
                     fluidRow(
-                      column(
-                        10,
-                        offset = 1,
-                        textOutput("masks_model_value")
-                      )),
-                    fluidRow(
-                      column(
-                        offset = 1,
-                        width = 2,
-                        radioButtons(inputId = "mask_type",
-                                     label = "Mask:",
-                                     choices = c("Global", "Different for each agent"),
-                                     selected = "Global"
-                        )
-                      ),
-                      conditionalPanel(
-                        condition = 'input.mask_type == "Global"',
-                        column(
-                          offset = 1,
-                          width = 2,
-                          selectizeInput(
-                            inputId = "mask_global",
-                            label = "Mask type:",
-                            choices = c("No mask", "Surgical mask", "FFP2 mask"),
-                            selected = "No mask"
-                          )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 1,
-                          textInput(
-                            inputId = "mask_fraction_global",
-                            label = "% mask:",
-                            placeholder = "Fraction of agent wearing mask",
-                            value = 0
-                          )
-                        )
-                      ),
+                      column(offset = 1, width =2, radioButtons(inputId = "mask_type", label = "Mask:",
+                                                                choices = c("Global", "Different for each agent"), selected = "Global")),
                       conditionalPanel(
                         condition = 'input.mask_type == "Different for each agent"',
                         column(
-                          offset = 1,
                           width = 2,
                           selectizeInput(
                             inputId = "agent_mask",
@@ -1111,39 +1045,31 @@ ui <- dashboardPage(
                             options = list(),
                             choices = c()
                           )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 2,
-                          selectizeInput(
-                            inputId = "mask_specific",
-                            label = "Mask type:",
-                            choices = c("No mask", "Surgical mask", "FFP2 mask"),
-                            selected = "No mask"
-                          )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 1,
-                          textInput(
-                            inputId = "mask_fraction_specific",
-                            label = "% mask:",
-                            placeholder = "Fraction of agent wearing mask",
-                            value = 0
-                          )
                         )
-                      )
+                      ),
+                      column(2, selectizeInput(inputId = "mask_params",
+                                               label = "Mask type:",
+                                               choices = c("No mask", "Surgical mask", "FFP2 mask"),
+                                               selected = "No mask")),
+                      column(
+                        width = 1,
+                        numericInput(
+                          inputId = "mask_fraction",
+                          label = div(class = "icon-container",
+                                      h5(tags$b("% mask: "), icon("info-circle")),
+                                      div(class = "icon-text", "Fraction of agent wearing mask")
+                          ),
+                          value = 0, min = 0, max = 1
+                        )
+                      ),
+                      column(1, numericInput(inputId = "mask_time_from", label = "From (time):", value = 0, min = 0)),
+                      column(1, numericInput(inputId = "mask_time_to", label = "To (time):", value = 0, min = 0)),
+                      column(1, actionButton("save_masks", "Save"))
                     ))
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("Vaccination"),
-                    fluidRow(
-                      column(
-                        10,
-                        offset = 1,
-                        textOutput("vaccination_model_value")
-                      )),
                     fluidRow(
                       column(
                         offset = 1,
@@ -1155,31 +1081,9 @@ ui <- dashboardPage(
                         )
                       ),
                       conditionalPanel(
-                        condition = 'input.vaccination_type == "Global"',
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "vaccination_global",
-                            label = "Fraction of vaccinated agents:",
-                            value = 0
-                          )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "vaccination_efficacy_global",
-                            label = "Vaccine efficacy:",
-                            value = 1
-                          )
-                        )
-                      ),
-                      conditionalPanel(
                         condition = 'input.vaccination_type == "Different for each agent"',
                         fluidRow(
                           column(
-                            offset = 1,
                             width = 2,
                             selectizeInput(
                               inputId = "agent_vaccination",
@@ -1187,127 +1091,107 @@ ui <- dashboardPage(
                               options = list(),
                               choices = c()
                             )
-                          ),
-                          column(
-                            offset = 1,
-                            width = 2,
-                            textInput(
-                              inputId = "vaccination_specific",
-                              label = "Fraction of vaccinated agents:",
-                              value = 0
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          column(
-                            style="padding-left:20px;",
-                            offset = 7,
-                            width = 2,
-                            textInput(
-                              inputId = "vaccination_efficacy_specific",
-                              label = "Vaccine efficacy:",
-                              value = 1
-                            )
                           )
                         )
-                      )
-                    ))
+                      ),
+                      column(
+                        width = 1,
+                        numericInput(
+                          inputId = "vaccination_fraction",
+                          label = "Fraction of vaccinated agents:",
+                          value = 0, min = 0, max = 1
+                        )
+                      ),
+                      column(
+                        width = 1,
+                        numericInput(
+                          inputId = "vaccination_efficacy",
+                          label = "Vaccine efficacy:",
+                          value = 1, min = 0, max = 1
+                        )
+                      ),
+                      column(
+                        width = 1,
+                        numericInput(
+                          inputId = "vaccination_coverage",
+                          label = "Vaccine coverage (average in days):",
+                          value = 1, min = 0,
+                        )
+                      ),
+                      column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 0, min = 0)),
+                      column(1, numericInput(inputId = "vaccination_time_to", label = "To (time):", value = 0, min = 0)),
+                      column(1, actionButton("save_vaccination", "Save"))
+                    )
+                )
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("Swabs"),
-                    fluidRow(
+                    column(
+                      offset = 1,
+                      width = 2,
+                      radioButtons(inputId = "swab_type",
+                                   label = "Swab:",
+                                   choices = c("No swab", "Global", "Different for each agent"),
+                                   selected = "No swab"
+                      )
+                    ),
+                    conditionalPanel(
+                      condition = 'input.swab_type == "Global" || input.swab_type == "Different for each agent"',
                       column(
-                        10,
-                        offset = 1,
-                        textOutput("swab_model_value")
-                      )),
-                    fluidRow(
-                      column(
-                        offset = 1,
-                        width = 2,
-                        radioButtons(inputId = "swab_type",
-                                     label = "Swab:",
-                                     choices = c("No swab", "Global", "Different for each agent"),
-                                     selected = "No swab"
+                        width = 1,
+                        numericInput(
+                          inputId = "swab_sensitivity",
+                          label = "Sensitivity:",
+                          value = 1,min = 0,max =1
                         )
                       ),
-                      conditionalPanel(
-                        condition = 'input.swab_type == "Global" || input.swab_type == "Different for each agent"',
-                        fluidRow(
-                          column(
-                            offset = 1,
-                            width = 2,
-                            textInput(
-                              inputId = "swab_sensitivity",
-                              label = "Sensitivity:",
-                              value = 1
-                            )
-                          ),
-                          column(
-                            offset = 1,
-                            width = 2,
-                            textInput(
-                              inputId = "swab_specificity",
-                              label = "Specificity:",
-                              value = 1
-                            )
-                          )
-                        ),
-                      ),
-                      conditionalPanel(
-                        condition = 'input.swab_type == "Global"',
-                        fluidRow(
-                          column(3, offset=4,
-                                 div(h5(tags$b("A swab every how many days?"))),
-                                 get_distribution_panel("swab_global")
-                          )
+                      column(
+                        width = 1,
+                        numericInput(
+                          inputId = "swab_specificity",
+                          label = "Specificity:",
+                          value = 1,min = 0,max =1
                         )
                       ),
                       conditionalPanel(
                         condition = 'input.swab_type == "Different for each agent"',
-                        fluidRow(
-                          column(
-                            offset = 4,
-                            width = 2,
-                            selectizeInput(
-                              inputId = "agent_swab",
-                              label = "Agent:",
-                              options = list(),
-                              choices = c()
-                            )
+                        column(
+                          width = 1,
+                          selectizeInput(
+                            inputId = "agent_swab",
+                            label = "Agent:",
+                            options = list(),
+                            choices = c()
                           )
                         ),
-                        fluidRow(
-                          column(
-                            offset = 4,
-                            width = 2,
-                            radioButtons(inputId = "swab_type_specific",
-                                         label = "Swab:",
-                                         choices = c("No swab", "Swab"),
-                                         selected = "Swab"
-                            )
-                          ),
-                          conditionalPanel(
-                            condition = 'input.swab_type_specific == "Swab"',
-                            column(3, offset=1,
-                                   div(h5(tags$b("A swab every how many days?"))),
-                                   get_distribution_panel("swab_specific")
-                            )
+                        column(
+                          width = 1,
+                          radioButtons(inputId = "swab_type_specific",
+                                       label = "Swab:",
+                                       choices = c("No swab", "Swab"),
+                                       selected = "Swab"
                           )
                         )
+                      ),
+                      conditionalPanel(
+                        condition = 'input.swab_type != "No swab" && input.swab_type_specific != "No swab"',
+                        column(4,
+                               div(h5(tags$b("A swab every how many days?"))),
+                               get_distribution_panel("swab_days")
+                        )
+                      ),
+                      fluidRow(
+                        column(1, numericInput(inputId = "swab_time_from", label = "From (time):", value = 0, min = 0)),
+                        column(1, numericInput(inputId = "swab_time_to", label = "To (time):", value = 0, min = 0)),
+                        column(1,offset=11, actionButton("save_swab", "Save"))
                       )
-                    ))
+                    )
+                )
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("Quarantine"),
-                    fluidRow(
-                      column(
-                        10,
-                        offset = 1,
-                        textOutput("quarantine_model_value")
-                      )),
                     fluidRow(
                       column(
                         offset = 1,
@@ -1319,133 +1203,63 @@ ui <- dashboardPage(
                         )
                       ),
                       conditionalPanel(
-                        condition = 'input.quarantine_type == "Global"',
+                        condition = 'input.quarantine_type != "No quarantine"',
                         fluidRow(
-                          column(3, offset=1,
+                          column(3,
                                  div(h5(tags$b("Quarantine days:"))),
                                  get_distribution_panel("quarantine_global")
                           ),
-                        ),
-                        fluidRow(
                           column(
-                            offset = 4,
-                            width = 2,
-                            radioButtons(inputId = "quarantine_swab_type_global",
-                                         label = "Swab:",
-                                         choices = c("No swab", "Swab"),
-                                         selected = "Swab"
-                            )
-                          ),
-                          conditionalPanel(
-                            condition = 'input.quarantine_swab_type_global == "Swab"',
-                            column(3, offset=1,
-                                   div(h5(tags$b("A swab every how many days?"))),
-                                   get_distribution_panel("quarantine_swab_global")
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          column(
-                            offset = 4,
                             width = 2,
                             selectizeInput(
-                              inputId = "room_quarantine_global",
+                              inputId = "room_quarantine",
                               label = div(class = "icon-container",
                                           h5(tags$b("Quarantine room for severe cases:"), icon("info-circle")),
                                           div(class = "icon-text", "Select the quarantine room for severe cases, the default is outside the environment (spawnroom).")),
                               options = list(),
                               choices = c()
                             )
-                          )
-                        )
-                      ),
-                      conditionalPanel(
-                        condition = 'input.quarantine_type == "Different for each agent"',
-                        fluidRow(
-                          column(
-                            offset = 1,
-                            width = 2,
-                            selectizeInput(
-                              inputId = "agent_quarantine",
-                              label = "Agent:",
-                              options = list(),
-                              choices = c()
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          column(
-                            offset = 4,
-                            width = 2,
-                            radioButtons(inputId = "quarantine_type_specific",
-                                         label = "Quarantine:",
-                                         choices = c("No quarantine", "Quarantine"),
-                                         selected = "Quarantine"
-                            )
                           ),
                           conditionalPanel(
-                            condition = 'input.quarantine_type_specific == "Quarantine"',
+                            condition = 'input.quarantine_type == "Different for each agent"',
                             column(
-                              offset = 2,
-                              width = 2,
-                              radioButtons(inputId = "quarantine_swab_type_specific",
-                                           label = "Swab:",
-                                           choices = c("No swab", "Swab"),
-                                           selected = "Swab"
-                              )
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          conditionalPanel(
-                            condition = 'input.quarantine_type_specific == "Quarantine"',
-                            column(3, offset=4,
-                                   div(h5(tags$b("Quarantine days:"))),
-                                   get_distribution_panel("quarantine_specific")
-                            )
-                          ),
-                          conditionalPanel(
-                            condition = 'input.quarantine_type_specific == "No quarantine" && input.quarantine_swab_type_specific == "Swab"',
-                            column(3, offset=4)
-                          ),
-                          conditionalPanel(
-                            condition = 'input.quarantine_type_specific == "Quarantine" && input.quarantine_swab_type_specific == "Swab"',
-                            column(3, offset=1,
-                                   div(h5(tags$b("A swab every how many days?"))),
-                                   get_distribution_panel("quarantine_swab_specific")
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          conditionalPanel(
-                            condition = 'input.quarantine_type_specific == "Quarantine"',
-                            column(
-                              offset = 4,
                               width = 2,
                               selectizeInput(
-                                inputId = "room_quarantine_specific",
-                                label = div(class = "icon-container",
-                                            h5(tags$b("Quarantine room for severe cases:"), icon("info-circle")),
-                                            div(class = "icon-text", "Select the quarantine room for severe cases, the default is outside the environment (spawnroom)."),
-                                ),
+                                inputId = "agent_quarantine",
+                                label = "Agent:",
                                 options = list(),
                                 choices = c()
                               )
                             )
                           )
+                        ),
+                        fluidRow(
+                          column( width = 1, offset = 3,
+                                  radioButtons(inputId = "quarantine_swab_type_global",
+                                               label = "Swab:",
+                                               choices = c("No swab", "Swab"),
+                                               selected = "Swab"
+                                  )
+                          ),
+                          conditionalPanel(
+                            condition = 'input.quarantine_swab_type_global == "Swab"',
+                            column(3,
+                                   div(h5(tags$b("A swab every how many days?"))),
+                                   get_distribution_panel("quarantine_swab_global")
+                            )
+                          )
+                        ),
+                        fluidRow(
+                          column(2,offset = 3, numericInput(inputId = "quarantine_time_from", label = "From (time):", value = 0, min = 0)),
+                          column(2, numericInput(inputId = "quarantine_time_to", label = "To (time):", value = 0, min = 0)),
+                          column(1,offset=11, actionButton("save_quarantine", "Save"))
                         )
                       )
                     ))
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = h3("External screening"),
-                    fluidRow(
-                      column(
-                        10,
-                        offset = 1,
-                        textOutput("external_screening_model_value")
-                      )),
                     fluidRow(
                       column(
                         offset = 1,
@@ -1457,82 +1271,67 @@ ui <- dashboardPage(
                         )
                       ),
                       conditionalPanel(
-                        condition = 'input.external_screening_type == "Global"',
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "external_screening_first_global",
-                            label = div(class = "icon-container",
-                                        h5(tags$b("Screening campaigns:"), icon("info-circle")),
-                                        div(class = "icon-text", "Probability to test an agent outside the environment because this agent follows activities that involve screening campaings (like practise sports).")
-                            ),
-                            value = 0
-                          )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "external_screening_second_global",
-                            label = div(class = "icon-container",
-                                        h5(tags$b("Symptoms:"), icon("info-circle")),
-                                        div(class = "icon-text", "Probability to test an infected agent outside the environment due to symptoms.")
-                            ),
-                            value = 0
-                          )
-                        )
-                      ),
-                      conditionalPanel(
-                        condition = 'input.external_screening_type == "Different for each agent"',
+                        condition = 'input.external_screening_type != "No external screening"',
                         fluidRow(
                           column(
-                            offset = 1,
                             width = 2,
-                            selectizeInput(
-                              inputId = "agent_external_screening",
-                              label = "Agent:",
-                              options = list(),
-                              choices = c()
-                            )
-                          )
-                        ),
-                        fluidRow(
-                          column(
-                            offset = 4,
-                            width = 2,
-                            textInput(
-                              inputId = "external_screening_first_specific",
+                            numericInput(
+                              inputId = "external_screening_first_global",
                               label = div(class = "icon-container",
                                           h5(tags$b("Screening campaigns:"), icon("info-circle")),
                                           div(class = "icon-text", "Probability to test an agent outside the environment because this agent follows activities that involve screening campaings (like practise sports).")
                               ),
-                              value = 0
+                              value = 0, min = 0, max = 1
                             )
                           ),
                           column(
-                            offset = 1,
                             width = 2,
-                            textInput(
-                              inputId = "external_screening_second_specific",
+                            numericInput(
+                              inputId = "external_screening_second_global",
                               label = div(class = "icon-container",
                                           h5(tags$b("Symptoms:"), icon("info-circle")),
                                           div(class = "icon-text", "Probability to test an infected agent outside the environment due to symptoms.")
                               ),
-                              value = 0
+                              value = 0, min = 0, max = 0
+                            )
+                          ),
+                          conditionalPanel(
+                            condition = 'input.external_screening_type == "Different for each agent"',
+                            column(
+                              width = 2,
+                              selectizeInput(
+                                inputId = "agent_external_screening",
+                                label = "Agent:",
+                                options = list(),
+                                choices = c()
+                              )
                             )
                           )
+                        ),
+                        fluidRow(
+                          column(2, offset = 3, numericInput(inputId = "external_screening_time_from", label = "From (time):", value = 0, min = 0)),
+                          column(2, numericInput(inputId = "external_screening_time_to", label = "To (time):", value = 0, min = 0)),
+                          column(1, offset=11, actionButton("save_external_screening", "Save"))
                         )
                       )
                     )
                 )
               ),
               fluidRow(
-                box(width = 12,
-                    title = h2(tags$b("Virus parameters")))
+                h2(tags$b("Virus parameters"))
               ),
               fluidRow(
-                box(width = 12,
+                box(width = 12, collapsed = T,collapsible = T,
+                    title =  h3("Saved virus parameters") ,
+                    fluidRow(
+                      column(width = 12,
+                             DT::DTOutput("virus_info")),
+                      column(width = 12,
+                             DT::DTOutput("initialI_info"))
+                    ))
+              ),
+              fluidRow(
+                box(width = 12, collapsed = F,collapsible = T,
                     title = h3("Virus"),
                     fluidRow(
                       column(
@@ -1542,10 +1341,10 @@ ui <- dashboardPage(
                             h5(tags$b("Virus variant factor: "), icon("info-circle")),
                             div(class = "icon-text", "The variant of the virus to model. Use the value 1 if there are no variants or if you want to model the base variant. In [3] you can find some example for the Covid-19.")
                         ),
-                        textInput(
+                        numericInput(
                           inputId = "virus_variant",
                           label = NULL,
-                          value = 1
+                          value = 1, min =0
                         )
                       ),
                       column(
@@ -1555,12 +1354,13 @@ ui <- dashboardPage(
                             h5(tags$b("Virus severity: "), icon("info-circle")),
                             div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
                         ),
-                        textInput(
+                        numericInput(
                           inputId = "virus_severity",
                           label = NULL,
-                          value = 0.22
+                          value = 0.22, max = 1, min = 0
                         )
-                      )
+                      ),
+                      column(1, offset=11, actionButton("save_virus", "Save"))
                     ))
               ),
               fluidRow(
@@ -1568,36 +1368,31 @@ ui <- dashboardPage(
                     title = h3("Initial infected"),
                     fluidRow(
                       column(
-                        10,
-                        offset = 1,
-                        textOutput("initial_infected_model_value")
-                      )),
-                    fluidRow(
-                      column(
                         offset = 1,
                         width = 2,
                         radioButtons(inputId = "initial_infected_type",
-                                     label = "Intial infected:",
+                                     label =
+                                     div(class = "icon-container",
+                                         h5(tags$b("Intial infected: "), icon("info-circle")),
+                                         div(class = "icon-text", "Set the initial number of infected considering the agents with an entry flow set as 'Time Window'.\n
+                                             Random means that the number of initial infected agents is sampled considering all the agents.\n
+                                             Global means that thenumber id used to set the initial number of infected agents for all the agents type.")
+                                     ),
                                      choices = c("Random", "Global", "Different for each agent"),
                                      selected = "Random"
                         )
                       ),
-                      conditionalPanel(
-                        condition = 'input.initial_infected_type == "Global" || input.initial_infected_type == "Random"',
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "initial_infected_global",
-                            label = "Initial infected:",
-                            value = 1
-                          )
+                      column(
+                        width = 2,
+                        numericInput(
+                          inputId = "initial_infected_global",
+                          label = "Initial infected:",
+                          value = 1, min = 0
                         )
                       ),
                       conditionalPanel(
                         condition = 'input.initial_infected_type == "Different for each agent"',
                         column(
-                          offset = 1,
                           width = 2,
                           selectizeInput(
                             inputId = "agent_initial_infected",
@@ -1605,18 +1400,11 @@ ui <- dashboardPage(
                             options = list(),
                             choices = c()
                           )
-                        ),
-                        column(
-                          offset = 1,
-                          width = 2,
-                          textInput(
-                            inputId = "initial_infected_specific",
-                            label = "Initial infected:",
-                            value = 1
-                          )
                         )
-                      )
-                    ))
+                      ),
+                      column(1, offset=11, actionButton("save_initial_infected", "Save"))
+                    )
+                )
               ),
               fluidRow(
                 box(width = 12,
@@ -1714,9 +1502,9 @@ ui <- dashboardPage(
                              selectInput("step", div(class = "icon-container", style="margin-top:20px",
                                                      h5(tags$b("Step: "), icon("info-circle")),
                                                      div(class = "icon-text", "Duration of a FLAME GPU 2 step in seconds.")
-                                        ),
-                                        choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
-                                        selected = 10)
+                             ),
+                             choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
+                             selected = 10)
                       )
                     )
                 ))
