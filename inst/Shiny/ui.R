@@ -1119,7 +1119,7 @@ ui <- dashboardPage(
                         )
                       ),
                       column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 0, min = 0)),
-                      column(1, numericInput(inputId = "vaccination_time_to", label = "To (time):", value = 0, min = 0)),
+                      #column(1, numericInput(inputId = "vaccination_time_to", label = "To (time):", value = 0, min = 0)),
                       column(1, actionButton("save_vaccination", "Save"))
                     )
                 )

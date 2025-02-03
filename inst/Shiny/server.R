@@ -651,7 +651,7 @@ server <- function(input, output,session) {
   observeEvent(input$remove_room,{
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(input$remove_room != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
+    if(input$select_RemoveRoom != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
 
       objectDelete = canvasObjects$roomsINcanvas %>%
         mutate(NewID = paste0( Name," #", ID ) ) %>%
@@ -710,18 +710,12 @@ server <- function(input, output,session) {
             return()
           }
         }
+
+        ### deleting rooms from whatif tables
+        RoomToDelete =  paste0(objectDelete$type, "-", objectDelete$area)
+        canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>%
+          filter(Type != RoomToDelete)
       }
-      #     else{
-      #       deletingRoomFromCanvas(session,objectDelete,canvasObjects)
-      #     }
-      #   }
-      #   else{
-      #     deletingRoomFromCanvas(session,objectDelete,canvasObjects)
-      #   }
-      #
-      # }else{
-      #   deletingRoomFromCanvas(session,objectDelete,canvasObjects)
-      # }
 
       deletingRoomFromCanvas(session,objectDelete,canvasObjects)
 
@@ -1376,6 +1370,7 @@ server <- function(input, output,session) {
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
       dir.create(paste0(temp_directory, "/obj"))
+      model = reactiveValuesToList(canvasObjects)
 
       matricesCanvas <- list()
       for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
@@ -1383,8 +1378,12 @@ server <- function(input, output,session) {
       }
       canvasObjects$matricesCanvas <- matricesCanvas
       file_name <- glue("WHOLEmodel.RDs")
-      saveRDS(reactiveValuesToList(canvasObjects), file=file.path(temp_directory, file_name))
-      write_json(x = reactiveValuesToList(canvasObjects), path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
+      saveRDS(model, file=file.path(temp_directory, file_name))
+
+      out = FromToMatrices.generation(model)
+      model$rooms_whatif = out$RoomsMeasuresFromTo
+      model$agents_whatif = out$AgentMeasuresFromTo
+      write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
 
       generate_obj(paste0(temp_directory, "/obj"))
 
@@ -1657,9 +1656,9 @@ server <- function(input, output,session) {
         )
       )
 
-      canvasObjects$agents[[Agent]] <- NULL
+      canvasObjects$agents <- canvasObjects$agents[-which(names(canvasObjects$agents) ==Agent)]
       canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>%
-        filter(name != Agent)
+        filter(Type != Agent)
 
       if(length(names(canvasObjects$agents)) == 0){
         canvasObjects$agents <- NULL
