@@ -1319,7 +1319,7 @@ ui <- dashboardPage(
                 )
               ),
               fluidRow(
-                h2(tags$b("Virus parameters"))
+                h2(tags$b("Virus parameters"), style="margin-left:15px;")
               ),
               fluidRow(
                 box(width = 12, collapsed = T,collapsible = T,

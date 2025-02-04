@@ -261,6 +261,8 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   updateSelectizeInput(inputId = "id_class_agent",choices = unique(classes))
 
+  updateSelectizeInput(session, "selectInput_resources_type", choices = "", selected= "", server = TRUE)
+
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
     selected = canvasObjects$disease$Name
@@ -327,7 +329,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(session = session, "room_ventilation",
                        choices = roomsAvailable, selected = "")
 
-
+  hideElement("outside_contagion_plot")
 
   if(!is.null(canvasObjects$outside_contagion)){
     output$outside_contagion_plot <- renderPlot({

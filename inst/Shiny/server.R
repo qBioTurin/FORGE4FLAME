@@ -1437,10 +1437,6 @@ server <- function(input, output,session) {
     file_name <- glue("WHOLEmodel.json")
     write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-    if(canvasObjects$whatif$outside_contagion_file != "") {
-      write_csv(x = canvasObjects$outside_contagion, file = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), canvasObjects$whatif$outside_contagion_file))
-    }
-
     shinyalert("Success", paste0("Model linked to FLAME GPU 2 in resources/f4f/", input$popup_text ), "success", 1000)
   })
 
@@ -2505,9 +2501,12 @@ server <- function(input, output,session) {
               rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
                              canvasObjects$agents[[agent]]$RandFlow$Room)
               if(length(rooms)>0){
+                df_Rand <- canvasObjects$agents[[agent]]$RandFlow %>%
+                  filter(Room != "Do nothing")
+
                 rbind(
-                  data.frame(Agent = agent , Room =  canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
-                  data.frame(Agent = agent , Room =   canvasObjects$agents[[agent]]$RandFlow$Room, Flow = "Rand")
+                  data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
+                  data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
                 )
               }
               else NULL
@@ -2652,7 +2651,7 @@ server <- function(input, output,session) {
       #choices <- choices[!grepl(paste0("Fillingroom", collapse = "|"), choices)]
       choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
 
-      updateSelectizeInput(session, "selectInput_resources_type", choices = choices, server = TRUE)
+      updateSelectizeInput(session, "selectInput_resources_type", choices = choices, selected= "", server = TRUE)
     }
   })
 
@@ -3393,7 +3392,6 @@ server <- function(input, output,session) {
         return()
       }
 
-
       dataframe$day <- as.numeric(dataframe$day)
       dataframe$percentage_infected <- as.numeric(dataframe$percentage_infected)
 
@@ -3409,8 +3407,6 @@ server <- function(input, output,session) {
         return()
       }
 
-      file_name <- glue("percentage_infected_by_day.csv")
-      canvasObjects$whatif$outside_contagion_file <- file_name
       canvasObjects$outside_contagion <- dataframe
 
       output$outside_contagion_plot <- renderPlot({
