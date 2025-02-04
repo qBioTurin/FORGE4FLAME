@@ -2896,7 +2896,7 @@ server <- function(input, output,session) {
 
     # Check for overlapping time ranges
     if(!is.na(to)){
-      overlap_row <- subset(data, Measure == measure & Parameters == parameters & Type == type &
+      overlap_row <- subset(data, Measure == measure & Type == type &
                               ((From <= to & To >= from) | (to >= From & from <= To)))
       if (nrow(overlap_row) > 0) {
         shinyalert::shinyalert("Time range overlaps with an existing entry!", type = "error")
