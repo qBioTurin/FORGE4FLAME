@@ -3264,32 +3264,39 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     req(!is.null(canvasObjects$agents) && length(canvasObjects$agents)>0 )
 
-    if(input$initial_infected_type == "Different for each agent"){
-      INITagents<- c()
+    INITagents<- c()
 
-      for(a in 1:length(canvasObjects$agents)){
-        if(canvasObjects$agents[[a]]$entry_type == "Time window")
-          INITagents <- c(INITagents, names(canvasObjects$agents)[a])
-      }
-
-      updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
-
-      updateSelectizeInput(session = session, "agent_mask",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_vaccination",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_swab",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_quarantine",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_external_screening",
-                           choices = c("", names(canvasObjects$agents)))
-
+    for(a in 1:length(canvasObjects$agents)){
+      if(canvasObjects$agents[[a]]$entry_type == "Time window")
+        INITagents <- c(INITagents, names(canvasObjects$agents)[a])
     }
+
+    updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
+
+    updateSelectizeInput(session = session, "agent_mask",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_vaccination",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_swab",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_quarantine",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_external_screening",
+                         choices = c("", names(canvasObjects$agents)))
+
+
+    if(length(canvasObjects$roomsINcanvas) > 0){
+      rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
+      roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
+
+      updateSelectizeInput(session = session, "room_quarantine",
+                           choices = roomsAvailable)
+   }
+
   })
 
   ########### Render the saved data table   ##########
