@@ -2914,7 +2914,7 @@ server <- function(input, output,session) {
       stringsAsFactors = FALSE
     )
 
-    return(rbind(data, new_entry))
+    return(rbind(data, new_row))
   }
 
 
@@ -2937,7 +2937,7 @@ server <- function(input, output,session) {
                          "10 (typical maximum)" = 10,
                          "20 (hospital setting)" = 20)
 
-    new_data = add_data(type = "Ventilation",
+    new_data = add_data(measure = "Ventilation",
                         parameters = paste(ventilation),
                         type = ifelse(input$ventilation_type != "Global", input$room_ventilation, "Global"),
                         from = input$ventilation_time_from,
@@ -2969,7 +2969,7 @@ server <- function(input, output,session) {
 
     params = paste0("Type: ",input$mask_params,"; Fraction: ",input$mask_fraction)
 
-    new_data = add_data(type = "Mask",
+    new_data = add_data(measure = "Mask",
                         parameters = params,
                         type = ifelse(input$mask_type != "Global", input$agent_mask, "Global"),
                         from = input$mask_time_from,
@@ -3008,7 +3008,7 @@ server <- function(input, output,session) {
 
     params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
 
-    new_data = add_data(type = "Vaccination",
+    new_data = add_data(measure = "Vaccination",
                         parameters = params,
                         type = ifelse(input$vaccination_type != "Global", input$agent_vaccination, "Global"),
                         from = input$vaccination_time_from,
@@ -3053,7 +3053,7 @@ server <- function(input, output,session) {
 
     }
 
-    new_data = add_data(type = "Swab",
+    new_data = add_data(measure = "Swab",
                         parameters = paramstext,
                         type = ifelse(input$swab_type != "Global", input$agent_swab, "Global"),
                         from = input$swab_time_from,
@@ -3132,7 +3132,7 @@ server <- function(input, output,session) {
       }
     }
 
-    new_data = add_data(type = "Quarantine",
+    new_data = add_data(measure = "Quarantine",
                         parameters = paramstext,
                         type = ifelse(input$quarantine_type != "Global", input$agent_quarantine, "Global"),
                         from = input$quarantine_time_from,
@@ -3179,7 +3179,7 @@ server <- function(input, output,session) {
 
     params = paste0("First: ",input$external_screening_first_global,"; Second: ",input$external_screening_second_global)
 
-    new_data = add_data(type = "External screening",
+    new_data = add_data(measure = "External screening",
                         parameters = params,
                         type = ifelse(input$external_screening_type != "Global", input$agent_external_screening, "Global"),
                         from = input$external_screening_time_from,
@@ -3199,8 +3199,8 @@ server <- function(input, output,session) {
       shinyalert("Virus severity must be  in [0,1] ")
       return()
     }
-    if((input$virus_variant) > 1 || (input$virus_variant) < 0){
-      shinyalert("Virus severity must be  in [0,1] ")
+    if((input$virus_variant) < 0){
+      shinyalert("Virus variant must be > 0 ")
       return()
     }
 
