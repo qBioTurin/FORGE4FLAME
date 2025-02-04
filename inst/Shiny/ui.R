@@ -1109,8 +1109,9 @@ ui <- dashboardPage(
                           width = 1,
                           textInput(
                             inputId = "mask_fraction_global",
-                            label = "% mask:",
-                            placeholder = "Fraction of agent wearing mask",
+                            label = div(class = "icon-container",
+                                        h5(tags$b("% mask:"), icon("info-circle")),
+                                        div(class = "icon-text", "Probability that an agent wears the mask.")),
                             value = 0
                           )
                         )
@@ -1142,8 +1143,9 @@ ui <- dashboardPage(
                           width = 1,
                           textInput(
                             inputId = "mask_fraction_specific",
-                            label = "% mask:",
-                            placeholder = "Fraction of agent wearing mask",
+                            label = div(class = "icon-container",
+                                        h5(tags$b("% mask:"), icon("info-circle")),
+                                        div(class = "icon-text", "Probability that an agent wears the mask.")),
                             value = 0
                           )
                         )
