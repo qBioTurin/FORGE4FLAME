@@ -2509,7 +2509,7 @@ server <- function(input, output,session) {
                   data.frame(Agent = agent , Room =  canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
                   data.frame(Agent = agent , Room =   canvasObjects$agents[[agent]]$RandFlow$Room, Flow = "Rand")
                 )
-                }
+              }
               else NULL
             })
     )
@@ -2914,7 +2914,7 @@ server <- function(input, output,session) {
       stringsAsFactors = FALSE
     )
 
-     return(rbind(data, new_entry))
+    return(rbind(data, new_entry))
   }
 
 
@@ -3295,8 +3295,8 @@ server <- function(input, output,session) {
   ########### Render the saved data table   ##########
   output$agents_whatif <- renderDT({
     datatable(canvasObjects$agents_whatif %>% mutate(Measure = as.factor(Measure),
-                                                    Type = as.factor(Type),
-                                                    Parameters= as.factor(Parameters) ),
+                                                     Type = as.factor(Type),
+                                                     Parameters= as.factor(Parameters) ),
               filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
               options = list(searching = FALSE, info = FALSE,
                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
@@ -3490,7 +3490,12 @@ server <- function(input, output,session) {
     canvasObjects$starting$nrun <- nrun
   })
 
-  #### 2D visualisation ####
+
+  #### START post processing #####
+
+  postprocObjects = reactiveValues(evolutionCSV = NULL,
+                                   Filter_evolutionCSV = NULL)
+
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
                       "evolution.csv","host_rng_state.txt", "INFO.csv" )
@@ -3510,11 +3515,10 @@ server <- function(input, output,session) {
     dirPath()
   })
 
-
   # Check for required files in subfolders
   valid_subfolders <- reactive({
-    req(dirPath())
-    subfolders <- list.dirs(dirPath(), recursive = FALSE)
+    dir = req(dirPath())
+    subfolders <- list.dirs(dir, recursive = FALSE)
     valid <- sapply(subfolders, function(subfolder) {
       all(file.exists(file.path(subfolder, required_files)))
     })
@@ -3527,8 +3531,10 @@ server <- function(input, output,session) {
       shinyalert("No valid folder is present in the selected folder.",type = "error")
       return()
     }
-    selectInput("selectedSubfolder", "Select Subfolder", choices = basename(valid_subfolders()))
+    selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
   })
+
+  #### 2D visualisation ####
 
   observeEvent(input$selectedSubfolder,{
     disable("rds_generation")
@@ -3540,64 +3546,63 @@ server <- function(input, output,session) {
         return()
       }
 
-      dataframe <- read_csv("/Users/simonepernice/Desktop/simulation/School/seed123456789/evolution.csv")
+      if(input$selectedSubfolder != ""){
 
-      CSVdatapath = paste0(dirPath(), "/" , input$selectedSubfolder,"/AGENT_POSITION_AND_STATUS.csv")
+        show_modal_spinner()
 
-      dataframe <- read_csv(CSVdatapath)
-      colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
-                                "disease_state")
+        CSVdatapath = paste0(dirPath(), "/" , input$selectedSubfolder,"/AGENT_POSITION_AND_STATUS.csv")
 
-      # Check the the file is actually generated in the correct format
+        dataframe <- read_csv(CSVdatapath)
+        colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
+                                  "disease_state")
 
-      # if(any(is.na(as.numeric(dataframe$day))) || any(is.na(as.numeric(dataframe$percentage_infected)))){
-      #   shinyalert("Error", "The two columns (day and percentage_infected) must contain only numbers", "error", 5000)
-      #   return()
-      # }
 
-      floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
+        floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
 
-      Nfloors = length(floors$CanvasID)
-      simulation_log = dataframe %>%
-        select(time, id, agent_type, x, y, z, disease_state) %>%
-        filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
+        Nfloors = length(floors$CanvasID)
+        simulation_log = dataframe %>%
+          select(time, id, agent_type, x, y, z, disease_state) %>%
+          filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
 
-      floors$y = seq(0,10*(Nfloors-1),by = 10)
-      #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
+        floors$y = seq(0,10*(Nfloors-1),by = 10)
+        #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
 
-      simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
-        mutate(time = as.numeric(time)) %>%
-        filter(!is.na(time))
+        simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
+          mutate(time = as.numeric(time)) %>%
+          filter(!is.na(time))
 
-      simulation_log = simulation_log %>%
-        group_by(id) %>%
-        arrange(time) %>%
-        tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
-        tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
-        ungroup() %>%
-        filter(y != 10000)
+        simulation_log = simulation_log %>%
+          group_by(id) %>%
+          arrange(time) %>%
+          tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
+          tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
+          ungroup() %>%
+          filter(y != 10000)
 
-      # add agent names to the simulation log!
-      if(!is.null(names(canvasObjects$agents))){
-        simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
+        # add agent names to the simulation log!
+        if(!is.null(names(canvasObjects$agents))){
+          simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
+        }
+
+        canvasObjects$TwoDVisual <- simulation_log
+
+        remove_modal_spinner()
+
+        ## updating slider and selectize
+        updateSliderInput("animation", session = session,
+                          max = max(simulation_log$time), min = min(simulation_log$time),
+                          value = min(simulation_log$time) )
+        updateSelectInput("visualFloor_select", session = session,
+                          choices = c("All",unique(floors$CanvasID)))
+        updateSelectInput("visualAgent_select", session = session,
+                          choices = c("All",unique(simulation_log$agent_type)))
+        ##
+
+        shinyalert("Success", paste0("File loaded "), "success", 1000)
       }
-
-      canvasObjects$TwoDVisual <- simulation_log
-
-      ## updating slider and selectize
-      updateSliderInput("animation", session = session,
-                        max = max(simulation_log$time), min = min(simulation_log$time),
-                        value = min(simulation_log$time) )
-      updateSelectInput("visualFloor_select", session = session,
-                        choices = c("All",unique(floors$CanvasID)))
-      updateSelectInput("visualAgent_select", session = session,
-                        choices = c("All",unique(simulation_log$agent_type)))
-
-      ##
-
-      shinyalert("Success", paste0("File loaded "), "success", 1000)
     })
   })
+
   # Get unique CanvasIDs
   canvas_ids <- reactive({
     simulation_log = req(canvasObjects$TwoDVisual)
@@ -3761,30 +3766,33 @@ server <- function(input, output,session) {
   #### END 2D visualisation ####
 
   #### query ####
-  csv_data <- reactive({
-    req(dirPath())
-    subfolders <- list.dirs(dirPath(), recursive = FALSE)
-    csv_files <- file.path(subfolders, "evolution.csv")
-    data_list <- lapply(csv_files, function(file) {
-      if (file.exists(file)) {
-        f = read_csv(file)
-        f$Folder= basename(dirname(file))
-        f
-      } else {
-        NULL
-      }
+  observe({
+    dir = req(dirPath())
+
+    isolate({
+      subfolders <- list.dirs(dir, recursive = FALSE)
+      csv_files <- file.path(subfolders, "evolution.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file)
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$evolutionCSV = do.call(rbind, data_list)
     })
-    data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-    if (length(data_list) == 0) return(NULL)
-    do.call(rbind, data_list)
   })
 
   output$PostProc_filters <- renderUI({
-    req(csv_data())
-    df <- csv_data()
-    name_cols <- colnames(df%>% select(-Seed,-Folder))
+    df <- req(postprocObjects$evolutionCSV )
+    show_modal_spinner()
 
-    lapply(name_cols, function(col) {
+    name_cols <- colnames(df%>% select(-Seed,-Folder))
+    sliders = lapply(name_cols, function(col) {
       values = unique(df[[col]])
       sliderInput(
         inputId = paste0("filter_", col),
@@ -3794,11 +3802,12 @@ server <- function(input, output,session) {
         value = range(values, na.rm = TRUE)
       )
     })
+    remove_modal_spinner()
+    sliders
   })
 
-  filtered_data <- reactive({
-    req(csv_data())
-    df <- csv_data()
+  observe({
+    df <-req(postprocObjects$evolutionCSV )
     name_cols <- colnames(df%>% select(-Seed,-Folder))
 
     for (col in name_cols) {
@@ -3807,14 +3816,48 @@ server <- function(input, output,session) {
         df <- df[df[[col]] >= input[[input_id]][1] & df[[col]] <= input[[input_id]][2], ]
       }
     }
-    df
+    postprocObjects$Filter_evolutionCSV = df
   })
 
-  output$PostProc_table <- renderTable({
-    data.frame(FolderNames = paste(unique(filtered_data()$Folder) ) )
+  observe({
+    df = req(postprocObjects$Filter_evolutionCSV)
+    folders = unique(df$Folder)
+
+    output$PostProc_table <- DT::renderDataTable({
+      DT::datatable(
+        data.frame( FolderNames = paste(folders)) ,
+        options = list(
+          dom = 't'  # Display only the table, not the default elements (e.g., search bar, length menu)
+        ),
+        editable = list(target = 'cell'),
+        selection = 'single',
+        rownames = F
+      )
+    })
+
   })
 
-  #### end query posto processing ####
+
+  # Observe table edit and validate input
+  observeEvent(input$PostProc_table_cell_clicked, {
+    info <- input$PostProc_table_cell_clicked
+    df <- req(postprocObjects$evolutionCSV )
+
+    folder = req(info$value)
+
+    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
+      tidyr::gather(-Day, value =  "Number", key = "Compartiments")
+
+    output$EvolutionPlot <- renderPlot({
+      ggplot(df)+
+        geom_line(aes(x = Day, y = Number,col = Compartiments))+
+        labs(y="Comulative number of individuals")+
+        theme_bw()
+    })
+
+  })
+
+  #### end query post processing ####
 
   observeEvent(input$run,{
 

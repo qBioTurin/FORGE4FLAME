@@ -1558,9 +1558,10 @@ ui <- dashboardPage(
                                    uiOutput("PostProc_filters")
                             ),
                             column(width = 5,
-                                   tableOutput("PostProc_table")
+                                   DT::dataTableOutput("PostProc_table")
                             )
-                          )
+                          ),
+                          fluidRow(plotOutput("EvolutionPlot"))
                       )
                     ),
                     fluidRow(
