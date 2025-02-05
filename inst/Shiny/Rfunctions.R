@@ -720,7 +720,7 @@ FromToMatrices.generation = function(WHOLEmodel){
           fromto[r_specific$Type,r_specific$From:r_specific$To] = r_specific$Parameters
         }
       }
-
+      fromto_p = cbind(rooms,fromto_p) # put rooms name as first column
       return(fromto)
     },fromto = rooms_fromto)
     names(MeasuresFromTo) = unique(WHOLEmodel$rooms_whatif$Measure)
@@ -786,7 +786,7 @@ FromToMatrices.generation = function(WHOLEmodel){
             fromto_p[,specific$From:specific$To] = specific[,i]
           }
         }
-
+        fromto_p = cbind(agents,fromto_p) # put agents name as first column
         return(fromto_p)
       },fromto_p = fromto)
       names(fromto)= names(params)
