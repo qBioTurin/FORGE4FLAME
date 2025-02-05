@@ -1437,10 +1437,6 @@ server <- function(input, output,session) {
     file_name <- glue("WHOLEmodel.json")
     write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-    if(canvasObjects$whatif$outside_contagion_file != "") {
-      write_csv(x = canvasObjects$outside_contagion, file = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), canvasObjects$whatif$outside_contagion_file))
-    }
-
     shinyalert("Success", paste0("Model linked to FLAME GPU 2 in resources/f4f/", input$popup_text ), "success", 1000)
   })
 
@@ -2505,9 +2501,12 @@ server <- function(input, output,session) {
               rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
                              canvasObjects$agents[[agent]]$RandFlow$Room)
               if(length(rooms)>0){
+                df_Rand <- canvasObjects$agents[[agent]]$RandFlow %>%
+                  filter(Room != "Do nothing")
+
                 rbind(
-                  data.frame(Agent = agent , Room =  canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
-                  data.frame(Agent = agent , Room =   canvasObjects$agents[[agent]]$RandFlow$Room, Flow = "Rand")
+                  data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
+                  data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
                 )
               }
               else NULL
@@ -2652,7 +2651,7 @@ server <- function(input, output,session) {
       #choices <- choices[!grepl(paste0("Fillingroom", collapse = "|"), choices)]
       choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
 
-      updateSelectizeInput(session, "selectInput_resources_type", choices = choices, server = TRUE)
+      updateSelectizeInput(session, "selectInput_resources_type", choices = choices, selected= "", server = TRUE)
     }
   })
 
@@ -2896,7 +2895,7 @@ server <- function(input, output,session) {
 
     # Check for overlapping time ranges
     if(!is.na(to)){
-      overlap_row <- subset(data, Measure == measure & Parameters == parameters & Type == type &
+      overlap_row <- subset(data, Measure == measure & Type == type &
                               ((From <= to & To >= from) | (to >= From & from <= To)))
       if (nrow(overlap_row) > 0) {
         shinyalert::shinyalert("Time range overlaps with an existing entry!", type = "error")
@@ -2914,7 +2913,7 @@ server <- function(input, output,session) {
       stringsAsFactors = FALSE
     )
 
-    return(rbind(data, new_entry))
+    return(rbind(data, new_row))
   }
 
 
@@ -2937,7 +2936,7 @@ server <- function(input, output,session) {
                          "10 (typical maximum)" = 10,
                          "20 (hospital setting)" = 20)
 
-    new_data = add_data(type = "Ventilation",
+    new_data = add_data(measure = "Ventilation",
                         parameters = paste(ventilation),
                         type = ifelse(input$ventilation_type != "Global", input$room_ventilation, "Global"),
                         from = input$ventilation_time_from,
@@ -2969,7 +2968,7 @@ server <- function(input, output,session) {
 
     params = paste0("Type: ",input$mask_params,"; Fraction: ",input$mask_fraction)
 
-    new_data = add_data(type = "Mask",
+    new_data = add_data(measure = "Mask",
                         parameters = params,
                         type = ifelse(input$mask_type != "Global", input$agent_mask, "Global"),
                         from = input$mask_time_from,
@@ -3008,7 +3007,7 @@ server <- function(input, output,session) {
 
     params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
 
-    new_data = add_data(type = "Vaccination",
+    new_data = add_data(measure = "Vaccination",
                         parameters = params,
                         type = ifelse(input$vaccination_type != "Global", input$agent_vaccination, "Global"),
                         from = input$vaccination_time_from,
@@ -3053,7 +3052,7 @@ server <- function(input, output,session) {
 
     }
 
-    new_data = add_data(type = "Swab",
+    new_data = add_data(measure = "Swab",
                         parameters = paramstext,
                         type = ifelse(input$swab_type != "Global", input$agent_swab, "Global"),
                         from = input$swab_time_from,
@@ -3132,7 +3131,7 @@ server <- function(input, output,session) {
       }
     }
 
-    new_data = add_data(type = "Quarantine",
+    new_data = add_data(measure = "Quarantine",
                         parameters = paramstext,
                         type = ifelse(input$quarantine_type != "Global", input$agent_quarantine, "Global"),
                         from = input$quarantine_time_from,
@@ -3179,7 +3178,7 @@ server <- function(input, output,session) {
 
     params = paste0("First: ",input$external_screening_first_global,"; Second: ",input$external_screening_second_global)
 
-    new_data = add_data(type = "External screening",
+    new_data = add_data(measure = "External screening",
                         parameters = params,
                         type = ifelse(input$external_screening_type != "Global", input$agent_external_screening, "Global"),
                         from = input$external_screening_time_from,
@@ -3199,8 +3198,8 @@ server <- function(input, output,session) {
       shinyalert("Virus severity must be  in [0,1] ")
       return()
     }
-    if((input$virus_variant) > 1 || (input$virus_variant) < 0){
-      shinyalert("Virus severity must be  in [0,1] ")
+    if((input$virus_variant) < 0){
+      shinyalert("Virus variant must be > 0 ")
       return()
     }
 
@@ -3264,32 +3263,39 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     req(!is.null(canvasObjects$agents) && length(canvasObjects$agents)>0 )
 
-    if(input$initial_infected_type == "Different for each agent"){
-      INITagents<- c()
+    INITagents<- c()
 
-      for(a in 1:length(canvasObjects$agents)){
-        if(canvasObjects$agents[[a]]$entry_type == "Time window")
-          INITagents <- c(INITagents, names(canvasObjects$agents)[a])
-      }
-
-      updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
-
-      updateSelectizeInput(session = session, "agent_mask",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_vaccination",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_swab",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_quarantine",
-                           choices = c("", names(canvasObjects$agents)))
-
-      updateSelectizeInput(session = session, "agent_external_screening",
-                           choices = c("", names(canvasObjects$agents)))
-
+    for(a in 1:length(canvasObjects$agents)){
+      if(canvasObjects$agents[[a]]$entry_type == "Time window")
+        INITagents <- c(INITagents, names(canvasObjects$agents)[a])
     }
+
+    updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
+
+    updateSelectizeInput(session = session, "agent_mask",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_vaccination",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_swab",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_quarantine",
+                         choices = c("", names(canvasObjects$agents)))
+
+    updateSelectizeInput(session = session, "agent_external_screening",
+                         choices = c("", names(canvasObjects$agents)))
+
+
+    if(length(canvasObjects$roomsINcanvas) > 0){
+      rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
+      roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
+
+      updateSelectizeInput(session = session, "room_quarantine",
+                           choices = roomsAvailable)
+   }
+
   })
 
   ########### Render the saved data table   ##########
@@ -3386,7 +3392,6 @@ server <- function(input, output,session) {
         return()
       }
 
-
       dataframe$day <- as.numeric(dataframe$day)
       dataframe$percentage_infected <- as.numeric(dataframe$percentage_infected)
 
@@ -3402,8 +3407,6 @@ server <- function(input, output,session) {
         return()
       }
 
-      file_name <- glue("percentage_infected_by_day.csv")
-      canvasObjects$whatif$outside_contagion_file <- file_name
       canvasObjects$outside_contagion <- dataframe
 
       output$outside_contagion_plot <- renderPlot({
