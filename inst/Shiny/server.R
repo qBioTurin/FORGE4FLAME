@@ -2702,16 +2702,20 @@ server <- function(input, output,session) {
       ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
       data_waiting = data.frame()
 
-      if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
-        data_waiting = do.call(rbind,
-                               lapply(unique(ResRoomsDF$Agent), function(W)
-                                 data.frame(Agent = W,
-                                            Room = "Same room")
-                               )
-        )
+      data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRoomsDeter
+      if(is.null(data_waitingOLD)){
+        agents = unique(ResRoomsDF[ResRoomsDF$Flow == "Deter", "Agent"])
+        if(length(agents) > 0 ){
+          data_waiting = do.call(rbind,
+                                 lapply(agents, function(W)
+                                   data.frame(Agent = W,
+                                              Room = "Same room")
+                                 )
+          )
+        }
+
       }else{
         # If there exist already the dataset, then it is used and we have to check that there is already the agents
-        data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
 
         data_waiting = data_waitingOLD[,c("Agent","Room")]
         for(a in unique(ResRoomsDF$Agent)){
@@ -2728,9 +2732,44 @@ server <- function(input, output,session) {
         }
       }
 
-      canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
+      canvasObjects$resources[[resources_type]]$waitingRoomsDeter <- data_waiting
+    })
+    isolate({
 
+      ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
+      data_waiting = data.frame()
 
+      data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRoomsRand
+      if(is.null(data_waitingOLD)){
+        agents = unique(ResRoomsDF[ResRoomsDF$Flow == "Rand", "Agent"])
+        if(length(agents) > 0 ){
+          data_waiting = do.call(rbind,
+                                 lapply(agents, function(W)
+                                   data.frame(Agent = W,
+                                              Room = "Same room")
+                                 )
+          )
+        }
+
+      }else{
+        # If there exist already the dataset, then it is used and we have to check that there is already the agents
+
+        data_waiting = data_waitingOLD[,c("Agent","Room")]
+        for(a in unique(ResRoomsDF$Agent)){
+          if(a %in% data_waitingOLD$Agent)
+            data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
+          else
+            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+        }
+
+        agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
+
+        if(length(agent_eliminated) != 0){
+          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
+        }
+      }
+
+      canvasObjects$resources[[resources_type]]$waitingRoomsRand <- data_waiting
     })
 
   })
@@ -3546,6 +3585,7 @@ server <- function(input, output,session) {
   #### query ####
   observe({
     dir = req(dirPath())
+    show_modal_spinner()
 
     # Evolution
     isolate({
@@ -3604,11 +3644,12 @@ server <- function(input, output,session) {
       csv_files <- file.path(subfolders, "counters.csv")
       data_list <- lapply(csv_files, function(file) {
         if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("Day",	"Seed",
-                                     "COUNTERS_CREATED_AGENTS_WITH_RATE",
-                                     "COUNTERS_KILLED_AGENTS_WITH_RATE",
-                                     "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE"))
+          f = read_csv(file,col_names = T
+                       # col_names = c("Day",	"Seed",
+                       #               "COUNTERS_CREATED_AGENTS_WITH_RATE",
+                       #               "COUNTERS_KILLED_AGENTS_WITH_RATE",
+                       #               "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE")
+                       )
           f$Folder= basename(dirname(file))
           f
         } else {
@@ -3620,6 +3661,7 @@ server <- function(input, output,session) {
       postprocObjects$COUNTERScsv = do.call(rbind, data_list)
 
     })
+    remove_modal_spinner()
   })
 
   output$PostProc_filters <- renderUI({
@@ -3724,6 +3766,63 @@ server <- function(input, output,session) {
 
 
     output$EvolutionPlot <- renderPlot({
+      pl
+    })
+  })
+
+  counters_colorsNames <- c("COUNTERS_CREATED_AGENTS_WITH_RATE" ,"COUNTERS_KILLED_AGENTS_WITH_RATE",
+                         "AGENTS_IN_QUARANTINE","SWABS","NUM_INFECTED_OUTSIDE")
+  counters_colors = viridisLite::viridis(n = length(counters_colorsNames))
+  names(counters_colors) = counters_colorsNames
+
+  observe( {
+    info <- input$PostProc_table_cell_clicked
+    CountersDisease_radioButt = input$CountersDisease_radioButt
+    df <- req(postprocObjects$COUNTERScsv )
+
+    folder = req(info$value)
+
+    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
+      tidyr::gather(-Day, value =  "Number", key = "Counters")
+
+    pl = ggplot()
+    if(!is.null(CountersDisease_radioButt)){
+      DfStat = postprocObjects$COUNTERScsv %>%
+        select(-Seed) %>%
+        tidyr::gather(-Day,-Folder, value =  "Number", key = "Counters") %>%
+        group_by( Day,Counters ) %>%
+        summarise(Mean = mean(Number),
+                  MinV = min(Number),
+                  MaxV = max(Number) )
+
+      if("Area from all simulations" %in% CountersDisease_radioButt){
+        pl = pl +
+          geom_ribbon(data = DfStat,
+                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
+          scale_fill_manual(values = counters_colors,
+                            limits = names(counters_colors),
+                            labels = names(counters_colors),
+                            drop = FALSE)
+      }
+
+      if("Mean curves" %in% CountersDisease_radioButt){
+        pl = pl + geom_line(data = DfStat,
+                            aes(x = Day, y = Mean, group= Counters, col = Counters, linetype = "Mean Curves"))+
+          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
+      }
+
+    }
+    pl = pl +
+      geom_line(data = df, aes(x = Day, y = Number,col = Counters, linetype = "Simulation" ))+
+      labs(y="",col="Counters")+
+      scale_color_manual(values = counters_colors,
+                         limits = names(counters_colors),
+                         labels = names(counters_colors),
+                         drop = FALSE)+
+      theme_fancy()+facet_wrap(~Counters,scales = "free")
+
+
+    output$CountersPlot <- renderPlot({
       pl
     })
 

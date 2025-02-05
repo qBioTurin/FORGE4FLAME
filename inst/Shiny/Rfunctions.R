@@ -10,7 +10,11 @@ theme_fancy <- function() {
       plot.title = element_text(color = "white", size = 18, face = "bold", hjust = 0.5),
       legend.background = element_rect(fill = "#2b2b2b"),
       legend.text = element_text(color = "white"),
-      legend.title = element_text(color = "white", face = "bold")
+      legend.key = element_rect(fill = "white" ),
+      legend.title = element_text(color = "white", face = "bold"),
+      legend.position = "bottom",
+      strip.background = element_rect(fill = "white",color = "black"),
+      strip.text = element_text(color = "black", size = 14, face = "bold")
     )
 }
 

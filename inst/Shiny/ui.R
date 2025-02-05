@@ -1573,7 +1573,17 @@ ui <- dashboardPage(
                                                        label = "Show:",selected = character()
                                                        )
                                           )
-                                   )
+                                   ),
+                          fluidRow(column(10,
+                                          plotOutput("CountersPlot")
+                          ),
+                          column(2,
+                                 checkboxGroupInput("CountersDisease_radioButt",
+                                                    choices = c("Mean curves", "Area from all simulations"),
+                                                    label = "Show:",selected = character()
+                                 )
+                          )
+                          )
                       )
                     ),
                     fluidRow(
