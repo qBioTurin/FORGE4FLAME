@@ -33,7 +33,7 @@ server <- function(input, output,session) {
                                                     # "Analgesic Therapy",
                                                     # "Dermosurgery",
                                                     # "Radiology"),
-                                                    ID=c(-1),#,0,1,2,3,4,5,6,7),
+                                                    ID=c(0),#,0,1,2,3,4,5,6,7),
                                                     Color=c(
                                                       "rgba(0, 0, 0, 1)") #Black
                                                     # "rgba(255, 0, 0, 1)", #Red
@@ -339,7 +339,7 @@ server <- function(input, output,session) {
 
         samp = runif(3, 0, 1)
         if(is.null(canvasObjects$areas)) {
-          canvasObjects$areas <- data.frame(Name=Name, ID=0, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
+          canvasObjects$areas <- data.frame(Name=Name, ID=1, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
         }else{
           newID = max(canvasObjects$areas$ID)+1
           newarea = data.frame(Name=Name, ID=newID, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
