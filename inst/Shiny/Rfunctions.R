@@ -261,7 +261,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   updateSelectizeInput(inputId = "id_class_agent",choices = unique(classes))
 
-  updateSelectizeInput(session, "selectInput_resources_type", choices = "", selected= "", server = TRUE)
+  updateSelectizeInput(session, "selectInput_resources_type", choices = c(), selected= "", server = TRUE)
 
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
@@ -652,7 +652,6 @@ update_distribution <- function(id, dist, a, b, tab){
 }
 
 FromToMatrices.generation = function(WHOLEmodel){
-
   maxN = as.numeric(WHOLEmodel$starting$simulation_days)
 
   ## defualt values
@@ -665,116 +664,124 @@ FromToMatrices.generation = function(WHOLEmodel){
     stringsAsFactors = FALSE
   )
 
-  WHOLEmodel$rooms_whatif = rbind(default_params,WHOLEmodel$rooms_whatif)
+  WHOLEmodel$rooms_whatif = rbind(default_params, WHOLEmodel$rooms_whatif)
   ## rooms_whatif as in the OLD version
   rooms_whatif = WHOLEmodel$rooms_whatif  %>% distinct() %>% tidyr::spread(value = "Parameters", key = "Measure") %>% select(-From, -To)
-  split = str_split(rooms_whatif$Type,pattern = "-")%>%
-    as.data.frame() %>%
-    t %>%
-    data.frame(stringsAsFactors = F)
-  rooms_whatif$Type= split %>% pull(1)
-  rooms_whatif$Area= split %>% pull(2)
-
-  ## From_to matrix generation rooms
-
-  rooms = WHOLEmodel$roomsINcanvas %>% mutate(Type= paste0(type,"-",area)) %>% select(Type) %>% distinct() %>% pull()
-  rooms_fromto= matrix(0,ncol = maxN, nrow = length(rooms), dimnames = list(rooms = rooms, days= 1:maxN))
-
-  MeasuresFromTo = lapply( unique(WHOLEmodel$rooms_whatif$Measure),function(m,fromto){
-    rooms_whatif = WHOLEmodel$rooms_whatif %>% filter(Measure == m)
-
-    global = rooms_whatif %>% filter(Type == "Global")
-    if(dim(global)[1] >0){
-      for(i in seq_along(global[,1])){
-        glob_specific = global[i,]
-        fromto[,glob_specific$From:glob_specific$To] = glob_specific$Parameters
-      }
-    }
-
-    room_specific = rooms_whatif %>% filter(Type != "Global")
-    if(dim(room_specific)[1] >0){
-      for(i in seq_along(room_specific[,1])){
-        r_specific = room_specific[i,]
-        fromto[r_specific$Type,r_specific$From:r_specific$To] = r_specific$Parameters
-      }
-    }
-
-    return(fromto)
-  },fromto = rooms_fromto)
-  names(MeasuresFromTo) = unique(WHOLEmodel$rooms_whatif$Measure)
-
-  ## From_to matrix generation Agents
-  agents = names( WHOLEmodel$agents )
-  agents_fromto= matrix(0,ncol = maxN, nrow = length(agents), dimnames = list(agents = agents, days= 1:maxN))
-
-  agent_default <- data.frame(
-    Measure = c("Mask","Vaccination","Swab","Quarantine","External screening"),
-    Type = "Global",
-    Parameters = c( "Type: No mask; Fraction: 0",
-                    "Efficacy: 1; Fraction: 0; Coverage: 0",
-                    "Sensitivity: 1; Specificity: 1; Dist: Deterministic, 0, 0 ",
-                    "Dist. Days: Deterministic, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0 ",
-                    "First: 0; Second: 0" ),
-    From = 1,
-    To = 10,
-    stringsAsFactors = FALSE
-  )
-
-  WHOLEmodel$agents_whatif = rbind(agent_default,WHOLEmodel$agents_whatif)
-  AgentMeasuresFromTo = lapply( unique(WHOLEmodel$agents_whatif$Measure),function(m,fromto){
-    agents_whatif = WHOLEmodel$agents_whatif %>% filter(Measure == m) %>% rename(Name = Type)
-
-    # parsing the parameters
-    params = str_split(agents_whatif[,"Parameters"],pattern = "; ")%>%
+  if(length(unique(rooms_whatif$Type)) > 1){
+    split = str_split(rooms_whatif$Type,pattern = "-")%>%
       as.data.frame() %>%
       t %>%
       data.frame(stringsAsFactors = F)
+    rooms_whatif$Type= split %>% pull(1)
+    rooms_whatif$Area= split %>% pull(2)
+  }
 
-    colnames(params)= str_split(params[1,],pattern = ": ")%>%
-      as.data.frame() %>%
-      t %>%
-      data.frame(stringsAsFactors = F) %>% pull(1)
-    rownames(params) = NULL
+  MeasuresFromTo <- NULL
+  ## From_to matrix generation rooms
+  if(!is.null(WHOLEmodel$roomsINcanvas)){
+    rooms = WHOLEmodel$roomsINcanvas %>% mutate(Type= paste0(type,"-",area)) %>% select(Type) %>% distinct() %>% pull()
+    rooms_fromto= matrix(0,ncol = maxN, nrow = length(rooms), dimnames = list(rooms = rooms, days= 1:maxN))
 
-    for(j in 1:nrow(params))
-      params[j,] = gsub(x = params[j,],replacement = "",pattern = paste0(paste0(colnames(params),": "),collapse = "||"))
+    MeasuresFromTo = lapply( unique(WHOLEmodel$rooms_whatif$Measure),function(m,fromto){
+      rooms_whatif = WHOLEmodel$rooms_whatif %>% filter(Measure == m)
 
-    agents_whatif = cbind(agents_whatif %>% select(-Parameters), params)
-
-    fromto = lapply(names(params),function(i,fromto_p){
-      a_specific = agents_whatif[,c("Name","From","To",i) ]
-
-      global = a_specific %>% filter(Name == "Global")
+      global = rooms_whatif %>% filter(Type == "Global")
       if(dim(global)[1] >0){
-        for(ii in seq_along(global[,1])){
-          glob_specific = global[ii,]
-          fromto_p[,glob_specific$From:glob_specific$To] = glob_specific[,i]
+        for(i in seq_along(global[,1])){
+          glob_specific = global[i,]
+          fromto[,glob_specific$From:glob_specific$To] = glob_specific$Parameters
         }
       }
 
-      agent_specific = a_specific %>% filter(Name != "Global")
-      if(dim(agent_specific)[1] >0){
-
-        for(ii in seq_along(a_specific[,1])){
-          specific = a_specific[ii,]
-          fromto_p[,specific$From:specific$To] = specific[,i]
+      room_specific = rooms_whatif %>% filter(Type != "Global")
+      if(dim(room_specific)[1] >0){
+        for(i in seq_along(room_specific[,1])){
+          r_specific = room_specific[i,]
+          fromto[r_specific$Type,r_specific$From:r_specific$To] = r_specific$Parameters
         }
       }
 
-      return(fromto_p)
-    },fromto_p = fromto)
-    names(fromto)= names(params)
+      return(fromto)
+    },fromto = rooms_fromto)
+    names(MeasuresFromTo) = unique(WHOLEmodel$rooms_whatif$Measure)
+  }
 
-    return(fromto)
-  },fromto = agents_fromto)
+  AgentMeasuresFromTo <- NULL
+  initial_infected <- NULL
+  ## From_to matrix generation Agents
+  if(!is.null(WHOLEmodel$agents)){
+    agents = names( WHOLEmodel$agents )
+    agents_fromto= matrix(0,ncol = maxN, nrow = length(agents), dimnames = list(agents = agents, days= 1:maxN))
 
-  names(AgentMeasuresFromTo) = unique(WHOLEmodel$agents_whatif$Measure)
+    agent_default <- data.frame(
+      Measure = c("Mask","Vaccination","Swab","Quarantine","External screening"),
+      Type = "Global",
+      Parameters = c( "Type: No mask; Fraction: 0",
+                      "Efficacy: 1; Fraction: 0; Coverage: 0",
+                      "Sensitivity: 1; Specificity: 1; Dist: Deterministic, 0, 0 ",
+                      "Dist. Days: Deterministic, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0 ",
+                      "First: 0; Second: 0" ),
+      From = 1,
+      To = 10,
+      stringsAsFactors = FALSE
+    )
 
-  # set initial infected agents as default zero
+    WHOLEmodel$agents_whatif = rbind(agent_default,WHOLEmodel$agents_whatif)
+    AgentMeasuresFromTo = lapply( unique(WHOLEmodel$agents_whatif$Measure),function(m,fromto){
+      agents_whatif = WHOLEmodel$agents_whatif %>% filter(Measure == m) %>% rename(Name = Type)
 
-  initial_infected= matrix(0,ncol = 1, nrow = length(agents), dimnames = list(agents = agents))
+      # parsing the parameters
+      params = str_split(agents_whatif[,"Parameters"],pattern = "; ")%>%
+        as.data.frame() %>%
+        t %>%
+        data.frame(stringsAsFactors = F)
 
-  initial_infected[WHOLEmodel$initial_infected$Type,1] = WHOLEmodel$initial_infected$Number
+      colnames(params)= str_split(params[1,],pattern = ": ")%>%
+        as.data.frame() %>%
+        t %>%
+        data.frame(stringsAsFactors = F) %>% pull(1)
+      rownames(params) = NULL
+
+      for(j in 1:nrow(params))
+        params[j,] = gsub(x = params[j,],replacement = "",pattern = paste0(paste0(colnames(params),": "),collapse = "||"))
+
+      agents_whatif = cbind(agents_whatif %>% select(-Parameters), params)
+
+      fromto = lapply(names(params),function(i,fromto_p){
+        a_specific = agents_whatif[,c("Name","From","To",i) ]
+
+        global = a_specific %>% filter(Name == "Global")
+        if(dim(global)[1] >0){
+          for(ii in seq_along(global[,1])){
+            glob_specific = global[ii,]
+            fromto_p[,glob_specific$From:glob_specific$To] = glob_specific[,i]
+          }
+        }
+
+        agent_specific = a_specific %>% filter(Name != "Global")
+        if(dim(agent_specific)[1] >0){
+
+          for(ii in seq_along(a_specific[,1])){
+            specific = a_specific[ii,]
+            fromto_p[,specific$From:specific$To] = specific[,i]
+          }
+        }
+
+        return(fromto_p)
+      },fromto_p = fromto)
+      names(fromto)= names(params)
+
+      return(fromto)
+    },fromto = agents_fromto)
+
+    names(AgentMeasuresFromTo) = unique(WHOLEmodel$agents_whatif$Measure)
+
+    # set initial infected agents as default zero
+
+    initial_infected= matrix(0,ncol = 1, nrow = length(agents), dimnames = list(agents = agents))
+
+    initial_infected[WHOLEmodel$initial_infected$Type,1] = WHOLEmodel$initial_infected$Number
+  }
 
   ####
   return(list(AgentMeasuresFromTo = AgentMeasuresFromTo,
