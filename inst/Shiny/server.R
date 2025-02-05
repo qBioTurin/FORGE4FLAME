@@ -3583,70 +3583,72 @@ server <- function(input, output,session) {
 
 
   #### query ####
-  observeEvent(input$selectedSubfolder,{
-    roomsINcanvas = req(canvasObjects$roomsINcanvas)
+  observe({
     dir = req(dirPath())
-    roomsINcanvas = roomsINcanvas %>% select(ID,type,Name,area,CanvasID)
 
-    #### read all the areosol and contact ####
-    subfolders <- list.dirs(dir, recursive = FALSE)
-    MinTime = min( postprocObjects$evolutionCSV$Day)
-    MaxTime = max( postprocObjects$evolutionCSV$Day)
-    step = as.numeric(canvasObjects$starting$step)
+    isolate({
+      roomsINcanvas = req(canvasObjects$roomsINcanvas)
+      #### read all the areosol and contact ####
+      subfolders <- list.dirs(dir, recursive = FALSE)
+      MinTime = min( postprocObjects$evolutionCSV$Day)
+      MaxTime = max( postprocObjects$evolutionCSV$Day)
+      step = as.numeric(canvasObjects$starting$step)
 
-    csv_files <- file.path(subfolders, "AEROSOL.csv")
-    data_list <- lapply(csv_files, function(file) {
-      if (file.exists(file)) {
-        f = read_csv(file,
-                     col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
-        f$Folder= basename(dirname(file))
-        f
-      } else {
-        NULL
+      csv_files <- file.path(subfolders, "AEROSOL.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      AEROSOLcsv = do.call(rbind, data_list)
+
+      if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
+        shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
+        return()
       }
+
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x-1,"-", center_y-1,"-", CanvasID) )
+      rooms_id = roomsINcanvas$Name
+      names(rooms_id) = roomsINcanvas$coord
+
+      AEROSOLcsv = AEROSOLcsv %>% mutate( floorID = ( y / max(y) )*2 +1 ,
+                                          coord = paste0(x,"-", z ,"-",
+                                                         unique(roomsINcanvas$CanvasID)[floorID]),
+                                          Name = rooms_id[coord]
+      )
+      rooms_id[unique(AEROSOLcsv$coord)]
+      head(roomsINcanvas)
+      head(AEROSOLcsv)
+
+      csv_files <- file.path(subfolders, "CONTACT.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
+                                     "agent_type2",
+                                     "agent_disease_state1", "agent_disease_state2",
+                                     "agent_position_x1", "agent_position_y1", "agent_position_z1",
+                                     "agent_position_x2", "agent_position_y2", "agent_position_z2"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$CONTACTcsv = do.call(rbind, data_list)
+
+      #####
     })
-    AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-    if (length(data_list) == 0) return(NULL)
-    AEROSOLcsv = do.call(rbind, data_list)
 
-    if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
-      shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
-      return()
-    }
-
-    roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x-1,"-", center_y-1,"-", CanvasID) )
-    rooms_id = roomsINcanvas$Name
-    names(rooms_id) = roomsINcanvas$coord
-
-    AEROSOLcsv = AEROSOLcsv %>% mutate( floorID = ( y / max(y) )*2 +1 ,
-                                        coord = paste0(x,"-", z ,"-",
-                                                       unique(roomsINcanvas$CanvasID)[floorID]),
-                                        Name = rooms_id[coord]
-                                        )
-    rooms_id[unique(AEROSOLcsv$coord)]
-    head(roomsINcanvas)
-    head(AEROSOLcsv)
-
-    csv_files <- file.path(subfolders, "CONTACT.csv")
-    data_list <- lapply(csv_files, function(file) {
-      if (file.exists(file)) {
-        f = read_csv(file,
-                     col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
-                                   "agent_type2",
-                                   "agent_disease_state1", "agent_disease_state2",
-                                   "agent_position_x1", "agent_position_y1", "agent_position_z1",
-                                   "agent_position_x2", "agent_position_y2", "agent_position_z2"))
-        f$Folder= basename(dirname(file))
-        f
-      } else {
-        NULL
-      }
-    })
-    CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-    if (length(data_list) == 0) return(NULL)
-    postprocObjects$CONTACTcsv = do.call(rbind, data_list)
-
-    #####
   })
 
   observe({
