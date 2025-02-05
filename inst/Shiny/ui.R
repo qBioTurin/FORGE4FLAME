@@ -1524,8 +1524,7 @@ ui <- dashboardPage(
                             column(
                               width = 4,
                               offset = 1,
-                              shinyDirButton("dir", "Select Folder", "Upload"),
-                              uiOutput("subfolderUI")
+                              shinyDirButton("dir", "Select Folder", "Upload")
                               # fileInput(
                               #   inputId = "CSVsimulImport",
                               #   label = "",
@@ -1558,10 +1557,23 @@ ui <- dashboardPage(
                                    uiOutput("PostProc_filters")
                             ),
                             column(width = 5,
+                                   div(class = "icon-container", style="margin-top:20px",
+                                       h3("Resulting Simulations", icon("info-circle")),
+                                       div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
+                                       ),
                                    DT::dataTableOutput("PostProc_table")
                             )
                           ),
-                          fluidRow(plotOutput("EvolutionPlot"))
+                          fluidRow(column(10,
+                                          plotOutput("EvolutionPlot")
+                                          ),
+                                   column(2,
+                                          checkboxGroupInput("EvolutionDisease_radioButt",
+                                                       choices = c("Mean curves", "Area from all simulations"),
+                                                       label = "Show:",selected = character()
+                                                       )
+                                          )
+                                   )
                       )
                     ),
                     fluidRow(
@@ -1569,6 +1581,11 @@ ui <- dashboardPage(
                           title = div(class = "icon-container", style="margin-top:20px",
                                       h3("2D Visualisation", icon("info-circle")),
                                       div(class = "icon-text", "2D visulisation of the agents moving in the modeled system")
+                          ),
+                          fluidRow(
+                            column(2,offset = 1,
+                                   uiOutput("subfolderUI")
+                            )
                           ),
                           fluidRow(
                             box(width = 10,collapsed = T,collapsible = T,
@@ -1589,7 +1606,7 @@ ui <- dashboardPage(
                                                     )
                                   ),
                                   column(2,
-                                         selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area"))
+                                         selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol"))
                                   ),
                                   column(2,
                                          radioButtons("visualLabel_select","Show in the room:",

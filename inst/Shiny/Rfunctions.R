@@ -1,3 +1,19 @@
+theme_fancy <- function() {
+  theme_minimal() +
+    theme(
+      plot.background = element_rect(fill = "#2b2b2b", color = NA),
+      panel.background = element_rect(fill = "#3c3c3c", color = NA),
+      panel.grid.major = element_line(color = "#666666", size = 0.3),
+      panel.grid.minor = element_line(color = "#444444", size = 0.2),
+      axis.text = element_text(color = "white", size = 12),
+      axis.title = element_text(color = "white", size = 14, face = "bold"),
+      plot.title = element_text(color = "white", size = 18, face = "bold", hjust = 0.5),
+      legend.background = element_rect(fill = "#2b2b2b"),
+      legend.text = element_text(color = "white"),
+      legend.title = element_text(color = "white", face = "bold")
+    )
+}
+
 generate_obj <- function(temp_directory){
   fileConn = file(file.path(temp_directory, 'room.obj'), 'w+')
 

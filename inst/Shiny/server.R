@@ -3494,7 +3494,11 @@ server <- function(input, output,session) {
   #### START post processing #####
 
   postprocObjects = reactiveValues(evolutionCSV = NULL,
-                                   Filter_evolutionCSV = NULL)
+                                   Filter_evolutionCSV = NULL,
+                                   CONTACTcsv = NULL,
+                                   AEROSOLcsv = NULL,
+                                   COUNTERScsv = NULL
+                                   )
 
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
@@ -3533,6 +3537,196 @@ server <- function(input, output,session) {
     }
     selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
   })
+
+
+
+  #### query ####
+  observe({
+    dir = req(dirPath())
+
+    # Evolution
+    isolate({
+      subfolders <- list.dirs(dir, recursive = FALSE)
+      csv_files <- file.path(subfolders, "evolution.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file)
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$evolutionCSV = do.call(rbind, data_list)
+
+      MinTime = min( postprocObjects$evolutionCSV$Day)
+      MaxTime = max( postprocObjects$evolutionCSV$Day)
+
+      csv_files <- file.path(subfolders, "AEROSOL.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$AEROSOLcsv = do.call(rbind, data_list)
+
+      csv_files <- file.path(subfolders, "CONTACT.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
+                                     "agent_type2",
+                                     "agent_disease_state1", "agent_disease_state2",
+                                     "agent_position_x1", "agent_position_y1", "agent_position_z1",
+                                     "agent_position_x2", "agent_position_y2", "agent_position_z2"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$CONTACTcsv = do.call(rbind, data_list)
+
+      csv_files <- file.path(subfolders, "counters.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("Day",	"Seed",
+                                     "COUNTERS_CREATED_AGENTS_WITH_RATE",
+                                     "COUNTERS_KILLED_AGENTS_WITH_RATE",
+                                     "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$COUNTERScsv = do.call(rbind, data_list)
+
+    })
+  })
+
+  output$PostProc_filters <- renderUI({
+    df <- req(postprocObjects$evolutionCSV )
+    show_modal_spinner()
+
+    name_cols <- colnames(df%>% select(-Seed,-Folder))
+    sliders = lapply(name_cols, function(col) {
+      values = unique(df[[col]])
+      sliderInput(
+        inputId = paste0("filter_", col),
+        label = paste("Select range for", col),
+        min = min(values, na.rm = TRUE),
+        max = max(values, na.rm = TRUE),
+        value = range(values, na.rm = TRUE)
+      )
+    })
+    remove_modal_spinner()
+    sliders
+  })
+
+  observe({
+    df <-req(postprocObjects$evolutionCSV )
+    name_cols <- colnames(df%>% select(-Seed,-Folder))
+
+    for (col in name_cols) {
+      input_id <- paste0("filter_", col)
+      if (!is.null(input[[input_id]])) {
+        df <- df[df[[col]] >= input[[input_id]][1] & df[[col]] <= input[[input_id]][2], ]
+      }
+    }
+    postprocObjects$Filter_evolutionCSV = df
+  })
+
+  observe({
+    df = req(postprocObjects$Filter_evolutionCSV)
+    folders = unique(df$Folder)
+
+    output$PostProc_table <- DT::renderDataTable({
+      DT::datatable(
+        data.frame( FolderNames = paste(folders)) ,
+        options = list(
+          dom = 't'  # Display only the table, not the default elements (e.g., search bar, length menu)
+        ),
+        editable = list(target = 'cell'),
+        selection = 'single',
+        rownames = F
+      )
+    })
+
+  })
+
+
+  # Observe table edit and validate input
+  observe( {
+    info <- input$PostProc_table_cell_clicked
+    EvolutionDisease_radioButt = input$EvolutionDisease_radioButt
+    df <- req(postprocObjects$evolutionCSV )
+
+    folder = req(info$value)
+
+    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
+      tidyr::gather(-Day, value =  "Number", key = "Compartiments")
+
+    fixed_colors <- c("Susceptible" = "green", "Exposed" = "blue", "Infected" = "red", "Recovered" = "purple", "Died" = "white")
+
+    pl = ggplot()
+    if(!is.null(EvolutionDisease_radioButt)){
+      DfStat = postprocObjects$evolutionCSV %>%
+        select(-Seed) %>%
+        tidyr::gather(-Day,-Folder, value =  "Number", key = "Compartiments") %>%
+        group_by( Day,Compartiments ) %>%
+        summarise(Mean = mean(Number),
+                  MinV = min(Number),
+                  MaxV = max(Number) )
+
+      if("Area from all simulations" %in% EvolutionDisease_radioButt){
+        pl = pl +
+          geom_ribbon(data = DfStat,
+                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Compartiments, fill = Compartiments),alpha = 0.4)+
+          scale_fill_manual(values = fixed_colors,
+                             limits = names(fixed_colors),
+                             labels = names(fixed_colors),
+                             drop = FALSE)
+      }
+
+      if("Mean curves" %in% EvolutionDisease_radioButt){
+        pl = pl + geom_line(data = DfStat,
+                            aes(x = Day, y = Mean, group= Compartiments, col = Compartiments, linetype = "Mean Curves"))+
+          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
+      }
+
+    }
+    pl = pl +
+      geom_line(data = df, aes(x = Day, y = Number,col = Compartiments, linetype = "Simulation" ))+
+      labs(y="Comulative number of individuals",col="Compartiments")+
+      scale_color_manual(values = fixed_colors,
+                         limits = names(fixed_colors),
+                         labels = names(fixed_colors),
+                         drop = FALSE)+
+      theme_fancy()
+
+
+    output$EvolutionPlot <- renderPlot({
+      pl
+    })
+
+  })
+
+  #### end query post processing ####
 
   #### 2D visualisation ####
 
@@ -3638,6 +3832,7 @@ server <- function(input, output,session) {
     visualAgentID = input$visualAgentID_select
     colorFeat = input$visualColor_select
     Label = input$visualLabel_select
+    timeIn <- input$animation
 
     disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
     simulation_log$disease_stateString = disease[simulation_log$disease_state+1]
@@ -3672,10 +3867,15 @@ server <- function(input, output,session) {
                              canvasObjects$rooms %>% select(Name,colorFill) ,
                              by.x = "Name", by.y = "Name" )
       roomsINcanvas$IDtoColor = roomsINcanvas$Name
+    }else if(colorFeat == "Contact"){
+      data = postprocObjects$CONTACTcsv  %>%
+        filter(time == timeIn)
+
+    }else if(colorFeat == "Aerosol"){
+      postprocObjects$AEROSOLcsv
     }
 
     output[["plot_map"]] <- renderPlot({
-      timeIn <- input$animation
 
       df <- roomsINcanvas %>%
         mutate(xmin = x + l,
@@ -3759,106 +3959,31 @@ server <- function(input, output,session) {
                              size = 4)
       }
 
-      pl
+
+      # ### HeatMap plot
+      #
+      # plHeatmap = ggplot(simulation_log %>% filter(time == 7)) +
+      #   scale_y_reverse() +
+      #   facet_wrap(~CanvasID) +
+      #   geom_rect(data = df,
+      #             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill= "white")+
+      #   stat_density_2d(geom = "polygon",
+      #                   aes(x = x, y = z, group = disease_stateString, fill = disease_stateString, alpha = ..level..),
+      #                   bins = 4)  +
+      #   scale_fill_manual(values = colorDisease$Col,
+      #                     limits = (colorDisease$State),
+      #                     labels = (colorDisease$State)) +
+      #   labs(title = "Agent Concentration Heatmap",
+      #        x = "",
+      #        y = "",
+      #        fill = "Disease State") +
+      #   theme_dark()
+
+      return( pl )
     })
 
   })
   #### END 2D visualisation ####
-
-  #### query ####
-  observe({
-    dir = req(dirPath())
-
-    isolate({
-      subfolders <- list.dirs(dir, recursive = FALSE)
-      csv_files <- file.path(subfolders, "evolution.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file)
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$evolutionCSV = do.call(rbind, data_list)
-    })
-  })
-
-  output$PostProc_filters <- renderUI({
-    df <- req(postprocObjects$evolutionCSV )
-    show_modal_spinner()
-
-    name_cols <- colnames(df%>% select(-Seed,-Folder))
-    sliders = lapply(name_cols, function(col) {
-      values = unique(df[[col]])
-      sliderInput(
-        inputId = paste0("filter_", col),
-        label = paste("Select range for", col),
-        min = min(values, na.rm = TRUE),
-        max = max(values, na.rm = TRUE),
-        value = range(values, na.rm = TRUE)
-      )
-    })
-    remove_modal_spinner()
-    sliders
-  })
-
-  observe({
-    df <-req(postprocObjects$evolutionCSV )
-    name_cols <- colnames(df%>% select(-Seed,-Folder))
-
-    for (col in name_cols) {
-      input_id <- paste0("filter_", col)
-      if (!is.null(input[[input_id]])) {
-        df <- df[df[[col]] >= input[[input_id]][1] & df[[col]] <= input[[input_id]][2], ]
-      }
-    }
-    postprocObjects$Filter_evolutionCSV = df
-  })
-
-  observe({
-    df = req(postprocObjects$Filter_evolutionCSV)
-    folders = unique(df$Folder)
-
-    output$PostProc_table <- DT::renderDataTable({
-      DT::datatable(
-        data.frame( FolderNames = paste(folders)) ,
-        options = list(
-          dom = 't'  # Display only the table, not the default elements (e.g., search bar, length menu)
-        ),
-        editable = list(target = 'cell'),
-        selection = 'single',
-        rownames = F
-      )
-    })
-
-  })
-
-
-  # Observe table edit and validate input
-  observeEvent(input$PostProc_table_cell_clicked, {
-    info <- input$PostProc_table_cell_clicked
-    df <- req(postprocObjects$evolutionCSV )
-
-    folder = req(info$value)
-
-    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
-      tidyr::gather(-Day, value =  "Number", key = "Compartiments")
-
-    output$EvolutionPlot <- renderPlot({
-      ggplot(df)+
-        geom_line(aes(x = Day, y = Number,col = Compartiments))+
-        labs(y="Comulative number of individuals")+
-        theme_bw()
-    })
-
-  })
-
-  #### end query post processing ####
-
   observeEvent(input$run,{
 
   })
