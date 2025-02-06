@@ -1116,7 +1116,7 @@ ui <- dashboardPage(
                         numericInput(
                           inputId = "vaccination_coverage",
                           label = "Vaccine coverage (average in days):",
-                          value = 1, min = 0,
+                          value = 90, min = 0,
                         )
                       ),
                       column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 0, min = 0)),

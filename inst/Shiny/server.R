@@ -3038,11 +3038,11 @@ server <- function(input, output,session) {
       return()
     }
 
-    if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$vaccination_time_to) < 0){
-      shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
-      return()
-    }
+    # if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+    #    as.integer(input$vaccination_time_to) < 0){
+    #   shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
+    #   return()
+    # }
 
     params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
 
@@ -3050,7 +3050,7 @@ server <- function(input, output,session) {
                         parameters = params,
                         type = ifelse(input$vaccination_type != "Global", input$agent_vaccination, "Global"),
                         from = input$vaccination_time_from,
-                        to = NaN,
+                        to = input$vaccination_time_from,
                         data = agents_whatif )
 
     if( !is.null(new_data) ){
@@ -3080,7 +3080,7 @@ server <- function(input, output,session) {
         return()
 
       if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
       }else{
         params <- parse_distribution(new_time, new_dist)
         a <- params[[1]]
@@ -3133,7 +3133,7 @@ server <- function(input, output,session) {
         shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
         return()
       }
-      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time)
+      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
 
     }else{
       params <- parse_distribution(new_time, new_dist)
@@ -3160,7 +3160,7 @@ server <- function(input, output,session) {
         return()
 
       if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
       }else{
         params <- parse_distribution(new_time, new_dist)
         a <- params[[1]]
