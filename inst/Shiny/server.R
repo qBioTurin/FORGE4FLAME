@@ -1479,6 +1479,7 @@ server <- function(input, output,session) {
         updateTabsetPanel(session, "SideTabs", selected = "canvas_tab")
       })
     }
+    postprocObjects$FLAGmodelLoaded = TRUE
   })
 
   observeEvent(input$confirmUpload,{
@@ -1510,6 +1511,7 @@ server <- function(input, output,session) {
       updateTabsetPanel(session, "SideTabs", selected = "canvas_tab")
 
       UpdatingData(input,output,canvasObjects,mess,areasColor, session)
+      postprocObjects$FLAGmodelLoaded = TRUE
     })
     # )
     removeModal()
@@ -3539,12 +3541,13 @@ server <- function(input, output,session) {
                                    Filter_evolutionCSV = NULL,
                                    CONTACTcsv = NULL,
                                    AEROSOLcsv = NULL,
-                                   COUNTERScsv = NULL
+                                   COUNTERScsv = NULL,
+                                   Mapping = NULL,
+                                   FLAGmodelLoaded = FALSE
                                    )
 
-
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
-                      "evolution.csv","host_rng_state.txt", "INFO.csv" )
+                      "evolution.csv" )
   # Allow user to select a folder
   wdFolders = str_split(string = dirname(getwd()),pattern = "/")
   wdFolders= paste0(wdFolders[[1]][1:3],collapse = "/")
@@ -3584,30 +3587,19 @@ server <- function(input, output,session) {
 
   #### query ####
   observe({
-    dir = req(dirPath())
+
+    CONTACTcsv = req(postprocObjects$CONTACTcsv)
+    AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
+    req(postprocObjects$FLAGmodelLoaded )
 
     isolate({
+      dir = req(dirPath())
       roomsINcanvas = req(canvasObjects$roomsINcanvas)
       #### read all the areosol and contact ####
       subfolders <- list.dirs(dir, recursive = FALSE)
       MinTime = min( postprocObjects$evolutionCSV$Day)
       MaxTime = max( postprocObjects$evolutionCSV$Day)
       step = as.numeric(canvasObjects$starting$step)
-
-      csv_files <- file.path(subfolders, "AEROSOL.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      AEROSOLcsv = do.call(rbind, data_list)
 
       if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
         shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
@@ -3618,35 +3610,34 @@ server <- function(input, output,session) {
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
-      AEROSOLcsv = AEROSOLcsv %>% mutate( floorID = ( y / max(y) )*2 +1 ,
-                                          coord = paste0(x,"-", z ,"-",
-                                                         unique(roomsINcanvas$CanvasID)[floorID]),
-                                          Name = rooms_id[coord]
+      postprocObjects$Mapping %>% mutate( floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
+                                    coord = paste0(x,"-", z ,"-",floorID),
+                                    Name = rooms_id[coord]
       )
-      rooms_id[unique(AEROSOLcsv$coord)]
-      head(roomsINcanvas)
-      head(AEROSOLcsv)
 
-      csv_files <- file.path(subfolders, "CONTACT.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
-                                     "agent_type2",
-                                     "agent_disease_state1", "agent_disease_state2",
-                                     "agent_position_x1", "agent_position_y1", "agent_position_z1",
-                                     "agent_position_x2", "agent_position_y2", "agent_position_z2"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$CONTACTcsv = do.call(rbind, data_list)
+      ### da qui da sistemare
 
+      postprocObjects$AEROSOLcsv = AEROSOLcsv %>% mutate( floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
+                                          coord = paste0(x,"-", z ,"-",floorID),
+                                          Name = rooms_id[coord]
+                                          ) %>%
+        select(-room_id,-x,-y,-z)
+
+      CONTACTcsv$x = CONTACTcsv$z = NA
+      CONTACTcsv = CONTACTcsv %>% mutate( y = agent_position_y1,
+                             floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1]
+      )
+
+      a = CONTACTcsv %>% mutate( y = agent_position_y1,
+                                 x = ,
+                                 z = ,
+                                 floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
+                                                          coord = paste0(x,"-", z ,"-",floorID),
+                                                          Name = rooms_id[coord]
+      ) %>%
+        select(-room_id,-x,-y,-z)
       #####
+      postprocObjects$FLAGmodelLoaded = FALSE
     })
 
   })
@@ -3658,6 +3649,15 @@ server <- function(input, output,session) {
     # Evolution
     isolate({
       subfolders <- list.dirs(dir, recursive = FALSE)
+
+      #tempornae
+      #f = read_csv(paste0(dir,"/G.txt"),) %>% filter()
+      G <- read_table("~/Desktop/simulation/School/G.txt",
+                      col_names = FALSE, skip = 1)%>% filter(X2 %in% c("NORMAL","STAIR","SPAWNROOM"))
+      colnames(G) = c("ID","Type","x","y","z")
+      postprocObjects$Mapping = G
+      ####
+
       csv_files <- file.path(subfolders, "evolution.csv")
       data_list <- lapply(csv_files, function(file) {
         if (file.exists(file)) {
@@ -3691,6 +3691,39 @@ server <- function(input, output,session) {
       if (length(data_list) == 0) return(NULL)
       postprocObjects$COUNTERScsv = do.call(rbind, data_list)
 
+      csv_files <- file.path(subfolders, "AEROSOL.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$AEROSOLcsv = do.call(rbind, data_list)
+
+      csv_files <- file.path(subfolders, "CONTACT.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
+                                     "agent_type2",
+                                     "agent_disease_state1", "agent_disease_state2",
+                                     "agent_position_x1", "agent_position_y1", "agent_position_z1",
+                                     "agent_position_x2", "agent_position_y2", "agent_position_z2"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$CONTACTcsv = do.call(rbind, data_list)
     })
     remove_modal_spinner()
   })
@@ -3933,7 +3966,6 @@ server <- function(input, output,session) {
   # Get unique CanvasIDs
   canvas_ids <- reactive({
     simulation_log = req(canvasObjects$TwoDVisual)
-
     unique(simulation_log$CanvasID)
   })
 
