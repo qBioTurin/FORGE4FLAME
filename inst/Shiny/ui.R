@@ -1116,7 +1116,7 @@ ui <- dashboardPage(
                         numericInput(
                           inputId = "vaccination_coverage",
                           label = "Vaccine coverage (average in days):",
-                          value = 1, min = 0,
+                          value = 90, min = 0,
                         )
                       ),
                       column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 0, min = 0)),
@@ -1598,7 +1598,7 @@ ui <- dashboardPage(
                             )
                           ),
                           fluidRow(
-                            box(width = 10,collapsed = T,collapsible = T,
+                            box(width = 12,collapsible = T,
                                 title = div(class = "icon-container", style="margin-top:20px",
                                             h3("Features ", icon("info-circle")),
                                             div(class = "icon-text", "....")

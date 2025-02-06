@@ -33,7 +33,7 @@ server <- function(input, output,session) {
                                                     # "Analgesic Therapy",
                                                     # "Dermosurgery",
                                                     # "Radiology"),
-                                                    ID=c(-1),#,0,1,2,3,4,5,6,7),
+                                                    ID=c(0),#,0,1,2,3,4,5,6,7),
                                                     Color=c(
                                                       "rgba(0, 0, 0, 1)") #Black
                                                     # "rgba(255, 0, 0, 1)", #Red
@@ -339,7 +339,7 @@ server <- function(input, output,session) {
 
         samp = runif(3, 0, 1)
         if(is.null(canvasObjects$areas)) {
-          canvasObjects$areas <- data.frame(Name=Name, ID=0, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
+          canvasObjects$areas <- data.frame(Name=Name, ID=1, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
         }else{
           newID = max(canvasObjects$areas$ID)+1
           newarea = data.frame(Name=Name, ID=newID, Color=paste0('rgba(', round(255*samp[1]), ', ', round(255*samp[2]), ', ', round(255*samp[3]), ', 1)'))
@@ -3040,11 +3040,11 @@ server <- function(input, output,session) {
       return()
     }
 
-    if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$vaccination_time_to) < 0){
-      shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
-      return()
-    }
+    # if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+    #    as.integer(input$vaccination_time_to) < 0){
+    #   shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
+    #   return()
+    # }
 
     params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
 
@@ -3052,7 +3052,7 @@ server <- function(input, output,session) {
                         parameters = params,
                         type = ifelse(input$vaccination_type != "Global", input$agent_vaccination, "Global"),
                         from = input$vaccination_time_from,
-                        to = NaN,
+                        to = input$vaccination_time_from,
                         data = agents_whatif )
 
     if( !is.null(new_data) ){
@@ -3082,7 +3082,7 @@ server <- function(input, output,session) {
         return()
 
       if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
       }else{
         params <- parse_distribution(new_time, new_dist)
         a <- params[[1]]
@@ -3135,7 +3135,7 @@ server <- function(input, output,session) {
         shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
         return()
       }
-      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time)
+      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
 
     }else{
       params <- parse_distribution(new_time, new_dist)
@@ -3162,7 +3162,7 @@ server <- function(input, output,session) {
         return()
 
       if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time)
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
       }else{
         params <- parse_distribution(new_time, new_dist)
         a <- params[[1]]
@@ -3934,10 +3934,10 @@ server <- function(input, output,session) {
         simulation_log = simulation_log %>%
           group_by(id) %>%
           arrange(time) %>%
-          tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
+          #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
           tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
-          ungroup() %>%
-          filter(y != 10000)
+          ungroup() #%>%
+          #filter(y != 10000)
 
         # add agent names to the simulation log!
         if(!is.null(names(canvasObjects$agents))){
@@ -3945,6 +3945,9 @@ server <- function(input, output,session) {
         }
 
         canvasObjects$TwoDVisual <- simulation_log
+
+        simulation_log = simulation_log %>%
+          filter(y != 10000)
 
         remove_modal_spinner()
 
@@ -3955,7 +3958,7 @@ server <- function(input, output,session) {
         updateSelectInput("visualFloor_select", session = session,
                           choices = c("All",unique(floors$CanvasID)))
         updateSelectInput("visualAgent_select", session = session,
-                          choices = c("All",unique(simulation_log$agent_type)))
+                          choices = c("All",sort(unique(simulation_log$agent_type))))
         ##
 
         shinyalert("Success", paste0("File loaded "), "success", 1000)
@@ -3985,7 +3988,7 @@ server <- function(input, output,session) {
 
     if(input$visualAgent_select != "All"){
       idAgents = simulation_log %>% filter(agent_type == input$visualAgent_select) %>% select(id) %>% distinct() %>% pull()
-      updateSelectInput(session = session, "visualAgentID_select", choices = c("All",idAgents),selected = "All")
+      updateSelectInput(session = session, "visualAgentID_select", choices = c("All",sort(idAgents)),selected = "All")
     }
   })
 
@@ -4081,34 +4084,47 @@ server <- function(input, output,session) {
 
       simulation_log$agent_type = factor(x = simulation_log$agent_type , levels = unique(simulation_log$agent_type))
 
-      pl = ggplot() +
-        scale_y_reverse() +
-        geom_rect(data = df,
-                  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                  color = "black") +
-        scale_fill_manual( values = setNames(dfcolor$colorFillParsed, nm = dfcolor$IDtoColor ) ) +
-        geom_point(data = simulation_log %>%
-                     filter(time == timeIn),
-                   aes(x = x, y = z, group = id, shape = agent_type,
-                       color = disease_stateString ), size = 5, stroke = 2) +
-        scale_shape_manual(values = shapeAgents$Shape,
-                           limits = shapeAgents$Agents,
-                           breaks = shapeAgents$Agents,
-                           drop = FALSE)+
-        scale_color_manual(values = colorDisease$Col,
-                           limits = (colorDisease$State),
-                           labels = (colorDisease$State),
-                           drop = FALSE) +
-        coord_fixed() +
-        facet_wrap(~CanvasID,ncol = 2) +
-        theme_bw() +
-        labs(
-          x = "X Coordinate",
-          y = "Y Coordinate",
-          color = "Disease state", shape = "Agent type") +
-        guides(fill = "none" )+
-        theme(legend.position = "top") +
-        labs(title = paste0("Time: ", timeIn), x = "", y = "")
+      simulation_log <- simulation_log %>%
+        filter(time <= timeIn) %>%
+        group_by(id) %>%
+        slice_tail(n = 1) %>%
+        filter(y != 10000)
+
+      if(is.null(canvasObjects$plot_2D)){
+        pl = ggplot() +
+          scale_y_reverse() +
+          geom_rect(data = df,
+                    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
+                    color = "black") +
+          scale_fill_manual( values = setNames(dfcolor$colorFillParsed, nm = dfcolor$IDtoColor ) ) +
+          scale_shape_manual(values = shapeAgents$Shape,
+                             limits = shapeAgents$Agents,
+                             breaks = shapeAgents$Agents,
+                             drop = FALSE)+
+          scale_color_manual(values = colorDisease$Col,
+                             limits = (colorDisease$State),
+                             labels = (colorDisease$State),
+                             drop = FALSE) +
+          coord_fixed() +
+          facet_wrap(~CanvasID,ncol = 2) +
+          theme_bw() +
+          labs(
+            x = "X Coordinate",
+            y = "Y Coordinate",
+            color = "Disease state", shape = "Agent type") +
+          guides(fill = "none" )+
+          theme(legend.position = "top") +
+          labs(title = paste0("Time: ", timeIn), x = "", y = "")
+
+        canvasObjects$plot_2D <- pl
+      }
+      else{
+        pl <- canvasObjects$plot_2D +
+          geom_point(data = simulation_log,
+                     aes(x = x, y = z, group = id, shape = agent_type,
+                         color = disease_stateString ), size = 5, stroke = 2) +
+          labs(title = paste0("Time: ", timeIn))
+      }
 
       if(! Label  %in% c("None","Agent ID")){
         df = df %>% rename(name = Name)
