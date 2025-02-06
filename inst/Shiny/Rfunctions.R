@@ -739,7 +739,7 @@ FromToMatrices.generation = function(WHOLEmodel){
       Parameters = c( "Type: No mask; Fraction: 0",
                       "Efficacy: 1; Fraction: 0; Coverage: 0",
                       "Sensitivity: 1; Specificity: 1; Dist: Deterministic, 0, 0 ",
-                      "Dist. Days: Deterministic, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0 ",
+                      "Dist. Days: Deterministic, 0, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0, 0 ",
                       "First: 0; Second: 0" ),
       From = 1,
       To = 10,

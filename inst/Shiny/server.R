@@ -3152,8 +3152,9 @@ server <- function(input, output,session) {
 
     paramstext = paste0(paramstext, "; Q.Room: ", input$room_quarantine)
 
-    if((input$quarantine_type == "Different for each agent" & input$quarantine_swab_type_global != "No swab")
-    ){
+    if(input$quarantine_swab_type_global != "No swab"){
+      paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
+
       quarantine_swab_global <- check_distribution_parameters(input, "quarantine_swab_global")
       new_dist <- quarantine_swab_global[[1]]
       new_time <- quarantine_swab_global[[2]]
@@ -3335,7 +3336,7 @@ server <- function(input, output,session) {
 
       updateSelectizeInput(session = session, "room_quarantine",
                            choices = roomsAvailable)
-   }
+    }
 
   })
 
@@ -3544,7 +3545,7 @@ server <- function(input, output,session) {
                                    COUNTERScsv = NULL,
                                    Mapping = NULL,
                                    FLAGmodelLoaded = FALSE
-                                   )
+  )
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
                       "evolution.csv" )
@@ -3610,32 +3611,16 @@ server <- function(input, output,session) {
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
-      postprocObjects$Mapping %>% mutate( floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
-                                    coord = paste0(x,"-", z ,"-",floorID),
-                                    Name = rooms_id[coord]
+      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
+                                                    coord = paste0(x,"-", z ,"-",CanvasID),
+                                                    Name = rooms_id[coord]
       )
 
-      ### da qui da sistemare
+      Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
 
-      postprocObjects$AEROSOLcsv = AEROSOLcsv %>% mutate( floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
-                                          coord = paste0(x,"-", z ,"-",floorID),
-                                          Name = rooms_id[coord]
-                                          ) %>%
-        select(-room_id,-x,-y,-z)
+      postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" ) #%>% mutate(time = time/step)
+      #postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv$, by.x = "ID", by.y = "room_id" ) %>% mutate(time = time/step)
 
-      CONTACTcsv$x = CONTACTcsv$z = NA
-      CONTACTcsv = CONTACTcsv %>% mutate( y = agent_position_y1,
-                             floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1]
-      )
-
-      a = CONTACTcsv %>% mutate( y = agent_position_y1,
-                                 x = ,
-                                 z = ,
-                                 floorID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
-                                                          coord = paste0(x,"-", z ,"-",floorID),
-                                                          Name = rooms_id[coord]
-      ) %>%
-        select(-room_id,-x,-y,-z)
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
     })
@@ -3650,11 +3635,9 @@ server <- function(input, output,session) {
     isolate({
       subfolders <- list.dirs(dir, recursive = FALSE)
 
-      #tempornae
-      #f = read_csv(paste0(dir,"/G.txt"),) %>% filter()
-      G <- read_table("~/Desktop/simulation/School/G.txt",
-                      col_names = FALSE, skip = 1)%>% filter(X2 %in% c("NORMAL","STAIR","SPAWNROOM"))
-      colnames(G) = c("ID","Type","x","y","z")
+      G <- read_table(paste0(dir,"/rooms_mapping.txt"),
+                      col_names = FALSE, skip = 1)
+      colnames(G) = c("ID","x","y","z")
       postprocObjects$Mapping = G
       ####
 
@@ -3680,7 +3663,7 @@ server <- function(input, output,session) {
                        #               "COUNTERS_CREATED_AGENTS_WITH_RATE",
                        #               "COUNTERS_KILLED_AGENTS_WITH_RATE",
                        #               "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE")
-                       )
+          )
           f$Folder= basename(dirname(file))
           f
         } else {
@@ -3714,7 +3697,7 @@ server <- function(input, output,session) {
                                      "agent_type2",
                                      "agent_disease_state1", "agent_disease_state2",
                                      "agent_position_x1", "agent_position_y1", "agent_position_z1",
-                                     "agent_position_x2", "agent_position_y2", "agent_position_z2"))
+                                     "agent_position_x2", "agent_position_y2", "agent_position_z2", "room_id"))
           f$Folder= basename(dirname(file))
           f
         } else {
@@ -3807,9 +3790,9 @@ server <- function(input, output,session) {
           geom_ribbon(data = DfStat,
                       aes(x = Day, ymin = MinV,ymax = MaxV, group= Compartiments, fill = Compartiments),alpha = 0.4)+
           scale_fill_manual(values = fixed_colors,
-                             limits = names(fixed_colors),
-                             labels = names(fixed_colors),
-                             drop = FALSE)
+                            limits = names(fixed_colors),
+                            labels = names(fixed_colors),
+                            drop = FALSE)
       }
 
       if("Mean curves" %in% EvolutionDisease_radioButt){
@@ -3835,7 +3818,7 @@ server <- function(input, output,session) {
   })
 
   counters_colorsNames <- c("COUNTERS_CREATED_AGENTS_WITH_RATE" ,"COUNTERS_KILLED_AGENTS_WITH_RATE",
-                         "AGENTS_IN_QUARANTINE","SWABS","NUM_INFECTED_OUTSIDE")
+                            "AGENTS_IN_QUARANTINE","SWABS","NUM_INFECTED_OUTSIDE")
   counters_colors = viridisLite::viridis(n = length(counters_colorsNames))
   names(counters_colors) = counters_colorsNames
 
@@ -3937,7 +3920,7 @@ server <- function(input, output,session) {
           #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
           tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
           ungroup() #%>%
-          #filter(y != 10000)
+        #filter(y != 10000)
 
         # add agent names to the simulation log!
         if(!is.null(names(canvasObjects$agents))){
@@ -3972,7 +3955,6 @@ server <- function(input, output,session) {
     unique(simulation_log$CanvasID)
   })
 
-
   output$TwoDMapPlots <- renderUI({
     simulation_log = req(canvasObjects$TwoDVisual)
 
@@ -3993,57 +3975,64 @@ server <- function(input, output,session) {
   })
 
   observe({
-    simulation_log = req(canvasObjects$TwoDVisual)
-    roomsINcanvas = isolate(req(canvasObjects$roomsINcanvas))
+    roomsINcanvas = req(canvasObjects$roomsINcanvas)
     floorSelected = input$visualFloor_select
-    visualAgent = input$visualAgent_select
-    visualAgentID = input$visualAgentID_select
     colorFeat = input$visualColor_select
     Label = input$visualLabel_select
-    timeIn <- input$animation
 
-    disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
-    simulation_log$disease_stateString = disease[simulation_log$disease_state+1]
+    isolate({
 
-    # Define the fixed colors and shapes
-    fixed_colors <- c("S" = "green", "E" = "blue", "I" = "red", "R" = "purple", "D" = "black")
-    other_chars <- setdiff(unique(disease), names(fixed_colors))
-    random_colors <- sample(colors(), length(other_chars))
-    all_colors <- c(fixed_colors, setNames(random_colors, other_chars))
+      timeIn <- input$animation
+
+      disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
+
+      # Define the fixed colors and shapes
+      fixed_colors <- c("S" = "green", "E" = "blue", "I" = "red", "R" = "purple", "D" = "black")
+      other_chars <- setdiff(unique(disease), names(fixed_colors))
+      random_colors <- sample(colors(), length(other_chars))
+      all_colors <- c(fixed_colors, setNames(random_colors, other_chars))
 
 
-    colorDisease = data.frame(State = names(all_colors), Col = (all_colors),  stringsAsFactors = F)
-    colorDisease$State = factor(x = colorDisease$State, levels = disease)
+      colorDisease = data.frame(State = names(all_colors), Col = (all_colors),  stringsAsFactors = F)
+      colorDisease$State = factor(x = colorDisease$State, levels = disease)
 
-    shapeAgents = data.frame(Agents = (unique(simulation_log$agent_type)),
-                             Shape = 0:(length(unique(simulation_log$agent_type)) -1) ,  stringsAsFactors = F)
-    #####
+      #####
 
-    if(colorFeat == "Area"){
-      roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
-                             canvasObjects$areas %>% select(-ID) ,
-                             by.x = "area", by.y = "Name" ) %>% rename(colorFill = Color)
-      roomsINcanvas$IDtoColor = roomsINcanvas$area
-    }else if(colorFeat == "Type"){
-      roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
-                             canvasObjects$types %>% select(-ID) ,
-                             by.x = "type", by.y = "Name" ) %>%
-        rename(colorFill = Color)
-      roomsINcanvas$IDtoColor = roomsINcanvas$type
-    }else if(colorFeat == "Name"){
-      roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
-                             canvasObjects$rooms %>% select(Name,colorFill) ,
-                             by.x = "Name", by.y = "Name" )
-      roomsINcanvas$IDtoColor = roomsINcanvas$Name
-    }else if(colorFeat == "Contact"){
-      data = postprocObjects$CONTACTcsv  %>%
-        filter(time == timeIn)
+      if(colorFeat == "Area"){
+        roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
+                               canvasObjects$areas %>% select(-ID) ,
+                               by.x = "area", by.y = "Name" ) %>% rename(colorFill = Color)
+        roomsINcanvas$IDtoColor = roomsINcanvas$area
+      }else if(colorFeat == "Type"){
+        roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
+                               canvasObjects$types %>% select(-ID) ,
+                               by.x = "type", by.y = "Name" ) %>%
+          rename(colorFill = Color)
+        roomsINcanvas$IDtoColor = roomsINcanvas$type
+      }else if(colorFeat == "Name"){
+        roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
+                               canvasObjects$rooms %>% select(Name,colorFill) ,
+                               by.x = "Name", by.y = "Name" )
+        roomsINcanvas$IDtoColor = roomsINcanvas$Name
+      }else if(colorFeat == "Contact"){
+        data = postprocObjects$CONTACTcsv  %>%
+          filter(time == timeIn)
 
-    }else if(colorFeat == "Aerosol"){
-      postprocObjects$AEROSOLcsv
-    }
+      }else if(colorFeat == "Aerosol"){
+        AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
+          filter(Folder == input$selectedSubfolder , time <= timeIn)
 
-    output[["plot_map"]] <- renderPlot({
+        if(dim(AEROSOLcsv)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
+          AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
+            rename(IDtoColor = virus_concentration)
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
+        }
+      }
 
       df <- roomsINcanvas %>%
         mutate(xmin = x + l,
@@ -4055,10 +4044,122 @@ server <- function(input, output,session) {
 
       if(floorSelected != "All"){
         df = df %>% filter(CanvasID == floorSelected)
+      }else{
+        df$CanvasID = factor(df$CanvasID, levels = floors$Name)
+      }
+
+      if( colorFeat %in% c("Contact","Aerosol","Comulative Aerosol") ){
+        if(colorFeat == "Aerosol"){
+          MinCol = min(postprocObjects$AEROSOLcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
+          MaxCol = max(postprocObjects$AEROSOLcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
+        }else if(colorFeat == "Contact"){
+
+        }else if(colorFeat == "Comulative Aerosol"){
+
+          MinCol = min(postprocObjects$AEROSOLcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>%
+                         group_by(type,area,Name,CanvasID) %>%
+                         mutate(virus_concentration = cumsum(virus_concentration))  %>%
+                         pull(virus_concentration))
+          MaxCol = max(postprocObjects$AEROSOLcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>%
+                         group_by(type,area,Name,CanvasID) %>%
+                         mutate(virus_concentration = cumsum(virus_concentration)) %>%
+                         pull(virus_concentration))
+        }
+
+        sc_fill <- scale_fill_gradient(low = "blue", high = "red",
+                                       limits=c(MinCol,MaxCol),
+                                       guide = "colourbar")
+        guide_fill = labs(fill = colorFeat)
+      }else{
+        df$colorFillParsed = gsub(pattern = "rgba",replacement = "rgb",x = df$colorFill)
+        df$colorFillParsed = gsub(pattern = ",",replacement = "/255,",x = df$colorFillParsed)
+        df$colorFillParsed = gsub(pattern = ")",replacement = "/255)",x = df$colorFillParsed)
+
+        df$colorFillParsed =sapply(df$colorFillParsed, function(x) eval(parse(text=x)))
+        dfcolor = df %>% select(colorFillParsed,IDtoColor) %>% distinct()
+        dfcolor$colorFillParsed <- gsub(pattern = "#([A-Fa-f0-9]{6})[A-Fa-f0-9]{2}", replacement = "#\\1", x = dfcolor$colorFillParsed)
+        sc_fill = scale_fill_manual( values = dfcolor$colorFillParsed,
+                                     breaks = dfcolor$IDtoColor,
+                                     drop = FALSE )
+        guide_fill = guides(fill = "none" )
+
+      }
+
+      #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
+      # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
+
+
+      pl = ggplot() +
+        scale_y_reverse() +
+        geom_rect(data = df,
+                  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
+                  color = "black") +
+        sc_fill +guide_fill+
+        scale_color_manual(values = colorDisease$Col,
+                           limits = (colorDisease$State),
+                           labels = (colorDisease$State),
+                           drop = FALSE) +
+        coord_fixed() +
+        facet_wrap(~CanvasID,ncol = 2) +
+        theme_bw() +
+        theme(legend.position = "bottom") +
+        labs(title = paste0("Time: ", timeIn), x = "", y = "",
+             color = "Disease state", shape = "Agent type")
+
+      canvasObjects$plot_2D <- pl
+
+
+    })
+
+    # ### HeatMap plot
+    #
+    # plHeatmap = ggplot(simulation_log %>% filter(time == 7)) +
+    #   scale_y_reverse() +
+    #   facet_wrap(~CanvasID) +
+    #   geom_rect(data = df,
+    #             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill= "white")+
+    #   stat_density_2d(geom = "polygon",
+    #                   aes(x = x, y = z, group = disease_stateString, fill = disease_stateString, alpha = ..level..),
+    #                   bins = 4)  +
+    #   scale_fill_manual(values = colorDisease$Col,
+    #                     limits = (colorDisease$State),
+    #                     labels = (colorDisease$State)) +
+    #   labs(title = "Agent Concentration Heatmap",
+    #        x = "",
+    #        y = "",
+    #        fill = "Disease State") +
+    #   theme_dark()
+
+  })
+
+  observe({
+    pl = req( canvasObjects$plot_2D)
+    simulation_log = req(canvasObjects$TwoDVisual)
+    timeIn <- req(input$animation)
+    colorFeat = input$visualColor_select
+    visualAgent = input$visualAgent_select
+    visualAgentID = input$visualAgentID_select
+
+    isolate({
+      Label = input$visualLabel_select
+      floorSelected = input$visualFloor_select
+      floors = canvasObjects$floors
+
+      df = pl$layers[[1]]$data
+      disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
+      simulation_log$disease_stateString = disease[simulation_log$disease_state+1]
+
+      shapeAgents = data.frame(Agents = (unique(simulation_log$agent_type)),
+                               Shape = 0:(length(unique(simulation_log$agent_type)) -1) ,  stringsAsFactors = F)
+
+      if(floorSelected != "All"){
         simulation_log = simulation_log %>% filter(CanvasID == floorSelected)
       }else{
         simulation_log$CanvasID = factor(simulation_log$CanvasID, levels = floors$Name)
-        df$CanvasID = factor(df$CanvasID, levels = floors$Name)
       }
 
       if(visualAgent != "All"){
@@ -4068,20 +4169,6 @@ server <- function(input, output,session) {
         }
       }
 
-      df$colorFillParsed = gsub(pattern = "rgba",replacement = "rgb",x = df$colorFill)
-      df$colorFillParsed = gsub(pattern = ",",replacement = "/255,",x = df$colorFillParsed)
-      df$colorFillParsed = gsub(pattern = ")",replacement = "/255)",x = df$colorFillParsed)
-
-      df$colorFillParsed =sapply(df$colorFillParsed, function(x) eval(parse(text=x)))
-      dfcolor = df %>% select(colorFillParsed,IDtoColor) %>% distinct()
-      dfcolor$colorFillParsed <- gsub(pattern = "#([A-Fa-f0-9]{6})[A-Fa-f0-9]{2}", replacement = "#\\1", x = dfcolor$colorFillParsed)
-
-      color_fills <-dfcolor$colorFillParsed
-      names(color_fills) <-dfcolor$IDtoColor
-
-      #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
-      # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
-
       simulation_log$agent_type = factor(x = simulation_log$agent_type , levels = unique(simulation_log$agent_type))
 
       simulation_log <- simulation_log %>%
@@ -4090,41 +4177,44 @@ server <- function(input, output,session) {
         slice_tail(n = 1) %>%
         filter(y != 10000)
 
-      if(is.null(canvasObjects$plot_2D)){
-        pl = ggplot() +
-          scale_y_reverse() +
-          geom_rect(data = df,
-                    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                    color = "black") +
-          scale_fill_manual( values = setNames(dfcolor$colorFillParsed, nm = dfcolor$IDtoColor ) ) +
-          scale_shape_manual(values = shapeAgents$Shape,
-                             limits = shapeAgents$Agents,
-                             breaks = shapeAgents$Agents,
-                             drop = FALSE)+
-          scale_color_manual(values = colorDisease$Col,
-                             limits = (colorDisease$State),
-                             labels = (colorDisease$State),
-                             drop = FALSE) +
-          coord_fixed() +
-          facet_wrap(~CanvasID,ncol = 2) +
-          theme_bw() +
-          labs(
-            x = "X Coordinate",
-            y = "Y Coordinate",
-            color = "Disease state", shape = "Agent type") +
-          guides(fill = "none" )+
-          theme(legend.position = "top") +
-          labs(title = paste0("Time: ", timeIn), x = "", y = "")
 
-        canvasObjects$plot_2D <- pl
+      if(colorFeat %in% c("Comulative Aerosol", "Aerosol") ){
+        AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
+          filter(Folder == input$selectedSubfolder , time <= timeIn)
+
+        if(colorFeat == "Comulative Aerosol")
+          AEROSOLcsv = AEROSOLcsv %>%
+            group_by(type,area,Name,CanvasID) %>%
+            mutate(virus_concentration = cumsum(virus_concentration))
+
+        if(dim(AEROSOLcsv)[1] == 0){
+          df$IDtoColor = 0
+        }else{
+          AEROSOLcsv = AEROSOLcsv %>% mutate(difftime = (timeIn-time) ) %>%
+            filter(difftime >= 0,  difftime == min(difftime)) %>%
+            select(virus_concentration,type,area,Name,CanvasID) %>%
+            rename(IDtoColor = virus_concentration)
+
+          if("IDtoColor" %in% colnames(df))
+            df = df %>% select(-IDtoColor )
+
+          df = merge(df,AEROSOLcsv)
+
+        }
+
+        pl$layers[[1]]$data = df
       }
-      else{
-        pl <- canvasObjects$plot_2D +
-          geom_point(data = simulation_log,
-                     aes(x = x, y = z, group = id, shape = agent_type,
-                         color = disease_stateString ), size = 5, stroke = 2) +
-          labs(title = paste0("Time: ", timeIn))
-      }
+
+      pl <-pl +
+        geom_point(data = simulation_log,
+                   aes(x = x, y = z, group = id, shape = agent_type,
+                       color = disease_stateString ), size = 5, stroke = 2) +
+        labs(title = paste0("Time: ", timeIn))+
+        scale_shape_manual(values = shapeAgents$Shape,
+                           limits = shapeAgents$Agents,
+                           breaks = shapeAgents$Agents,
+                           drop = FALSE)
+
 
       if(! Label  %in% c("None","Agent ID")){
         df = df %>% rename(name = Name)
@@ -4141,29 +4231,11 @@ server <- function(input, output,session) {
       }
 
 
-      # ### HeatMap plot
-      #
-      # plHeatmap = ggplot(simulation_log %>% filter(time == 7)) +
-      #   scale_y_reverse() +
-      #   facet_wrap(~CanvasID) +
-      #   geom_rect(data = df,
-      #             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill= "white")+
-      #   stat_density_2d(geom = "polygon",
-      #                   aes(x = x, y = z, group = disease_stateString, fill = disease_stateString, alpha = ..level..),
-      #                   bins = 4)  +
-      #   scale_fill_manual(values = colorDisease$Col,
-      #                     limits = (colorDisease$State),
-      #                     labels = (colorDisease$State)) +
-      #   labs(title = "Agent Concentration Heatmap",
-      #        x = "",
-      #        y = "",
-      #        fill = "Disease State") +
-      #   theme_dark()
+      output[["plot_map"]] <- renderPlot({ pl })
 
-      return( pl )
     })
-
   })
+
   #### END 2D visualisation ####
   observeEvent(input$run,{
 

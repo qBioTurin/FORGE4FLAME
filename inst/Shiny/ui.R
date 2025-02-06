@@ -1247,6 +1247,22 @@ ui <- dashboardPage(
                             column(3,
                                    div(h5(tags$b("A swab every how many days?"))),
                                    get_distribution_panel("quarantine_swab_global")
+                            ),
+                            column(
+                              width = 1,
+                              numericInput(
+                                inputId = "quarantine_swab_sensitivity",
+                                label = "Sensitivity:",
+                                value = 1,min = 0,max =1
+                              )
+                            ),
+                            column(
+                              width = 1,
+                              numericInput(
+                                inputId = "quarantine_swab_specificity",
+                                label = "Specificity:",
+                                value = 1,min = 0,max =1
+                              )
                             )
                           )
                         ),
@@ -1616,7 +1632,7 @@ ui <- dashboardPage(
                                                     )
                                   ),
                                   column(2,
-                                         selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol"))
+                                         selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol","Comulative Aerosol"))
                                   ),
                                   column(2,
                                          radioButtons("visualLabel_select","Show in the room:",
