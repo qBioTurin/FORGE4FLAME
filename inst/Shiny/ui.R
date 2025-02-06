@@ -1598,7 +1598,7 @@ ui <- dashboardPage(
                             )
                           ),
                           fluidRow(
-                            box(width = 10,collapsed = T,collapsible = T,
+                            box(width = 12,collapsible = T,
                                 title = div(class = "icon-container", style="margin-top:20px",
                                             h3("Features ", icon("info-circle")),
                                             div(class = "icon-text", "....")
