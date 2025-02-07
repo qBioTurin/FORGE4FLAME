@@ -1113,11 +1113,13 @@ ui <- dashboardPage(
                       ),
                       column(
                         width = 1,
-                        numericInput(
-                          inputId = "vaccination_coverage",
-                          label = "Vaccine coverage (average in days):",
-                          value = 90, min = 0,
-                        )
+                        div(h5(tags$b("Vaccine coverage (in days):"))),
+                        get_distribution_panel("vaccination_coverage")
+                        # numericInput(
+                        #   inputId = "vaccination_coverage",
+                        #   label = "Vaccine coverage (average in days):",
+                        #   value = 90, min = 0,
+                        # )
                       ),
                       column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 0, min = 0)),
                       #column(1, numericInput(inputId = "vaccination_time_to", label = "To (time):", value = 0, min = 0)),

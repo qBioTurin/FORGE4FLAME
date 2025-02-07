@@ -737,7 +737,7 @@ FromToMatrices.generation = function(WHOLEmodel){
       Measure = c("Mask","Vaccination","Swab","Quarantine","External screening"),
       Type = "Global",
       Parameters = c( "Type: No mask; Fraction: 0",
-                      "Efficacy: 1; Fraction: 0; Coverage: 0",
+                      "Efficacy: 1; Fraction: 0; Coverage Dist. Days: Deterministic, 0, 0",
                       "Sensitivity: 1; Specificity: 1; Dist: Deterministic, 0, 0 ",
                       "Dist. Days: Deterministic, 0, 0; Q. Room: Spawnroom-None; Dist: Deterministic, 0, 0 ",
                       "First: 0; Second: 0" ),
@@ -801,6 +801,7 @@ FromToMatrices.generation = function(WHOLEmodel){
     initial_infected= matrix(0,ncol = 1, nrow = length(agents), dimnames = list(agents = agents))
 
     initial_infected[WHOLEmodel$initial_infected$Type,1] = WHOLEmodel$initial_infected$Number
+    initial_infected = cbind(agents,initial_infected)
   }
 
   ####

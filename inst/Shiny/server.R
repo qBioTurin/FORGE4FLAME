@@ -3025,10 +3025,6 @@ server <- function(input, output,session) {
     req(input$vaccination_fraction)
     req(input$vaccination_efficacy)
 
-    if(input$vaccination_coverage < 0){
-      shinyalert(paste0("The covarage should be > 0") )
-      return()
-    }
     if((input$vaccination_efficacy) > 1 ||
        (input$vaccination_efficacy) < 0){
       shinyalert(paste0("The efficacy should be in [0,1]") )
@@ -3040,13 +3036,34 @@ server <- function(input, output,session) {
       return()
     }
 
-    # if(as.integer(input$vaccination_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-    #    as.integer(input$vaccination_time_to) < 0){
-    #   shinyalert(paste0("The timing should be greater than 0 and less than the simulation days (",canvasObjects$starting$simulation_days,")") )
-    #   return()
-    # }
+    vaccination_coverage <- check_distribution_parameters(input, "vaccination_coverage")
+    new_dist <- vaccination_coverage[[1]]
+    new_time <- vaccination_coverage[[2]]
 
-    params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage: ",input$vaccination_coverage)
+    if(is.null(new_time) && is.null(new_dist))
+      return()
+
+    if(new_dist == "Deterministic"){
+      if(as.numeric(new_time) < 1){
+        shinyalert("The number of vaccine coverage days must be greater or equal (>=) 1.")
+        return()
+      }
+      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
+
+    }else{
+      params <- parse_distribution(new_time, new_dist)
+      a <- params[[1]]
+      b <- params[[2]]
+
+      if(a < 1){
+        shinyalert("The number of vaccine coverage days must be greater or equal (>=) 1.")
+        return()
+      }
+
+      paramstext = paste0( "Dist.Days: ", new_dist,", ",a,", ",b)
+    }
+
+    params = paste0("Efficacy: ",input$vaccination_efficacy,"; Fraction: ",input$vaccination_fraction,"; Coverage ",paramstext)
 
     new_data = add_data(measure = "Vaccination",
                         parameters = params,
@@ -3405,6 +3422,25 @@ server <- function(input, output,session) {
     }
   })
 
+  observeEvent(input$initialI_info_cell_clicked, {
+    info <- input$initialI_info_cell_clicked
+    if (!is.null(info$row)) {
+      shinyalert(
+        title = "Delete Entry?",
+        text = "Are you sure you want to delete this row?",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, delete it!",
+        callbackR = function(x) {
+          if (x) {
+            data <- canvasObjects$initial_infected
+            canvasObjects$initial_infected <- data[-info$row, ]
+          }
+        }
+      )
+    }
+  })
+
   ##########
 
   ### Load csv: ####
@@ -3607,19 +3643,18 @@ server <- function(input, output,session) {
         return()
       }
 
-      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x-1,"-", center_y-1,"-", CanvasID) )
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(x,"-", y,"-", CanvasID) )
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
       Mapping = postprocObjects$Mapping %>% mutate( CanvasID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
                                                     coord = paste0(x,"-", z ,"-",CanvasID),
-                                                    Name = rooms_id[coord]
-      )
+                                                    Name = rooms_id[coord] )
 
       Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
 
-      postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" ) #%>% mutate(time = time/step)
-      #postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv$, by.x = "ID", by.y = "room_id" ) %>% mutate(time = time/step)
+      postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
+      #postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
 
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
@@ -3636,7 +3671,7 @@ server <- function(input, output,session) {
       subfolders <- list.dirs(dir, recursive = FALSE)
 
       G <- read_table(paste0(dir,"/rooms_mapping.txt"),
-                      col_names = FALSE, skip = 1)
+                      col_names = FALSE)
       colnames(G) = c("ID","x","y","z")
       postprocObjects$Mapping = G
       ####
