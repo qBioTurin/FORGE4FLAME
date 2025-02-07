@@ -1532,6 +1532,13 @@ server <- function(input, output,session) {
         return()
       }
 
+      if(stringr::str_to_lower(Agent) %in% c("global","random")){
+        shinyalert("Agent name cannot be 'global' or 'random'.")
+        updateSelectizeInput(inputId = "id_new_agent",
+                             selected = "",
+                             choices = c("", names(canvasObjects$agents)) )
+        return()
+      }
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
                                Label = character(0), FlowID = character(0) ),
@@ -3133,61 +3140,66 @@ server <- function(input, output,session) {
 
     req(input$quarantine_type != "No quarantine")
 
-    if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
-       as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$quarantine_time_from) < 0){
-      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
-      return()
-    }
-
-    quarantine_global <- check_distribution_parameters(input, "quarantine_global")
-    new_dist <- quarantine_global[[1]]
-    new_time <- quarantine_global[[2]]
-
-    if(is.null(new_time) && is.null(new_dist))
-      return()
-
-    if(new_dist == "Deterministic"){
-      if(as.numeric(new_time) < 1){
-        shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
-        return()
-      }
-      paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
-
-    }else{
-      params <- parse_distribution(new_time, new_dist)
-      a <- params[[1]]
-      b <- params[[2]]
-
-      if(a < 1){
-        shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
+    if(!(input$quarantine_type == "Different for each agent" && input$quarantine_type_agent != "No quarantine") ){
+      if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
+         as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
+         as.integer(input$quarantine_time_from) < 0){
+        shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
         return()
       }
 
-      paramstext = paste0( "Dist.Days: ", new_dist,", ",a,", ",b)
-    }
-
-    paramstext = paste0(paramstext, "; Q.Room: ", input$room_quarantine)
-
-    if(input$quarantine_swab_type_global != "No swab"){
-      paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
-
-      quarantine_swab_global <- check_distribution_parameters(input, "quarantine_swab_global")
-      new_dist <- quarantine_swab_global[[1]]
-      new_time <- quarantine_swab_global[[2]]
+      quarantine_global <- check_distribution_parameters(input, "quarantine_global")
+      new_dist <- quarantine_global[[1]]
+      new_time <- quarantine_global[[2]]
 
       if(is.null(new_time) && is.null(new_dist))
         return()
 
       if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
+        if(as.numeric(new_time) < 1){
+          shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
+          return()
+        }
+        paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
+
       }else{
         params <- parse_distribution(new_time, new_dist)
         a <- params[[1]]
         b <- params[[2]]
 
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
+        if(a < 1){
+          shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
+          return()
+        }
+
+        paramstext = paste0( "Dist.Days: ", new_dist,", ",a,", ",b)
       }
+
+      paramstext = paste0(paramstext, "; Q.Room: ", input$room_quarantine)
+
+      if(input$quarantine_swab_type_global != "No swab"){
+        paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
+
+        quarantine_swab_global <- check_distribution_parameters(input, "quarantine_swab_global")
+        new_dist <- quarantine_swab_global[[1]]
+        new_time <- quarantine_swab_global[[2]]
+
+        if(is.null(new_time) && is.null(new_dist))
+          return()
+
+        if(new_dist == "Deterministic"){
+          paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
+        }else{
+          params <- parse_distribution(new_time, new_dist)
+          a <- params[[1]]
+          b <- params[[2]]
+
+          paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
+        }
+      }
+
+    }else{
+      paramstext = "No quarantine, 0, 0"
     }
 
     new_data = add_data(measure = "Quarantine",
@@ -3276,6 +3288,10 @@ server <- function(input, output,session) {
     }
 
     if(input$initial_infected_type == "Global"){
+      if("Global" %in% initial_infected$Type){
+        shinyalert(paste0("A 'Global' Initial infected is already defined. Please delete it by click on its row in the table. ") )
+        return()
+      }
       total_agents <- 0
       for(a in 1:length(canvasObjects$agents)){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
@@ -3285,8 +3301,11 @@ server <- function(input, output,session) {
           }
         }
       }
-    }
-    else if(input$initial_infected_type == "Random"){
+    }else if(input$initial_infected_type == "Random"){
+      if("Random" %in% initial_infected$Type){
+        shinyalert(paste0("A 'Random' Initial infected is already defined. Please delete it by click on its row in the table. ") )
+        return()
+      }
       total_agents <- 0
       for(a in 1:length(canvasObjects$agents)){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
@@ -3643,7 +3662,7 @@ server <- function(input, output,session) {
         return()
       }
 
-      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(x,"-", y,"-", CanvasID) )
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
@@ -3654,7 +3673,7 @@ server <- function(input, output,session) {
       Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
 
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
-      #postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
+      postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
 
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
@@ -4050,8 +4069,19 @@ server <- function(input, output,session) {
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
       }else if(colorFeat == "Contact"){
-        data = postprocObjects$CONTACTcsv  %>%
-          filter(time == timeIn)
+        CONTACTcsv = postprocObjects$CONTACTcsv   %>%
+          filter(Folder == input$selectedSubfolder , time <= timeIn)
+
+        if(dim(CONTACTcsv)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
+          CONTACTcsv = CONTACTcsv %>% group_by(CanvasID,Name,area,type) %>%
+            summarize(counts = n()) %>%
+            rename(IDtoColor = counts)
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,CONTACTcsv)
+        }
 
       }else if(colorFeat == "Aerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
@@ -4090,7 +4120,16 @@ server <- function(input, output,session) {
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
         }else if(colorFeat == "Contact"){
-
+          MinCol = min(postprocObjects$CONTACTcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>%
+                         group_by(type,area,Name,CanvasID)   %>%
+                         count() %>%
+                         pull(n) )
+          MaxCol = max(postprocObjects$CONTACTcsv %>%
+                         filter(Folder == input$selectedSubfolder) %>%
+                         group_by(type,area,Name,CanvasID)   %>%
+                         count() %>%
+                         pull(n) )
         }else if(colorFeat == "Comulative Aerosol"){
 
           MinCol = min(postprocObjects$AEROSOLcsv %>%
@@ -4236,7 +4275,22 @@ server <- function(input, output,session) {
           df = merge(df,AEROSOLcsv)
 
         }
+        pl$layers[[1]]$data = df
+      }else if(colorFeat == "Contact"){
+        CONTACTcsv = postprocObjects$CONTACTcsv   %>%
+          filter(Folder == input$selectedSubfolder , time <= timeIn)
 
+        if(dim(CONTACTcsv)[1] == 0){
+          df$IDtoColor = 0
+        }else{
+          CONTACTcsv = CONTACTcsv %>%
+            group_by(CanvasID,Name,area,type) %>%
+            count() %>%
+            rename(IDtoColor = n)
+          if("IDtoColor" %in% colnames(df))
+            df = df %>% select(- IDtoColor )
+          df = merge(df,CONTACTcsv)
+        }
         pl$layers[[1]]$data = df
       }
 

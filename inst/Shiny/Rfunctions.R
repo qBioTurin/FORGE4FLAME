@@ -798,10 +798,27 @@ FromToMatrices.generation = function(WHOLEmodel){
 
     # set initial infected agents as default zero
 
-    initial_infected= matrix(0,ncol = 1, nrow = length(agents), dimnames = list(agents = agents))
+    initial_infected= matrix(0,ncol = 2, nrow = length(agents), dimnames = list(agents = agents))
 
-    initial_infected[WHOLEmodel$initial_infected$Type,1] = WHOLEmodel$initial_infected$Number
+    global = WHOLEmodel$initial_infected %>% filter(Type == "Global")
+    if(dim(global)[1] >0){
+      global = global[1,] # just in case, but the saving should block multi global definitions
+      initial_infected[,1] = global$Number
+    }
+
+    agent_specific =  WHOLEmodel$initial_infected %>% filter(! Type %in% c("Random","Global") )
+    if(dim(agent_specific)[1] >0){
+      for(ii in seq_along(a_specific[,1])){
+        initial_infected[ a_specific[ii,]$Type,1] = a_specific[ii,]$Number
+      }
+    }
     initial_infected = cbind(agents,initial_infected)
+
+    random = WHOLEmodel$initial_infected %>% filter(Type == "Random")
+    if(dim(random)[1] >0){
+      random = random[1,] # just in case, but the saving should block multi random definitions
+      initial_infected = rbind(initial_infected,as.matrix(random) )
+    }
   }
 
   ####
