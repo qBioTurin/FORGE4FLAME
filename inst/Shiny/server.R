@@ -1367,6 +1367,7 @@ server <- function(input, output,session) {
     },
     content = function(file) {
       canvasObjects$TwoDVisual <- NULL
+      canvasObjects$plot_2D <- NULL
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
       dir.create(paste0(temp_directory, "/obj"))
@@ -3604,6 +3605,7 @@ server <- function(input, output,session) {
                                    CONTACTcsv = NULL,
                                    AEROSOLcsv = NULL,
                                    COUNTERScsv = NULL,
+                                   A_C_COUNTERS = NULL,
                                    Mapping = NULL,
                                    FLAGmodelLoaded = FALSE
   )
@@ -3679,7 +3681,40 @@ server <- function(input, output,session) {
       Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
 
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
-      postprocObjects$CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
+
+      CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
+      agents = names(canvasObjects$agents)
+      CONTACTcsv$agent_type1 = agents[CONTACTcsv$agent_type1+1]
+      CONTACTcsv$agent_type2 = agents[CONTACTcsv$agent_type2+1]
+      postprocObjects$CONTACTcsv
+
+      postprocObjects$CONTACTcsv = CONTACTcsv  %>%
+        arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
+        group_by(CanvasID,Folder, area, type, agent_id1, agent_id2) %>%
+        mutate(time_diff = time - lag(time, default = first(time))) %>%
+        filter( time_diff != 1) %>%
+        ungroup() %>%
+        select(-time_diff)
+
+      # Count the number of unique meetings per hour
+      C_COUNTERS <-  postprocObjects$CONTACTcsv %>%
+        mutate(hour = ceiling((time*step)/(60*60)) ) %>%  # Convert time to hourly bins
+        group_by(CanvasID,Name,area,type,Folder,hour) %>%
+        summarise(contact_counts = n())
+
+      A_COUNTERS =postprocObjects$AEROSOLcsv   %>%
+        mutate( hour = ceiling((time*step)/(60*60)) ) %>%
+        group_by(CanvasID,Name,area,type,Folder,hour) %>%
+        summarize(virus_concentration = mean(virus_concentration) )
+
+      A_C_COUNTERS = merge(C_COUNTERS , A_COUNTERS, all = T)
+
+      A_C_COUNTERS[is.na(A_C_COUNTERS)] = 0
+      postprocObjects$A_C_COUNTERS = A_C_COUNTERS
+
+      rooms = unique( paste(A_C_COUNTERS$CanvasID, " ; ", A_C_COUNTERS$area, " ; ", A_C_COUNTERS$Name) )
+      updateSelectInput(session = session, inputId = "Room_Counters_A_C_selectize",
+                        choices = c("",rooms),selected = "")
 
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
@@ -3732,7 +3767,7 @@ server <- function(input, output,session) {
       })
       COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(data_list) == 0) return(NULL)
-      postprocObjects$COUNTERScsv = do.call(rbind, data_list)
+      postprocObjects$COUNTERScsv = do.call(rbind, data_list) %>% distinct()
 
       csv_files <- file.path(subfolders, "AEROSOL.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -3747,7 +3782,7 @@ server <- function(input, output,session) {
       })
       AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(data_list) == 0) return(NULL)
-      postprocObjects$AEROSOLcsv = do.call(rbind, data_list)
+      postprocObjects$AEROSOLcsv = do.call(rbind, data_list) %>% distinct()
 
       csv_files <- file.path(subfolders, "CONTACT.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -3766,7 +3801,7 @@ server <- function(input, output,session) {
       })
       CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(data_list) == 0) return(NULL)
-      postprocObjects$CONTACTcsv = do.call(rbind, data_list)
+      postprocObjects$CONTACTcsv = do.call(rbind, data_list) %>% distinct()
     })
     remove_modal_spinner()
   })
@@ -3930,6 +3965,67 @@ server <- function(input, output,session) {
 
 
     output$CountersPlot <- renderPlot({
+      pl
+    })
+
+  })
+  observe( {
+    info <- input$PostProc_table_cell_clicked
+    CountersDisease_radioButt = input$A_C_CountersDisease_radioButt
+    req(input$Room_Counters_A_C_selectize != "")
+    df <- req(postprocObjects$A_C_COUNTERS )
+    folder = req(info$value)
+
+    Room <- input$Room_Counters_A_C_selectize
+    Room = str_split(string = Room, pattern = "\\s ; \\s")[[1]]
+
+    df = df %>%
+      filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
+      select(-CanvasID,-Name,-area,-type) %>%
+      select(-Folder) %>%
+      tidyr::gather(-hour, value =  "Number", key = "Counters")
+    A_C_counters_colors = c("#E5D05AFF","#DEF5E5FF")
+    names(A_C_counters_colors) = unique(df$Counters)
+
+    pl = ggplot()
+    if(!is.null(CountersDisease_radioButt)){
+      DfStat = postprocObjects$A_C_COUNTERS %>%
+        filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
+        select(-CanvasID,-Name,-area,-type) %>%
+        tidyr::gather(-Day,-Folder, value =  "Number", key = "Counters") %>%
+        group_by( Day,Counters ) %>%
+        summarise(Mean = mean(Number),
+                  MinV = min(Number),
+                  MaxV = max(Number) )
+
+      if("Area from all simulations" %in% CountersDisease_radioButt){
+        pl = pl +
+          geom_ribbon(data = DfStat,
+                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
+          scale_fill_manual(values = A_C_counters_colors,
+                            limits = names(A_C_counters_colors),
+                            labels = names(A_C_counters_colors),
+                            drop = FALSE)
+      }
+
+      if("Mean curves" %in% CountersDisease_radioButt){
+        pl = pl + geom_line(data = DfStat,
+                            aes(x = hour, y = Mean, group= Counters, col = Counters, linetype = "Mean Curves"))+
+          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
+      }
+
+    }
+    pl = pl +
+      geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ))+
+      labs(y="",col="Counters", x = "Hours")+
+      scale_color_manual(values = A_C_counters_colors,
+                         limits = names(A_C_counters_colors),
+                         labels = names(A_C_counters_colors),
+                         drop = FALSE)+
+      theme_fancy()+ facet_wrap(~Counters,scales = "free")
+
+
+    output$A_C_CountersPlot <- renderPlot({
       pl
     })
 

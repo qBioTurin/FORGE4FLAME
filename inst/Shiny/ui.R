@@ -1613,6 +1613,21 @@ ui <- dashboardPage(
                                                     label = "Show:",selected = character()
                                  )
                           )
+                          ),
+                          fluidRow(
+                            column(10,offset = 2,
+                            selectInput("Room_Counters_A_C_selectize",choices = "",label = "Choice the room:")
+                            )
+                          ),
+                          fluidRow(column(10,
+                                          plotOutput("A_C_CountersPlot")
+                          ),
+                          column(2,
+                                 checkboxGroupInput("A_C_CountersDisease_radioButt",
+                                                    choices = c("Mean curves", "Area from all simulations"),
+                                                    label = "Show:",selected = character()
+                                 )
+                          )
                           )
                       )
                     ),
