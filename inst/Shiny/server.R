@@ -3095,27 +3095,27 @@ server <- function(input, output,session) {
 
     paramstext = paste0("Sensitivity: ",input$swab_sensitivity,"; Specificity: ",input$swab_specificity)
 
-    if(input$swab_type == "Global" ||
-       (input$swab_type == "Different for each agent" & input$swab_type_specific != "No swab")
-    ){
+    new_dist <- "No swab"
+    new_time <- 0
+    if(input$swab_type_specific != "No swab"){
       swab_global <- check_distribution_parameters(input, "swab_days")
       new_dist <- swab_global[[1]]
       new_time <- swab_global[[2]]
-
-      if(is.null(new_time) && is.null(new_dist))
-        return()
-
-      if(new_dist == "Deterministic"){
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
-      }else{
-        params <- parse_distribution(new_time, new_dist)
-        a <- params[[1]]
-        b <- params[[2]]
-
-        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
-      }
-
     }
+
+    if(is.null(new_time) && is.null(new_dist))
+      return()
+
+    if(new_dist == "Deterministic" || new_dist == "No swab"){
+      paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
+    }else{
+      params <- parse_distribution(new_time, new_dist)
+      a <- params[[1]]
+      b <- params[[2]]
+
+      paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
+    }
+
 
     new_data = add_data(measure = "Swab",
                         parameters = paramstext,
@@ -3141,6 +3141,7 @@ server <- function(input, output,session) {
     req(input$quarantine_type != "No quarantine")
 
     if(!(input$quarantine_type == "Different for each agent" && input$quarantine_type_agent != "No quarantine") ){
+
       if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
          as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
          as.integer(input$quarantine_time_from) < 0){
@@ -3160,6 +3161,7 @@ server <- function(input, output,session) {
           shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
           return()
         }
+
         paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
 
       }else{
@@ -3176,6 +3178,10 @@ server <- function(input, output,session) {
       }
 
       paramstext = paste0(paramstext, "; Q.Room: ", input$room_quarantine)
+      paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
+
+      new_dist <- "No swab"
+      new_time <- 0
 
       if(input$quarantine_swab_type_global != "No swab"){
         paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
@@ -3186,8 +3192,9 @@ server <- function(input, output,session) {
 
         if(is.null(new_time) && is.null(new_dist))
           return()
+      }
 
-        if(new_dist == "Deterministic"){
+        if(new_dist == "Deterministic" || new_dist == "No swab"){
           paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
         }else{
           params <- parse_distribution(new_time, new_dist)
@@ -3196,7 +3203,6 @@ server <- function(input, output,session) {
 
           paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
         }
-      }
 
     }else{
       paramstext = "No quarantine, 0, 0"
