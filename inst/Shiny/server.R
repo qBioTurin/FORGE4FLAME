@@ -16,7 +16,7 @@ server <- function(input, output,session) {
                                                       "rgba(0, 255, 0, 1)", #Green
                                                       "rgba(0, 0, 255, 1)",#Blue
                                                       "rgba(0, 0, 0, 1)", #Black
-                                                      "rgba(0, 100, 30, 1)" #boh
+                                                      "rgba(0, 100, 30, 1)"
                                                     )
                                  ),
                                  canvasDimension = data.frame(canvasWidth = 1000,
@@ -24,26 +24,10 @@ server <- function(input, output,session) {
                                  matrixCanvas = matrix(1, nrow = 80,ncol = 100),
                                  selectedId = 1,
                                  floors = NULL,
-                                 areas = data.frame(Name=c("None"),#
-                                                    # "Senology",
-                                                    # "Ophthalmology",
-                                                    # "Surgery",
-                                                    # "Urology",
-                                                    # "Orthopaedics",
-                                                    # "Analgesic Therapy",
-                                                    # "Dermosurgery",
-                                                    # "Radiology"),
-                                                    ID=c(0),#,0,1,2,3,4,5,6,7),
+                                 areas = data.frame(Name=c("None"),
+                                                    ID=c(0),
                                                     Color=c(
-                                                      "rgba(0, 0, 0, 1)") #Black
-                                                    # "rgba(255, 0, 0, 1)", #Red
-                                                    # "rgba(0, 255, 0, 1)", #Green
-                                                    # "rgba(0, 0, 255, 1)", #Blue
-                                                    # "rgba(255, 255, 0, 1)",
-                                                    # "rgba(0, 255, 255, 1)",
-                                                    # "rgba(255, 0, 255, 1)",
-                                                    # "rgba(100, 100, 100, 1)",
-                                                    # "rgba(200, 100, 100, 1)"
+                                                      "rgba(0, 0, 0, 1)")
                                  ),
                                  agents = NULL,
                                  disease = NULL,
@@ -1311,52 +1295,176 @@ server <- function(input, output,session) {
   observeEvent(input$check, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(!is.null(canvasObjects$agents) && length(canvasObjects$agents) > 0){
-      for(agent in 1:length(canvasObjects$agents)){
-        if(nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
-          shinyalert(paste0("The flow of agent ", names(canvasObjects$agents)[[agent]], " is empty."))
+
+    show_modal_spinner()
+
+    if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
+      shinyalert(paste0("No agent is defined."))
+      remove_modal_spinner()
+    }
+
+    if(is.null(canvasObjects$rooms) || length(canvasObjects$rooms) == 0){
+      shinyalert(paste0("No room is defined."))
+      remove_modal_spinner()
+      return()
+    }
+
+    if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
+      shinyalert(paste0("No room is drew in the canvas."))
+      remove_modal_spinner()
+      return()
+    }
+
+    spawnroom <- canvasObjects$roomsINcanvas %>%
+      filter(type == "Spawnroom")
+
+    if(nrow(spawnroom) != 1){
+      shinyalert(paste0("There must be exactly one Spawnroom in the canvas."))
+      remove_modal_spinner()
+      return()
+    }
+
+    rooms <- canvasObjects$roomsINcanvas %>%
+      filter(!type %in% c("Spawnroom", "Fillingroom", "Stair", "Waitingroom"))
+
+    if(nrow(rooms) < 1){
+      shinyalert(paste0("There must at least one room in the canvas with a type different from Spawnroom, Fillingroom, Stair, and Waitingroom."))
+      remove_modal_spinner()
+      return()
+    }
+
+    for(agent in 1:length(canvasObjects$agents)){
+      if(nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
+        shinyalert(paste0("No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
+        remove_modal_spinner()
+        return()
+      }
+
+      for(df in 1:length(unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID))){
+        df_local <- canvasObjects$agents[[agent]]$DeterFlow %>%
+          filter(FlowID == unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID)[df])
+
+        rooms_type <- unique(df_local$Room)
+
+        if(length(rooms_type) <= 1){
+          shinyalert(paste0("The flow ", df, " of agent ", names(canvasObjects$agents)[[agent]], " has less then two rooms' types. The first and last rooms must be the Spawnroom with at least another type of room in the middle."))
+          remove_modal_spinner()
           return()
         }
 
-        for(df in 1:length(unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID))){
-          df_local <- canvasObjects$agents[[agent]]$DeterFlow %>%
-            filter(FlowID == unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID)[df])
+        if(!("Spawnroom" == strsplit(df_local$Room[1], "-")[[1]][1]) || !("Spawnroom" == strsplit(df_local$Room[nrow(df_local)], "-")[[1]][1])){
+          shinyalert(paste0("The first and/or the last rooms of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " are not a Spawnroom."))
+          remove_modal_spinner()
+          return()
+        }
 
-          if(!("Spawnroom" == strsplit(df_local$Room[1], "-")[[1]][1]) || !("Spawnroom" == strsplit(df_local$Room[nrow(df_local)], "-")[[1]][1])){
-            shinyalert(paste0("The first and/or the last rooms of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " are not a Spawnroom. Please, modify the flow."))
-            return()
-          }
+        df_local$Time[nrow(df_local)] <- 0
+        label <- strsplit(df_local$Label[nrow(df_local)], "-")[[1]]
+        df_local$Label[nrow(df_local)] <- paste0(label[1], " - ", label[2], " - 0 min - ", label[4])
+      }
 
-          df_local$Time[nrow(df_local)] <- 0
-          label <- strsplit(df_local$Label[nrow(df_local)], "-")[[1]]
-          df_local$Label[nrow(df_local)] <- paste0(label[1], " - ", label[2], " - 0 min - ", label[4])
+      if(nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
+        shinyalert(paste0("No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
+        remove_modal_spinner()
+        return()
+      }
+
+      for(df in 1:length(unique(canvasObjects$agents[[agent]]$EntryExitTime$FlowID))){
+        # Sovrapposition check
+        overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
+        if(!is.null(overlaps)){
+          shinyalert(paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], "."))
+          remove_modal_spinner()
+          return()
         }
       }
     }
 
+    if(is.null(canvasObjects$disease$beta_contact)){
+      shinyalert("You must insert the beta contact parameter (in the Infection page).")
+      remove_modal_spinner()
+      return()
+    }
+
+    if(is.null(canvasObjects$disease$beta_aerosol)){
+      shinyalert("You must insert the beta aerosol parameter (in the Infection page).")
+      remove_modal_spinner()
+      return()
+    }
+
+    if(is.null(canvasObjects$disease$gamma_time)){
+      shinyalert("You must insert the gamma parameter (in the Infection page).")
+      remove_modal_spinner()
+      return()
+    }
+
+    if(grepl("E", canvasObjects$disease$Name)){
+      if(is.null(canvasObjects$disease$alpha_time)){
+        shinyalert("You must insert the alpha parameter (in the Infection page).")
+        remove_modal_spinner()
+        return()
+      }
+    }
+
+
+    if(grepl("D", canvasObjects$disease$Name)){
+      if(is.null(canvasObjects$disease$lambda_time)){
+        shinyalert("You must insert the lambda parameter (in the Infection page).")
+        remove_modal_spinner()
+        return()
+      }
+    }
+
+
+    if(canvasObjects$disease$Name[length(canvasObjects$disease$Name)] == "S"){
+      if(is.null(canvasObjects$disease$nu_time)){
+        shinyalert("You must insert the nu parameter (in the Infection page).")
+        remove_modal_spinner()
+        return()
+      }
+    }
+
     if (!(grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", input$initial_time) || grepl("^\\d{1,2}$", input$initial_time))){
-      shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20) as initial time in the Configuration tab.")
+      shinyalert("The format of the initial time (in the Configuration page) should be: hh:mm (e.g. 06:15, or 20).")
+      remove_modal_spinner()
       return()
     }
 
     if(input$seed == "" || !grepl("(^[0-9]+).*", input$seed) || input$seed < 0){
-      shinyalert("You must specify a number greater than 0 (>= 0) as seed in the Configuration tab.")
+      shinyalert("You must specify a number greater or equals than 0 (>= 0) as seed (in the Configuration tab).")
+      remove_modal_spinner()
       return()
     }
 
-    if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days < 0){
-      shinyalert("You must specify a number greater than 0 (>= 0) as number of days to simulate in the Configuration tab.")
+    if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days <= 0){
+      shinyalert("You must specify a number greater than 0 (> 0) as number of days to simulate (in the Configuration tab).")
+      remove_modal_spinner()
       return()
     }
+
+    if(input$nrun == "" || !grepl("(^[0-9]+).*", input$nrun) || input$nrun <= 0){
+      shinyalert("You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration tab).")
+      remove_modal_spinner()
+      return()
+    }
+
+    # if(input$prun == "" || !grepl("(^[0-9]+).*", input$prun) || input$prun <= 0){
+    #   shinyalert("You must specify a number greater than 0 (> 0) as number of parallel run to execute (in the Configuration tab).")
+    #   remove_modal_spinner()
+    #   return()
+    # }
 
     enable("rds_generation")
 
     if(!dir.exists("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/")){
       output$flame_link <- renderText({
-        paste0("The directory ", gsub("ShinyEnvironment", "", getwd()), "/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exitst. Check you are in the correct directory.")
+        paste0("The directory ", gsub("ShinyEnvironment", "", getwd()), "/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist. Check you are in the correct directory.")
       })
+      remove_modal_spinner()
       return()
     }
+
+    remove_modal_spinner()
 
     enable("flamegpu_connection")
   })
@@ -1468,7 +1576,7 @@ server <- function(input, output,session) {
         mess = readRDS(input$RDsImport$datapath)
         messNames = names(mess)
 
-        if(!all(messNames %in% names(canvasObjectsSTART)) ){
+        if(!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART)) ){
           shinyalert("Error",
                      paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
                      "error", 5000)
@@ -1500,7 +1608,7 @@ server <- function(input, output,session) {
       mess = readRDS(input$RDsImport$datapath)
       messNames = names(mess)
 
-      if(!all(messNames %in% names(canvasObjectsSTART)) ){
+      if(!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART)) ){
         shinyalert("Error",
                    paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
                    "error", 5000)
@@ -2466,21 +2574,6 @@ server <- function(input, output,session) {
             canvasObjects$agents[[input$id_new_agent]]$EntryExitTime = rbind(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime %>% filter(Name !=  paste0(index, " slot")), df)
           else
             canvasObjects$agents[[input$id_new_agent]]$EntryExitTime =  df
-
-          # TO DO: remove exit time (we don't need it) and rewrite this check
-          # canvasObjects$agents[[input$id_new_agent]]$EntryExitTime -> EntryExitTime
-          # #check if df$Name is present in EntryExitTime$Name
-          # if(!is.null(EntryExitTime) && is.data.frame(EntryExitTime)){
-          #   #check if df$Days is present in EntryExitTime$Days
-          #   if(nrow(EntryExitTime %>% filter(Name!= paste0(index, " slot")) %>% filter(Days %in%  df$Days)) > 0){
-          #     #check if in the same day there is a time slot that collides with the new one
-          #     if(nrow(EntryExitTime %>% filter(Name!= paste0(index, " slot")) %>% filter(Days %in%  df$Days) %>% filter(EntryTime < df$ExitTime & ExitTime > df$EntryTime)) > 0){
-          #       shinyalert("The time slot you are trying to add collides with another time slot.")
-          #       return()
-          #     }
-          #
-          #   }
-          # }
         }
       }
     }

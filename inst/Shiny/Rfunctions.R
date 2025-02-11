@@ -529,7 +529,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
   dist_panel <-  tabsetPanel(id = paste0("DistTime_tabs_", id),
                              tabPanel("Deterministic",
                                       value = "DetTime_tab",
-                                      textInput(inputId = paste0("DetTime_", id), label = "Fixed deterministic value:",placeholder = "value", value = a)
+                                      textInput(inputId = paste0("DetTime_", id), label = "Fixed deterministic value:",placeholder = "Value", value = a)
                              ),
                              tabPanel("Stochastic",
                                       value = "StocTime_tab",
@@ -541,7 +541,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                         condition = paste0("input.DistStoc_id_", id, " == 'Exponential'"),
                                         textInput(inputId = paste0("DistStoc_ExpRate_", id),
                                                  label = "Value:",
-                                                 placeholder = "value",
+                                                 placeholder = "Value",
                                                  value = a)
 
                                       ),
@@ -549,10 +549,10 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                         condition = paste0("input.DistStoc_id_", id, " == 'Uniform'"),
                                         fluidRow(
                                           column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_UnifRate_a_", id), label = "a:", placeholder = "value", value = a)
+                                                 textInput(inputId = paste0("DistStoc_UnifRate_a_", id), label = "a:", placeholder = "Value", value = a)
                                           ),
                                           column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_UnifRate_b_", id), label = "b:", placeholder = "value", value = b)
+                                                 textInput(inputId = paste0("DistStoc_UnifRate_b_", id), label = "b:", placeholder = "Value", value = b)
 
                                           )
                                         )
@@ -561,10 +561,10 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                         condition = paste0("input.DistStoc_id_", id, " == 'Truncated Positive Normal'"),
                                         fluidRow(
                                           column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_NormRate_m_", id), label = "Mean:", placeholder = "value", value = a)
+                                                 textInput(inputId = paste0("DistStoc_NormRate_m_", id), label = "Mean:", placeholder = "Value", value = a)
                                           ),
                                           column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_NormRate_sd_", id), label = "Sd:", placeholder = "value", value = b)
+                                                 textInput(inputId = paste0("DistStoc_NormRate_sd_", id), label = "Sd:", placeholder = "Value", value = b)
 
                                           )
                                          )
@@ -825,4 +825,48 @@ FromToMatrices.generation = function(WHOLEmodel){
   return(list(AgentMeasuresFromTo = AgentMeasuresFromTo,
               RoomsMeasuresFromTo = MeasuresFromTo,
               initial_infected = initial_infected))
+}
+
+check_overlaps <- function(entry_exit_df, deter_flow_df) {
+  # Function to calculate mean time based on distribution
+  get_mean_time <- function(dist_type, time_value) {
+    if (dist_type == "Deterministic") {
+      return(as.numeric(time_value))  # Exact time
+    } else if (dist_type == "Exponential") {
+      return(as.numeric(time_value))  # Mean of exponential (1/lambda = time_value)
+    } else if (dist_type == "Uniform") {
+      values <- as.numeric(str_extract_all(time_value, "\\d+\\.?\\d*")[[1]])
+      return((values[1] + values[2]) / 2)  # Uniform mean
+    } else if (dist_type == "Truncated Positive Normal") {
+      values <- as.numeric(str_extract_all(time_value, "\\d+\\.?\\d*")[[1]])
+      return(values[1])  # Mean value
+    }
+  }
+
+  # Merge datasets on FlowID
+  merged_df <- entry_exit_df %>%
+    inner_join(deter_flow_df, by = "FlowID") %>%
+    mutate(
+      EntryTime = as.numeric(str_split(EntryTime, ":")[[1]][1]) * 60 + as.numeric(str_split(EntryTime, ":")[[1]][2]),  # Convert EntryTime to time format
+      MeanTime = mapply(get_mean_time, Dist, Time) * 60  # Convert minutes to seconds
+    ) %>%
+    group_by(Name.x, FlowID, Days) %>%
+    mutate(CumulativeMeanTime = cumsum(MeanTime)) %>%
+    summarise(
+      EntryTime = min(EntryTime),  # Take the earliest entry time for the group
+      TotalTime = sum(MeanTime),   # Total time spent in activities
+      LastTime = EntryTime + max(CumulativeMeanTime),  # Final time after all activities
+      .groups = "drop"
+    )
+
+  # Check for overlaps
+  overlaps <- merged_df %>%
+    group_by(Days) %>%
+    filter(EntryTime < lag(LastTime, default = first(EntryTime)))
+
+  if (nrow(overlaps) > 0) {
+    return(overlaps)  # Return the overlapping entries
+  } else {
+    return(NULL)
+  }
 }
