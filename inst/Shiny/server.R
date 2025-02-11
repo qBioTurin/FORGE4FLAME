@@ -2971,7 +2971,7 @@ server <- function(input, output,session) {
 
     if(as.integer(input$ventilation_time_to) < as.integer(input$ventilation_time_from) ||
        as.integer(input$ventilation_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$ventilation_time_from) < 0){
+       as.integer(input$ventilation_time_from) <= 0){
       shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
@@ -3010,7 +3010,7 @@ server <- function(input, output,session) {
     }
     if(as.integer(input$mask_time_to) < as.integer(input$mask_time_from) ||
        as.integer(input$mask_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$mask_time_from) < 0){
+       as.integer(input$mask_time_from) <= 0){
       shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
@@ -3089,7 +3089,7 @@ server <- function(input, output,session) {
 
     if(as.integer(input$swab_time_to) < as.integer(input$swab_time_from) ||
        as.integer(input$swab_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$swab_time_from) < 0){
+       as.integer(input$swab_time_from) <= 0){
       shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
@@ -3145,7 +3145,7 @@ server <- function(input, output,session) {
 
       if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
          as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-         as.integer(input$quarantine_time_from) < 0){
+         as.integer(input$quarantine_time_from) <= 0){
         shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
         return()
       }
@@ -3249,7 +3249,7 @@ server <- function(input, output,session) {
 
     if(as.integer(input$external_screening_time_to) < as.integer(input$external_screening_time_from) ||
        as.integer(input$external_screening_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
-       as.integer(input$external_screening_time_from) < 0){
+       as.integer(input$external_screening_time_from) <= 0){
       shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
       return()
     }
@@ -3559,6 +3559,12 @@ server <- function(input, output,session) {
     }
 
     canvasObjects$starting$simulation_days <- simulation_days
+
+    updateNumericInput(session = session, inputId = "ventilation_time_to", value = simulation_days)
+    updateNumericInput(session = session, inputId = "mask_time_to", value = simulation_days)
+    updateNumericInput(session = session, inputId = "swab_time_to", value = simulation_days)
+    updateNumericInput(session = session, inputId = "quarantine_time_to", value = simulation_days)
+    updateNumericInput(session = session, inputId = "external_screening_time_to", value = simulation_days)
   })
 
   seed <- debounce(reactive({input$seed}), 1000L)
