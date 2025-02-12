@@ -685,16 +685,17 @@ FromToMatrices.generation = function(WHOLEmodel){
   )
 
   WHOLEmodel$rooms_whatif = rbind(default_params, WHOLEmodel$rooms_whatif)
-  ## rooms_whatif as in the OLD version
-  rooms_whatif = WHOLEmodel$rooms_whatif  %>% distinct() %>% tidyr::spread(value = "Parameters", key = "Measure") %>% select(-From, -To)
-  if(length(unique(rooms_whatif$Type)) > 1){
-    split = str_split(rooms_whatif$Type,pattern = "-")%>%
-      as.data.frame() %>%
-      t %>%
-      data.frame(stringsAsFactors = F)
-    rooms_whatif$Type= split %>% pull(1)
-    rooms_whatif$Area= split %>% pull(2)
-  }
+  # ## rooms_whatif as in the OLD version
+  # rooms_whatif = WHOLEmodel$rooms_whatif  %>% distinct() %>%
+  #   tidyr::spread(value = "Parameters", key = "Measure") %>% select(-From, -To)
+  # if(length(unique(rooms_whatif$Type)) > 1){
+  #   split = str_split(rooms_whatif$Type,pattern = "-")%>%
+  #     as.data.frame() %>%
+  #     t %>%
+  #     data.frame(stringsAsFactors = F)
+  #   rooms_whatif$Type= split %>% pull(1)
+  #   rooms_whatif$Area= split %>% pull(2)
+  # }
 
   MeasuresFromTo <- NULL
   ## From_to matrix generation rooms
