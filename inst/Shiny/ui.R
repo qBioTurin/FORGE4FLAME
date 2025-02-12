@@ -1025,8 +1025,8 @@ ui <- dashboardPage(
                           selected = "0 (no ventilation)"
                         )
                       ),
-                      column(1, numericInput(inputId = "ventilation_time_from", label = "From (time):", value = 1, min = 1)),
-                      column(1, numericInput(inputId = "ventilation_time_to", label = "To (time):", value = 10, min = 1)),
+                      column(1, numericInput(inputId = "ventilation_time_from", label = "From (day):", value = 1, min = 1)),
+                      column(1, numericInput(inputId = "ventilation_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1, actionButton("save_ventilation", "Save"))
                     ))
               ),
@@ -1063,8 +1063,8 @@ ui <- dashboardPage(
                           value = 1, min = 0, max = 1
                         )
                       ),
-                      column(1, numericInput(inputId = "mask_time_from", label = "From (time):", value = 1, min = 1)),
-                      column(1, numericInput(inputId = "mask_time_to", label = "To (time):", value = 10, min = 1)),
+                      column(1, numericInput(inputId = "mask_time_from", label = "From (day):", value = 1, min = 1)),
+                      column(1, numericInput(inputId = "mask_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1, actionButton("save_masks", "Save"))
                     ))
               ),
@@ -1121,8 +1121,8 @@ ui <- dashboardPage(
                         #   value = 90, min = 0,
                         # )
                       ),
-                      column(1, numericInput(inputId = "vaccination_time_from", label = "From (time):", value = 1, min = 1)),
-                      #column(1, numericInput(inputId = "vaccination_time_to", label = "To (time):", value = 10, min = 1)),
+                      column(1, numericInput(inputId = "vaccination_time_from", label = "From (day):", value = 1, min = 1)),
+                      #column(1, numericInput(inputId = "vaccination_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1, actionButton("save_vaccination", "Save"))
                     )
                 )
@@ -1185,8 +1185,8 @@ ui <- dashboardPage(
                         )
                       ),
                       fluidRow(
-                        column(1, numericInput(inputId = "swab_time_from", label = "From (time):", value = 1, min = 1)),
-                        column(1, numericInput(inputId = "swab_time_to", label = "To (time):", value = 10, min = 1)),
+                        column(1, numericInput(inputId = "swab_time_from", label = "From (day):", value = 1, min = 1)),
+                        column(1, numericInput(inputId = "swab_time_to", label = "To (day):", value = 10, min = 1)),
                         column(1,offset=11, actionButton("save_swab", "Save"))
                       )
                     )
@@ -1281,8 +1281,8 @@ ui <- dashboardPage(
                           )
                         ),
                         fluidRow(
-                          column(2,offset = 3, numericInput(inputId = "quarantine_time_from", label = "From (time):", value = 1, min = 1)),
-                          column(2, numericInput(inputId = "quarantine_time_to", label = "To (time):", value = 10, min = 1)),
+                          column(2,offset = 3, numericInput(inputId = "quarantine_time_from", label = "From (day):", value = 1, min = 1)),
+                          column(2, numericInput(inputId = "quarantine_time_to", label = "To (day):", value = 10, min = 1)),
                           column(1,offset=11, actionButton("save_quarantine", "Save"))
                         )
                       )
@@ -1340,8 +1340,8 @@ ui <- dashboardPage(
                           )
                         ),
                         fluidRow(
-                          column(2, offset = 3, numericInput(inputId = "external_screening_time_from", label = "From (time):", value = 1, min = 1)),
-                          column(2, numericInput(inputId = "external_screening_time_to", label = "To (time):", value = 10, min = 1)),
+                          column(2, offset = 3, numericInput(inputId = "external_screening_time_from", label = "From (day):", value = 1, min = 1)),
+                          column(2, numericInput(inputId = "external_screening_time_to", label = "To (day):", value = 10, min = 1)),
                           column(1, offset=11, actionButton("save_external_screening", "Save"))
                         )
                       )
