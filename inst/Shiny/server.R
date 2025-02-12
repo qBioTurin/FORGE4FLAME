@@ -2606,11 +2606,14 @@ server <- function(input, output,session) {
               if(length(rooms)>0){
                 df_Rand <- canvasObjects$agents[[agent]]$RandFlow %>%
                   filter(Room != "Do nothing")
-
-                rbind(
-                  data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
-                  data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
-                )
+                if(dim(df_Rand)[1] > 0){
+                  rbind(
+                    data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
+                    data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
+                  )
+                }else{
+                  NULL
+                }
               }
               else NULL
             })
