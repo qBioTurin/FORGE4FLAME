@@ -1369,13 +1369,15 @@ server <- function(input, output,session) {
         return()
       }
 
-      for(df in 1:length(unique(canvasObjects$agents[[agent]]$EntryExitTime$FlowID))){
-        # Sovrapposition check
-        overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
-        if(!is.null(overlaps)){
-          shinyalert(paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], "."))
-          remove_modal_spinner()
-          return()
+      if(canvasObjects$agents[[agent]]$entry_type != "Daily Rate"){
+        for(df in 1:length(unique(canvasObjects$agents[[agent]]$EntryExitTime$FlowID))){
+          # Sovrapposition check
+          overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
+          if(!is.null(overlaps)){
+            shinyalert(paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], "."))
+            remove_modal_spinner()
+            return()
+          }
         }
       }
     }
@@ -3281,7 +3283,7 @@ server <- function(input, output,session) {
       new_time <- 0
 
       if(input$quarantine_swab_type_global != "No swab"){
-        paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
+        #paramstext =  paste0(paramstext,"; Sensitivity: ",input$quarantine_swab_sensitivity,"; Specificity: ",input$quarantine_swab_specificity)
 
         quarantine_swab_global <- check_distribution_parameters(input, "quarantine_swab_global")
         new_dist <- quarantine_swab_global[[1]]

@@ -740,10 +740,10 @@ FromToMatrices.generation = function(WHOLEmodel){
       Parameters = c( "Type: No mask; Fraction: 0",
                       "Efficacy: 1; Fraction: 0; Coverage Dist. Days: Deterministic, 0, 0",
                       "Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 ",
-                      "Dist. Days: No quarantine, 0, 0; Q. Room: Spawnroom-None; Dist: No swab, 0, 0 ",
+                      "Dist. Days: No quarantine, 0, 0; Q. Room: Spawnroom-None; Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 ",
                       "First: 0; Second: 0" ),
       From = 1,
-      To = 10,
+      To = WHOLEmodel$starting$simulation_days,
       stringsAsFactors = FALSE
     )
 
@@ -798,28 +798,36 @@ FromToMatrices.generation = function(WHOLEmodel){
     names(AgentMeasuresFromTo) = unique(WHOLEmodel$agents_whatif$Measure)
 
     # set initial infected agents as default zero
-    initial_infected= matrix(0,ncol = 2, nrow = length(agents)+1, dimnames = list(agents = c(agents, "Random")))
+    initial_infected <- data.frame(Agent = c(agents, "Random"), Number = c(rep(0, length(agents)), 0))
 
-    global = WHOLEmodel$initial_infected %>% filter(Type == "Global")
-    if(dim(global)[1] >0){
-      global = global[1,] # just in case, but the saving should block multi global definitions
-      initial_infected[,1] = global$Number
+    # Process "Global" infection values
+    global <- WHOLEmodel$initial_infected %>% filter(Type == "Global")
+    if (nrow(global) > 0) {
+      global <- global[1,]  # Ensure single row
+      initial_infected$Number <- global$Number  # Apply globally
     }
 
-    agent_specific =  WHOLEmodel$initial_infected %>% filter(! Type %in% c("Random","Global") )
-    if(dim(agent_specific)[1] >0){
-      for(ii in seq_along(agent_specific[,1])){
-        initial_infected[ agent_specific[ii,]$Type,1] = agent_specific[ii,]$Number
+    # Process specific agent types
+    agent_specific <- WHOLEmodel$initial_infected %>% filter(!Type %in% c("Random", "Global"))
+    if (nrow(agent_specific) > 0) {
+      for (ii in seq_len(nrow(agent_specific))) {
+        agent_name <- agent_specific$Type[ii]
+        index <- which(initial_infected$Agent == agent_name)
+        if (length(index) > 0) {
+          initial_infected$Number[index] <- agent_specific$Number[ii]
+        }
       }
     }
 
-    random = WHOLEmodel$initial_infected %>% filter(Type == "Random")
-    if(dim(random)[1] >0){
-      random = random[1,] # just in case, but the saving should block multi random definitions
-      initial_infected[random[1,]$Type,1] = random[1,]$Number
+    # Process "Random" infection values
+    random <- WHOLEmodel$initial_infected %>% filter(Type == "Random")
+    if (nrow(random) > 0) {
+      random <- random[1,]  # Ensure single row
+      index <- which(initial_infected$Agent == "Random")
+      initial_infected$Number[index] <- random$Number
     }
 
-    initial_infected = cbind(c(agents, "Random"), initial_infected)
+    initial_infected <- as.matrix(initial_infected)
   }
 
   ####
