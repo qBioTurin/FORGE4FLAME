@@ -2,5 +2,6 @@
     "files.associations": {
         "cmath": "cpp",
         "chrono": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/dbaccega/Desktop/TrustAlert/FORGE4FLAME/inst/FLAMEGPU-FORGE4FLAME"
 }
