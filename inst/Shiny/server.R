@@ -2862,7 +2862,9 @@ server <- function(input, output,session) {
       }else{
         # If there exist already the dataset, then it is used and we have to check that there is already the agents
 
-        data_waiting = data_waitingOLD[,c("Agent","Room")]
+        if(nrow(data_waitingOLD) >0){
+          data_waiting = data_waitingOLD[,c("Agent","Room")]
+        }
         for(a in unique(ResRoomsDF$Agent)){
           if(a %in% data_waitingOLD$Agent)
             data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
