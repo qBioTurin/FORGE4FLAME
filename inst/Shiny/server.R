@@ -4201,9 +4201,11 @@ server <- function(input, output,session) {
         remove_modal_spinner()
 
         ## updating slider and selectize
+        step = as.numeric(canvasObjects$starting$step)
+        updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
         updateSliderInput("animation", session = session,
-                          max = max(simulation_log$time), min = min(simulation_log$time),
-                          value = min(simulation_log$time) )
+                          max = max(simulation_log$time)*step, min = min(simulation_log$time)*step,
+                          value = min(simulation_log$time)*step, step = step )
         updateSelectInput("visualFloor_select", session = session,
                           choices = c("All",unique(floors$CanvasID)))
         updateSelectInput("visualAgent_select", session = session,
@@ -4215,6 +4217,29 @@ server <- function(input, output,session) {
     })
   })
 
+  observeEvent(input$animationStep,{
+  req(canvasObjects$TwoDVisual)
+
+    if( input$animationStep < 1 ) {
+      shinyalert("The time step cannot be less than 1 sec.",type = "error")
+      return()
+    }
+
+    if( input$animationStep > max(canvasObjects$TwoDVisual$time)* as.numeric(canvasObjects$starting$step) ) {
+      shinyalert("The time step cannot be greater than the maximum time of the simulation",type = "error")
+      return()
+    }
+
+    updateSliderInput("animation", session = session,value = input$animation, step =  input$animationStep)
+  })
+  observeEvent(input$next_step_visual, {
+    req(canvasObjects$TwoDVisual)
+
+    new_val <- min(input$animation +  input$animationStep,
+                   max(canvasObjects$TwoDVisual$time)* as.numeric(canvasObjects$starting$step) )
+
+    updateSliderInput(session, "animation", value = new_val)
+  })
   # Get unique CanvasIDs
   canvas_ids <- reactive({
     simulation_log = req(canvasObjects$TwoDVisual)
@@ -4247,8 +4272,8 @@ server <- function(input, output,session) {
     Label = input$visualLabel_select
 
     isolate({
-
-      timeIn <- input$animation
+      step = as.numeric(canvasObjects$starting$step)
+      timeIn <- input$animation/step
 
       disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
 
@@ -4431,6 +4456,9 @@ server <- function(input, output,session) {
     visualAgentID = input$visualAgentID_select
 
     isolate({
+      step = as.numeric(canvasObjects$starting$step)
+      timeIn <- input$animation/step
+
       Label = input$visualLabel_select
       floorSelected = input$visualFloor_select
       floors = canvasObjects$floors

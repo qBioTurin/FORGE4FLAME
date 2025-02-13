@@ -1594,7 +1594,7 @@ ui <- dashboardPage(
                 )
               ),
               fluidRow(
-                box(width = 12,collapsed = F,collapsible = T,
+                box(width = 12,collapsed = T,collapsible = T,
                     title = div(class = "icon-container", style="margin-top:20px",
                                 h3("Query on Disease Status", icon("info-circle")),
                                 div(class = "icon-text", "Find the simulations with defined specification on the disease.")
@@ -1696,13 +1696,19 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                      column(12,
-                             sliderInput("animation", "Looping Animation:",
+                      column(9,
+                             sliderInput("animation", "Time in the animation (sec):",
                                          min = 0, max = 1,
                                          value = 0, step = 1,
-                                         animate =
-                                           animationOptions(interval = 1000, loop = TRUE)
+                                         animate = animationOptions(interval = 1000, loop = TRUE)
                              )
+                      ),
+                      column(1,
+                             actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next"),
+                                          class = "btn-primary")
+                      ),
+                      column(2,
+                             numericInput("animationStep",label = "Set the animation step (sec):", value = 1, min = 1)
                       )
                     ),
                     fluidRow(
