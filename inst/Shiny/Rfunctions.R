@@ -526,21 +526,23 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 }
 
 get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
-  dist_panel <-  tabsetPanel(id = paste0("DistTime_tabs_", id),
+  dist_panel <-  tagList(
+    div(style = "height:20px"),
+    tabsetPanel(id = paste0("DistTime_tabs_", id),
                              tabPanel("Deterministic",
                                       value = "DetTime_tab",
-                                      textInput(inputId = paste0("DetTime_", id), label = "Fixed deterministic value:",placeholder = "Value", value = a)
+                                      textInput(inputId = paste0("DetTime_", id), label = HTML("<i>Fixed deterministic value:</i>"),placeholder = "Value", value = a)
                              ),
                              tabPanel("Stochastic",
                                       value = "StocTime_tab",
                                       selectizeInput(inputId = paste0("DistStoc_id_", id),
-                                                     label = "Distribution:",
+                                                     label = HTML("<i>Distribution:</i>"),
                                                      choices = c("Exponential","Uniform","Truncated Positive Normal"),
                                                      selected = selected_dist),
                                       conditionalPanel(
                                         condition = paste0("input.DistStoc_id_", id, " == 'Exponential'"),
                                         textInput(inputId = paste0("DistStoc_ExpRate_", id),
-                                                 label = "Value:",
+                                                 label = HTML("<i>Value:</i>"),
                                                  placeholder = "Value",
                                                  value = a)
 
@@ -570,8 +572,9 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
                                          )
                                        )
                              )
-                 )
-
+                 ),
+    div(style = "height:10px")
+)
   return(dist_panel)
 }
 

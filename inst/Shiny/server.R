@@ -3487,7 +3487,7 @@ server <- function(input, output,session) {
                                                      Type = as.factor(Type),
                                                      Parameters= as.factor(Parameters) ),
               filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = FALSE, info = FALSE,
+              options = list(searching = FALSE, info = FALSE,paging = FALSE,
                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
   output$rooms_whatif <- renderDT({
@@ -3495,16 +3495,20 @@ server <- function(input, output,session) {
                                                     Type = as.factor(Type),
                                                     Parameters= as.factor(Parameters) ),
               filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = FALSE, info = FALSE,
+              options = list(searching = FALSE, info = FALSE,paging = FALSE,
                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
 
   output$virus_info <- renderDT({
     datatable( data.frame(variant = canvasObjects$virus_variant,
-                          severity = canvasObjects$virus_severity))
+                          severity = canvasObjects$virus_severity),
+               options = list(searching = FALSE, info = FALSE,paging = FALSE,
+                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
   output$initialI_info <- renderDT({
-    datatable(canvasObjects$initial_infected, options = list(pageLength = 5))
+    datatable(canvasObjects$initial_infected,
+              options = list(searching = FALSE, info = FALSE,paging = FALSE,
+                             sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
 
   # Double Click to Delete Row with Confirmation
