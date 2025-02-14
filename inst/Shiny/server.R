@@ -1301,6 +1301,7 @@ server <- function(input, output,session) {
     if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
       shinyalert(paste0("No agent is defined."))
       remove_modal_spinner()
+      return()
     }
 
     if(is.null(canvasObjects$rooms) || length(canvasObjects$rooms) == 0){
@@ -1334,7 +1335,7 @@ server <- function(input, output,session) {
     }
 
     for(agent in 1:length(canvasObjects$agents)){
-      if(nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
+      if(is.null(canvasObjects$agents[[agent]]$DeterFlow) || nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
         shinyalert(paste0("No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
         remove_modal_spinner()
         return()
@@ -1363,7 +1364,7 @@ server <- function(input, output,session) {
         df_local$Label[nrow(df_local)] <- paste0(label[1], " - ", label[2], " - 0 min - ", label[4])
       }
 
-      if(nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
+      if(is.null(canvasObjects$agents[[agent]]$EntryExitTime) || nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
         shinyalert(paste0("No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
         remove_modal_spinner()
         return()
@@ -1831,7 +1832,8 @@ server <- function(input, output,session) {
 
       for(i in 1:length(WHOLEmodel$resources)){
         WHOLEmodel$resources[[i]]$roomResource <- WHOLEmodel$resources[[i]]$roomResource[, which(!names(WHOLEmodel$resources[[i]]$roomResource) == Agent)]
-        WHOLEmodel$resources[[i]]$waitingRooms[which(!WHOLEmodel$resources[[i]]$waitingRooms$Agent == Agent),]
+        WHOLEmodel$resources[[i]]$waitingRoomsRand[which(!WHOLEmodel$resources[[i]]$waitingRoomsRand$Agent == Agent),]
+        WHOLEmodel$resources[[i]]$waitingRoomsDeter[which(!WHOLEmodel$resources[[i]]$waitingRoomsDeter$Agent == Agent),]
       }
     }
   })
@@ -2667,8 +2669,9 @@ server <- function(input, output,session) {
       }
 
       for(i in 1:length(canvasObjects$resources)){
-        if(!is.null(canvasObjects$resources[[i]]$waitingRooms)){
-          canvasObjects$resources[[i]]$waitingRooms$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRooms))
+        if(!is.null(canvasObjects$resources[[i]]$waitingRoomsDeter) && !is.null(canvasObjects$resources[[i]]$waitingRoomsRand)){
+          canvasObjects$resources[[i]]$waitingRoomsDeter$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRoomsDeter))
+          canvasObjects$resources[[i]]$waitingRoomsRand$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRoomsRand))
         }
 
         for(column in names(canvasObjects$resources[[i]]$roomResource)){
@@ -2822,82 +2825,42 @@ server <- function(input, output,session) {
   })
 
   observe({
-    #Give a default to resources and alternative room
-    if(!is.null(canvasObjects$roomsINcanvas)){
-      roomsAvailable <- canvasObjects$roomsINcanvas %>%
-        filter(!type %in% c("Spawnroom", "Fillingroom", "Stair"))
-      for(resources_type in paste0(roomsAvailable$type, "-", roomsAvailable$area)){ #unique(allResRooms()$Room)){
-        ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
+    #give a default to resources and waitingrooms
+    resources_type = req(input$selectInput_resources_type)
+    ResRoomsDF <- req( allResRooms() ) %>% filter(Room == resources_type)
 
-        rooms = canvasObjects$roomsINcanvas %>%
-          select(type, Name, area ) %>%
-          mutate(TypeArea = paste0(type,"-",area)) %>%
-          filter(TypeArea == resources_type) %>%
-          distinct()
+    rooms = canvasObjects$roomsINcanvas %>%
+      select(type, Name, area ) %>%
+      mutate(TypeArea = paste0(type,"-",area)) %>%
+      filter(TypeArea == resources_type) %>%
+      distinct()
 
-        isolate({
-          if(dim(rooms)[1]==0){
-            data = data.frame()
-          }else if(is.null(canvasObjects$resources[[resources_type]]$roomResource)){
-            data = data.frame(room = rooms$Name, MAX = 0 )
-            for(a in unique(ResRoomsDF$Agent))
-              data[,a] = 0
-          }else{
-            # If there exist already the dataset, then it is used and we have to check that there is already the agents
-            dataOLD = canvasObjects$resources[[resources_type]]$roomResource
+    isolate({
+      if(dim(rooms)[1]==0){
+        data = data.frame()
+      }else if(is.null(canvasObjects$resources[[resources_type]]$roomResource)){
+        data = data.frame(room = rooms$Name, MAX = 0 )
+        for(a in unique(ResRoomsDF$Agent))
+          data[,a] = 0
+      }else{
+        # If there exist already the dataset, then it is used and we have to check that there is already the agents
+        dataOLD = canvasObjects$resources[[resources_type]]$roomResource
 
-            data = dataOLD[,c("room","MAX")]
-            for(a in unique(ResRoomsDF$Agent)){
-              if(a %in% colnames(dataOLD))
-                data[,a] = dataOLD[,a]
-              else
-                data[,a] = 0
-            }
-            # filter the rooms already present to keep only the new added in the canvas
-            dataNEW = rooms %>% filter(!Name %in% dataOLD$room)
+        data = dataOLD[,c("room","MAX")]
+        for(a in unique(ResRoomsDF$Agent)){
+          if(a %in% colnames(dataOLD))
+            data[,a] = dataOLD[,a]
+          else
+            data[,a] = 0
+        }
+        # filter the rooms already present to keep only the new added in the canvas
+        dataNEW = rooms %>% filter(!Name %in% dataOLD$room)
 
-            if(dim(dataNEW)[1]> 0 ){
-              dataNew = setNames(data.frame(matrix(0, ncol = length(colnames(dataOLD)), nrow = dim(dataNEW)[1])), colnames(dataOLD))
-              dataNew$room = dataNEW$Name
-              data = rbind(data,dataNew )
-            }
-          }
-
-          canvasObjects$resources[[resources_type]]$roomResource <- data
-        })
-
-        isolate({
-
-          data_waiting = data.frame()
-
-          if(is.null(canvasObjects$resources[[resources_type]]$waitingRooms)){
-            data_waiting = do.call(rbind,
-                            lapply(unique(ResRoomsDF$Agent), function(W)
-                              data.frame(Agent = W,
-                                                Room = "Same room")
-                              )
-            )
-          }else{
-            # If there exist already the dataset, then it is used and we have to check that there is already the agents
-            data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRooms
-
-            data_waiting = data_waitingOLD[,c("Agent","Room")]
-            for(a in unique(ResRoomsDF$Agent)){
-              if(a %in% data_waitingOLD$Agent)
-                data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
-              else
-                data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
-            }
-
-            agent_eliminated = data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% ResRoomsDF$Agent)]
-
-            if(length(agent_eliminated) != 0){
-              data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
-            }
-          }
-
-          canvasObjects$resources[[resources_type]]$waitingRooms <- data_waiting
-        })
+        if(dim(dataNEW)[1]> 0 ){
+          dataNew = setNames(data.frame(matrix(0, ncol = length(colnames(dataOLD)), nrow = dim(dataNEW)[1])), colnames(dataOLD))
+          dataNew$room = dataNEW$Name
+          data = rbind(data,dataNew )
+        }
       }
 
       canvasObjects$resources[[resources_type]]$roomResource <- data
@@ -2963,6 +2926,7 @@ server <- function(input, output,session) {
         if(nrow(data_waitingOLD) >0){
           data_waiting = data_waitingOLD[,c("Agent","Room")]
         }
+
         for(a in unique(ResRoomsDF$Agent)){
           if(a %in% data_waitingOLD$Agent)
             data_waiting[data_waiting$Agent == a, "Room"] = data_waitingOLD[data_waiting$Agent == a, "Room"]
@@ -3632,6 +3596,7 @@ server <- function(input, output,session) {
       )
     }
   })
+
   observeEvent(input$rooms_whatif_cell_clicked, {
     info <- input$rooms_whatif_cell_clicked
     if (!is.null(info$row)) {

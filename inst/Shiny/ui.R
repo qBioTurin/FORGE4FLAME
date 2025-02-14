@@ -955,24 +955,6 @@ ui <- dashboardPage(
                   )
                 )
               ),
-              # fluidRow(
-              #   box(
-              #     title = h3("Run the model"),
-              #     width = 12,
-              #     collapsible = T,
-              #     collapsed = T,
-              #     fluidRow(
-              #       column(
-              #         2,
-              #         offset = 1,
-              #         actionButton(
-              #           inputId = "run",
-              #           label = "Run model",
-              #           icon = icon("play"))
-              #       )
-              #     )
-              #   )
-              # ),
               fluidRow(
                 box(
                   title = h3("References"),
@@ -1598,17 +1580,6 @@ ui <- dashboardPage(
                               3,
                               offset = 1,
                               selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker", "Slurm"), selected = "Docker")
-                            )
-                          ),
-                          fluidRow(
-                            column(2,
-                                   offset = 1,
-                                   conditionalPanel(condition="input.run_type != 'Slurm'",
-                                                    radioButtons("radio_group", "Select model to run:", choices = c("No model available"), selected = "")
-                                   ),
-                                   conditionalPanel(condition="input.run_type == 'Slurm'",
-                                                    checkboxGroupInput("checkbox_group", "Select model(s) to run:", choices = c("No model available"), selected = "")
-                                   )
                             )
                           ),
                           fluidRow(
