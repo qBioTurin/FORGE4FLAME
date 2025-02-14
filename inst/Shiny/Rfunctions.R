@@ -271,15 +271,15 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
   }
 
-  updateSelectizeInput(inputId = "id_new_agent",choices = unique(names(canvasObjects$agents)), selected = "")
-  updateSelectizeInput(inputId = "id_agents_to_copy",choices = unique(names(canvasObjects$agents)), selected = "")
+  updateSelectizeInput(inputId = "id_new_agent", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
+  updateSelectizeInput(inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
 
   classes <- c()
   for(i in 1:length(canvasObjects$agents)){
     classes <- c(canvasObjects$agents[[i]]$Class, classes)
   }
 
-  updateSelectizeInput(inputId = "id_class_agent",choices = unique(classes))
+  updateSelectizeInput(inputId = "id_class_agent", choices = if(length(classes) > 0) unique(classes) else "")
 
   updateSelectizeInput(session, "selectInput_resources_type", choices = c(), selected= "", server = TRUE)
 
@@ -361,6 +361,25 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     })
 
     showElement("outside_contagion_plot")
+  }
+  else{
+    hideElement("outside_contagion_plot")
+  }
+
+  # Resources
+  if(!is.null(canvasObjects$agents)){
+    allResRooms <- do.call(rbind,
+              lapply(names(canvasObjects$agents), function(agent) {
+                rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
+                                 canvasObjects$agents[[agent]]$RandFlow$Room))
+                rooms <- rooms[rooms != "Do nothing"]
+                if(length(rooms)>0)
+                  data.frame(Agent = agent , Room =  rooms)
+                else NULL
+              })
+      )
+
+    updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms else "")
   }
 
   "The file has been uploaded with success!"

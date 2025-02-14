@@ -1,68 +1,34 @@
-FROM rocker/r-ver:4.2.1
+# Immagine base di Shiny Server
+FROM rocker/shiny:latest
 
-ENV S6_VERSION=v2.1.0.2
-ENV RSTUDIO_VERSION=daily
-ENV DEFAULT_USER=rstudio
-ENV PANDOC_VERSION=default
-ENV PATH=/usr/lib/rstudio-server/bin:$PATH
-
-RUN /rocker_scripts/install_rstudio.sh
-RUN /rocker_scripts/install_pandoc.sh
-
-# system libraries
+# Dipendenze di sistema necessarie
 RUN apt-get update && apt-get install -y \
-    libcurl4-gnutls-dev \
-    libssl-dev \
-    libz-dev \
-    libpng-dev\
-    libtiff5-dev\
     libfftw3-dev
-  
 
-# install R packages required 
-RUN R -e 'install.packages(c(\
-  "shinydashboard", \ 
-  "shinyjs", \ 
-  "jsonlite", \ 
-  "dplyr", \ 
-  "shinythemes", \ 
-  "colourpicker", \ 
-  "glue", \ 
-  "readr", \ 
-  "zip", \ 
-  "sortable", \ 
-  "shinyalert", \ 
-  "shinybusy", \ 
-  "shinyBS", \ 
-  "stringr", \ 
-  "ggplot2", \ 
-  "tidyr", \ 
-  "remotes", \
-  "BiocManager" \
-            ), \
-            repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2022-08-01"\
-          )'
+# Pacchetti R necessari
+RUN R -e "install.packages(c('remotes', 'shiny', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
 
-RUN R -e 'BiocManager::install("EBImage", ask = FALSE)'
-RUN R -e 'remotes::install_github("ornelles/EBImageExtra")'
-RUN R -e 'remotes::install_github("qBioTurin/F4F")'
+# Installa BiocManager e EBImage
+RUN R -e "install.packages('BiocManager', repos='http://cran.rstudio.com/')"
+RUN R -e "BiocManager::install('EBImage', force=TRUE)"
 
-# date > marker
-# COPY marker /dev/null
+# Installa devtools e EBImageExtra
+RUN R -e "install.packages('devtools')"
+RUN R -e "devtools::install_github('ornelles/EBImageExtra', force=TRUE)"
+RUN R -e "devtools::install_github('qBioTurin/F4F', auth_token = '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', ref='main', dependencies=TRUE, force=TRUE)"
 
-# copy the app directory into the image
-# COPY ./Shiny/ ./app/
-# COPY ./Docker/ ./docker/
+# Copia gli script dell'applicazione nel container
+RUN mkdir -p /srv/shiny-server/F4F
+RUN cp -r /usr/local/lib/R/site-library/F4F/* /srv/shiny-server/F4F/
 
-# Create data directory
-# RUN mkdir ./home/data; chmod 777 ./home/data
-# COPY ./Data/ ./home/data/
+# Copia il file app.R nel container
+COPY app.R /srv/shiny-server/
 
-# expose port
+# Imposta i permessi corretti per Shiny Server
+RUN chown -R shiny:shiny /srv/shiny-server
+
+# Espone la porta per Shiny Server
 EXPOSE 3838
 
-# Define default command.
-# CMD ["bash"]
-# run app on container start
-CMD ["R", "-e", "F4F::F4F.run(TRUE)')"]
-
+# Comando per eseguire automaticamente l'applicazione Shiny
+CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app.R', host = '0.0.0.0', port = 3838)"]
