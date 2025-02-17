@@ -1459,7 +1459,7 @@ server <- function(input, output,session) {
 
     enable("rds_generation")
 
-    if(!dir.exists("../FLAMEGPU-FORGE4FLAME/resources/f4f/")){
+    if(!dir.exists("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/")){
       output$flame_link <- renderText({
         paste0("The directory ", gsub("ShinyEnvironment", "", getwd()), "/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist. Check you are in the correct directory.")
       })
@@ -1525,8 +1525,8 @@ server <- function(input, output,session) {
   observeEvent(input$save_text, {
     removeModal()
 
-    if(!dir.exists(paste0("../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))){
-      system(paste0("mkdir ../FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
+    if(!dir.exists(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))){
+      system(paste0("mkdir inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
     }
 
     matricesCanvas <- list()
@@ -1548,12 +1548,6 @@ server <- function(input, output,session) {
     model$initial_infected = out$initial_infected
     file_name <- glue("WHOLEmodel.json")
     write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-
-    models <- dir("../FLAMEGPU-FORGE4FLAME/resources/f4f/")
-    models <- models[which(models != "obj")]
-
-    updateRadioButtons(session, "radio_group", choices = models)
-    updateCheckboxGroupInput(session, "checkbox_group", choices = models)
 
     shinyalert("Success", paste0("Model linked to FLAME GPU 2 in inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text ), "success", 1000)
   })
@@ -2659,6 +2653,7 @@ server <- function(input, output,session) {
   })
 
   observeEvent(input$set_resources, {
+    show_modal_spinner()
     if(!is.null(canvasObjects$roomsINcanvas)){
       if(input$textInput_resources_global != "" &&
          !is.null(input$textInput_resources_global) &&
@@ -2668,19 +2663,26 @@ server <- function(input, output,session) {
         return()
       }
 
-      for(i in 1:length(canvasObjects$resources)){
-        if(!is.null(canvasObjects$resources[[i]]$waitingRoomsDeter) && !is.null(canvasObjects$resources[[i]]$waitingRoomsRand)){
-          canvasObjects$resources[[i]]$waitingRoomsDeter$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRoomsDeter))
-          canvasObjects$resources[[i]]$waitingRoomsRand$Room <- rep(input$selectInput_alternative_resources_global, nrow(canvasObjects$resources[[i]]$waitingRoomsRand))
+      all_res_rooms <- canvasObjects$roomsINcanvas
+      canvasObjects$resources <- NULL
+      for(i in unique(paste0(all_res_rooms$type, "-", all_res_rooms$area))){
+        if(is.null(canvasObjects$resources[[i]])){
+          rooms_names <- unique((all_res_rooms %>% filter(type == str_split(i, "-")[[1]][1], area == str_split(i, "-")[[1]][2]))$Name)
+          canvasObjects$resources[[i]]$roomResource <- data.frame(room=rooms_names, MAX=rep(input$textInput_resources_global, length(rooms_names)))
+          canvasObjects$resources[[i]]$waitingRoomsDeter <- data.frame(Agent=NULL, Room=NULL)
+          canvasObjects$resources[[i]]$waitingRoomsRand <- data.frame(Agent=NULL, Room=NULL)
         }
 
-        for(column in names(canvasObjects$resources[[i]]$roomResource)){
-          if(column != "room"){
-            canvasObjects$resources[[i]]$roomResource[column] <- input$textInput_resources_global
-          }
+
+        for(Agent in names(canvasObjects$agents)){
+          canvasObjects$resources[[i]]$waitingRoomsDeter <- rbind(canvasObjects$resources[[i]]$waitingRoomsDeter, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
+          canvasObjects$resources[[i]]$waitingRoomsRand <- rbind(canvasObjects$resources[[i]]$waitingRoomsRand, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
+
+          canvasObjects$resources[[i]]$roomResource[, Agent] <- input$textInput_resources_global
         }
       }
     }
+    remove_modal_spinner()
   })
 
   # Generate dynamic selectizeInput based on the selected room

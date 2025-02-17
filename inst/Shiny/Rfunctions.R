@@ -281,8 +281,6 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   updateSelectizeInput(inputId = "id_class_agent", choices = if(length(classes) > 0) unique(classes) else "")
 
-  updateSelectizeInput(session, "selectInput_resources_type", choices = c(), selected= "", server = TRUE)
-
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
     selected = canvasObjects$disease$Name
@@ -379,7 +377,16 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
               })
       )
 
-    updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms else "")
+    updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms$Room else "")
+
+    choices <- unique( allResRooms$Room )
+    choices <- choices[!grepl(paste0("Spawnroom", collapse = "|"), choices)]
+    choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
+
+    updateSelectizeInput(session, "selectInput_resources_type", choices = choices, selected= "", server = TRUE)
+  }
+  else{
+    updateSelectizeInput(session, "selectInput_resources_type", choices = "", selected= "", server = TRUE)
   }
 
   "The file has been uploaded with success!"
