@@ -2255,15 +2255,28 @@ server <- function(input, output,session) {
     }
   })
 
-  observeEvent(input$RandomEvents_table_row_last_clicked,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$id_new_agent!= "" && dim(canvasObjects$agents[[input$id_new_agent]]$RandFlow)[1]>1)
-    {
-      # Only if the row clicked is different from DO NOTHING it is removed from table
-      if(input$RandomEvents_table_row_last_clicked != which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing")){
-        canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]] <-as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]])) + as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[input$RandomEvents_table_row_last_clicked]]))
-        canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-input$RandomEvents_table_row_last_clicked,]
+  observeEvent(input$RandomEvents_table_cell_clicked, {
+    info <- input$RandomEvents_table_cell_clicked
+    req(input$id_new_agent!= "")
+
+    if (!is.null(info$row)) {
+      if(info$row %in% which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing")){
+        shinyalert(" 'Do nothing' event cannot be removed. ",type = "error")
+        return()
+      }else{
+        shinyalert(
+          title = "Delete Entry?",
+          text = "Are you sure you want to delete this row?",
+          type = "warning",
+          showCancelButton = TRUE,
+          confirmButtonText = "Yes, delete it!",
+          callbackR = function(x) {
+            if (x) {
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]] <-as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]])) + as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[info$row]]))
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-info$row,]
+            }
+          }
+        )
       }
     }
   })
