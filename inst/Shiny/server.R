@@ -3567,10 +3567,10 @@ server <- function(input, output,session) {
   })
 
   output$virus_info <- renderDT({
-    datatable( data.frame(variant = canvasObjects$virus_variant,
-                          severity = canvasObjects$virus_severity),
+    datatable( data.frame(Variant = canvasObjects$virus_variant,
+                          Severity = canvasObjects$virus_severity),
                options = list(searching = FALSE, info = FALSE,paging = FALSE,
-                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+                              sort = TRUE, scrollX = TRUE, scrollY = TRUE))
   })
   output$initialI_info <- renderDT({
     datatable(canvasObjects$initial_infected,

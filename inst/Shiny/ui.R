@@ -1378,7 +1378,10 @@ ui <- dashboardPage(
               ),
               fluidRow(
                 box(width = 12, collapsed = T,collapsible = T,
-                    title =  h3("Saved virus parameters") ,
+                    title =  div(class = "icon-container",
+                                 h5(tags$b("Saved Virus Parameters"), icon("info-circle")),
+                                 div(class = "icon-text", "To remove rows in the tables, double click on it (except for variant and severity).")
+                    ),
                     fluidRow(
                       column(width = 6,
                              DT::DTOutput("virus_info")),
