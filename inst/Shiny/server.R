@@ -3875,7 +3875,6 @@ server <- function(input, output,session) {
       agents = names(canvasObjects$agents)
       CONTACTcsv$agent_type1 = agents[CONTACTcsv$agent_type1+1]
       CONTACTcsv$agent_type2 = agents[CONTACTcsv$agent_type2+1]
-      postprocObjects$CONTACTcsv
 
       postprocObjects$CONTACTcsv = CONTACTcsv  %>%
         arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
