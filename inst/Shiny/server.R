@@ -3824,16 +3824,19 @@ server <- function(input, output,session) {
     valid <- sapply(subfolders, function(subfolder) {
       all(file.exists(file.path(subfolder, required_files)))
     })
-    subfolders[valid]
+    if(length(subfolders) != 0){
+       subfolders[valid]
+    }
   })
 
   # Create a dropdown to select a subfolder
   output$subfolderUI <- renderUI({
-    if(length(valid_subfolders()) == 0 ){
-      shinyalert("No valid folder is present in the selected folder.",type = "error")
-      return()
+    if (req(length(valid_subfolders()) != 0)) {
+      selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
     }
-    selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
+    else{
+      selectInput("selectedSubfolder", "Select Subfolder", choices = c("" ,selected = "" ))
+    }
   })
 
 
@@ -3915,12 +3918,17 @@ server <- function(input, output,session) {
     dir = req(dirPath())
     show_modal_spinner()
 
-    # Evolution
-    isolate({
-      subfolders <- list.dirs(dir, recursive = FALSE)
+  # Evolution
+    subfolders <- list.dirs(dir, recursive = FALSE)
+    rooms_file = paste0(dir,"/rooms_mapping.txt")
+    if(!file.exists(rooms_file)){
+      shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
+      remove_modal_spinner()
+      return()
+    }
 
-      G <- read_table(paste0(dir,"/rooms_mapping.txt"),
-                      col_names = FALSE)
+  isolate({
+      G <- read_table(rooms_file,col_names = FALSE)
       colnames(G) = c("ID","x","y","z")
       postprocObjects$Mapping = G
       ####
@@ -3930,7 +3938,6 @@ server <- function(input, output,session) {
         if (file.exists(file)) {
           f = read_csv(file)
           f$Folder= basename(dirname(file))
-          f
         } else {
           NULL
         }
@@ -3949,7 +3956,6 @@ server <- function(input, output,session) {
                        #               "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE")
           )
           f$Folder= basename(dirname(file))
-          f
         } else {
           NULL
         }
@@ -3964,7 +3970,6 @@ server <- function(input, output,session) {
           f = read_csv(file,
                        col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
           f$Folder= basename(dirname(file))
-          f
         } else {
           NULL
         }
@@ -3983,7 +3988,6 @@ server <- function(input, output,session) {
                                      "agent_position_x1", "agent_position_y1", "agent_position_z1",
                                      "agent_position_x2", "agent_position_y2", "agent_position_z2", "room_id"))
           f$Folder= basename(dirname(file))
-          f
         } else {
           NULL
         }

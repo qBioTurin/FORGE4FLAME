@@ -1582,7 +1582,7 @@ ui <- dashboardPage(
                             column(
                               3,
                               offset = 1,
-                              selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker", "Slurm"), selected = "Docker")
+                              selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
                             )
                           ),
                           fluidRow(
