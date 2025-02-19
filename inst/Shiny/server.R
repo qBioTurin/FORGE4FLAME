@@ -3937,6 +3937,7 @@ server <- function(input, output,session) {
         if (file.exists(file)) {
           f = read_csv(file)
           f$Folder= basename(dirname(file))
+          f
         } else {
           NULL
         }
@@ -3955,6 +3956,7 @@ server <- function(input, output,session) {
                        #               "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE")
           )
           f$Folder= basename(dirname(file))
+          f
         } else {
           NULL
         }
@@ -3969,6 +3971,7 @@ server <- function(input, output,session) {
           f = read_csv(file,
                        col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
           f$Folder= basename(dirname(file))
+          f
         } else {
           NULL
         }
@@ -3987,6 +3990,7 @@ server <- function(input, output,session) {
                                      "agent_position_x1", "agent_position_y1", "agent_position_z1",
                                      "agent_position_x2", "agent_position_y2", "agent_position_z2", "room_id"))
           f$Folder= basename(dirname(file))
+          f
         } else {
           NULL
         }
