@@ -1496,6 +1496,7 @@ server <- function(input, output,session) {
       model$rooms_whatif = out$RoomsMeasuresFromTo
       model$agents_whatif = out$AgentMeasuresFromTo
       model$initial_infected = out$initial_infected
+      model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
       write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
 
       generate_obj(paste0(temp_directory, "/obj"))
@@ -1546,6 +1547,7 @@ server <- function(input, output,session) {
     model$rooms_whatif = out$RoomsMeasuresFromTo
     model$agents_whatif = out$AgentMeasuresFromTo
     model$initial_infected = out$initial_infected
+    model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
     file_name <- glue("WHOLEmodel.json")
     write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
@@ -3694,7 +3696,8 @@ server <- function(input, output,session) {
         return()
       }
 
-      canvasObjects$outside_contagion <- dataframe
+      canvasObjects$outside_contagion <- dataframe %>%
+        select(day, percentage_infected)
 
       output$outside_contagion_plot <- renderPlot({
         ggplot(dataframe) +
@@ -3857,12 +3860,14 @@ server <- function(input, output,session) {
       MaxTime = max( postprocObjects$evolutionCSV$Day)
       step = as.numeric(canvasObjects$starting$step)
 
+      AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
+
       if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
         shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
         return()
       }
 
-      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
+      AEROSOLcsv$timeroomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
