@@ -1132,7 +1132,7 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                      column(1, offset=3, numericInput(inputId = "vaccination_time_from", label = "From (day):", value = 1, min = 1)),
+                      column(1, offset=3, numericInput(inputId = "vaccination_time_from", label = "At (day):", value = 1, min = 1)),
                       #column(1, numericInput(inputId = "vaccination_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1,offset=11, actionButton("save_vaccination", "Save"))
                     )

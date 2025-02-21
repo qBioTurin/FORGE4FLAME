@@ -3335,20 +3335,13 @@ server <- function(input, output,session) {
     if( !is.null(new_data) ){
       canvasObjects$agents_whatif = new_data
     }
-
-    updateTextInput(inputId = "DetTime_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_ExpRate_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_a_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_b_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_m_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_sd_swab_global", value = "")
   })
   observeEvent(input$save_quarantine, {
     agents_whatif = canvasObjects$agents_whatif
 
     req(input$quarantine_type != "No quarantine")
 
-    if(!(input$quarantine_type == "Different for each agent" && input$quarantine_type_agent != "No quarantine") ){
+    if(!(input$quarantine_type == "Different for each agent" && input$quarantine_type_agent == "No quarantine") ){
 
       if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
          as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
@@ -3426,18 +3419,6 @@ server <- function(input, output,session) {
     if( !is.null(new_data) ){
       canvasObjects$agents_whatif = new_data
     }
-
-    updateTextInput(inputId = "DistStoc_ExpRate_quarantine_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_global", value = "")
-    updateTextInput(inputId = "DetTime_quarantine_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_ExpRate_quarantine_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_a_quarantine_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_UnifRate_b_quarantine_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_m_quarantine_swab_global", value = "")
-    updateTextInput(inputId = "DistStoc_NormRate_sd_quarantine_swab_global", value = "")
 
     updateSelectizeInput(inputId = "room_quarantine_global", selected = "")
 
