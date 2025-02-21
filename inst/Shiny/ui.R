@@ -123,8 +123,8 @@ ui <- dashboardPage(
                 menuItem("What-If", tabName = "whatif", icon = icon("question")),
                 #menuItem("Advanced", tabName = "advanced", icon = icon("code")),
                 menuItem("Configuration", tabName = "configuration", icon = icon("flag-checkered")),
-                menuItem("Settings", tabName = "settings", icon = icon("cogs")),
                 menuItem("Run", tabName = "run", icon = icon("play")),
+                menuItem("Settings", tabName = "settings", icon = icon("cogs")),
                 menuItem("Post Processing", tabName = "post_process", icon = icon("file-video"))
     )
   ),
@@ -187,6 +187,10 @@ ui <- dashboardPage(
                     <li class='home'>
                       <b>Configuration</b>: set up initial configurations.
                       <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Run</b>: run the model.
+                      <img class='home' src='Run.png' alt=Run page', width='100%'>
                     </li>
                     <li class='home'>
                       <b>Settings</b>: change canvas dimension, and load and save model.
@@ -589,7 +593,7 @@ ui <- dashboardPage(
             collapsible = T,
             fluidRow(column(5, div(class = "icon-container",
                                    h4("Random flow ", icon("info-circle")),
-                                   div(class = "icon-text", "A random event should occur infrequently and last for a short duration (few minutes).")
+                                   div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
             ))),
             fluidRow(
               column(2,offset = 1,
@@ -936,7 +940,7 @@ ui <- dashboardPage(
                       offset = 1,
                       downloadButton(
                         outputId = "rds_generation",
-                        label = "Save the RDs file",
+                        label = "Save the model",
                         icon = icon("download"))
                     ),
                     column(
@@ -1526,22 +1530,10 @@ ui <- dashboardPage(
                       column(
                         offset = 1,
                         width = 2,
-                        textInput(inputId = "seed", label = "Seed:", placeholder = "Simulation seed", value = as.integer(as.numeric(Sys.time())))
-                      ),
-                      column(
-                        offset = 1,
-                        width = 2,
                         textInput(inputId = "simulation_days", label = "Simulation days:", placeholder = "Number of days to simulate", value = "10")
                       ),
                       column(
-                        offset = 1,
-                        width = 2,
-                        textInput(inputId = "nrun", label = "Number of simulations:", placeholder = "Number of simulations", value = "100")
-                      )
-                    ),
-                    fluidRow(
-                      column(
-                        offset = 1,
+                        offset=1,
                         width = 2,
                         radioButtons(inputId = "initial_day",
                                      label = "Initial day:",
@@ -1550,19 +1542,13 @@ ui <- dashboardPage(
                         )
                       ),
                       column(
-                        offset = 1,
+                        offset=1,
                         width = 1,
                         textInput(inputId = "initial_time", label = "Initial time:", placeholder = "hh:mm", value = "00:00")
                       ),
-                      column(
-                        offset = 2,
-                        width = 2,
-                        textInput(inputId = "prun", label = "Number of parallel simulations (when not using the visualisation):", value = "10")
-                      )
-                    ),
-                    fluidRow(
-                      column(offset = 1,
-                             width = 2,
+                      column(offset=1,
+                             width = 1,
+                             style="margin-top:-20px",
                              selectInput("step", div(class = "icon-container", style="margin-top:20px",
                                                      h5(tags$b("Step: "), icon("info-circle")),
                                                      div(class = "icon-text", "Duration of a FLAME GPU 2 step in seconds.")
@@ -1578,9 +1564,26 @@ ui <- dashboardPage(
                 box(width = 12,
                     title = h3("Run models"),
                     fluidRow(
+                      fluidRow(
+                        column(
+                          offset = 1,
+                          width = 2,
+                          textInput(inputId = "seed", label = "Seed:", placeholder = "Simulation seed", value = as.integer(as.numeric(Sys.time())))
+                        ),
+                        column(
+                          offset = 1,
+                          width = 2,
+                          textInput(inputId = "nrun", label = "Number of simulations:", placeholder = "Number of simulations", value = "100")
+                        ),
+                        column(
+                          offset = 1,
+                          width = 2,
+                          textInput(inputId = "prun", label = "Number of parallel simulations (when not using the visualisation):", value = "10")
+                        )
+                      ),
                           fluidRow(
                             column(
-                              3,
+                              2,
                               offset = 1,
                               selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
                             )

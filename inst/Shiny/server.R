@@ -1459,12 +1459,18 @@ server <- function(input, output,session) {
 
     enable("rds_generation")
 
-    if(!dir.exists("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/")){
-      output$flame_link <- renderText({
-        paste0("The directory ", gsub("ShinyEnvironment", "", getwd()), "/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist. Check you are in the correct directory.")
-      })
-      remove_modal_spinner()
-      return()
+    if(is.null(canvasObjects$flame_dirs)){
+      flame_dirs <- parallel_search_directory("~", "FLAMEGPU-FORGE4FLAME/resources/f4f")
+
+      canvasObjects$flame_dirs <- flame_dirs
+
+      if(length(flame_dirs) == 0){
+        output$flame_link <- renderText({
+          paste0("The directory FORGE4FLAME/inst/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist anywhere. Check you are in the correct directory.")
+        })
+        remove_modal_spinner()
+        return()
+      }
     }
 
     remove_modal_spinner()
@@ -1483,6 +1489,7 @@ server <- function(input, output,session) {
       dir.create(temp_directory)
       dir.create(paste0(temp_directory, "/obj"))
       model = reactiveValuesToList(canvasObjects)
+      model$flame_dirs <- NULL
 
       matricesCanvas <- list()
       for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
@@ -1526,8 +1533,12 @@ server <- function(input, output,session) {
   observeEvent(input$save_text, {
     removeModal()
 
-    if(!dir.exists(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))){
-      system(paste0("mkdir inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
+    flame_dirs <- canvasObjects$flame_dirs
+
+    for(flame_dir in flame_dirs){
+      if(!dir.exists(paste0(flame_dir, input$popup_text))){
+        system(paste0("mkdir ", flame_dir, "/", input$popup_text))
+      }
     }
 
     matricesCanvas <- list()
@@ -1537,11 +1548,15 @@ server <- function(input, output,session) {
     canvasObjects$matricesCanvas <- matricesCanvas
 
     canvasObjects$TwoDVisual <- NULL
+    canvasObjects$plot_2D <- NULL
 
     model = reactiveValuesToList(canvasObjects)
+    model$flame_dirs <- NULL
 
     file_name <- glue("WHOLEmodel.RDs")
-    saveRDS(model, file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    for(flame_dir in flame_dirs){
+      saveRDS(model, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+    }
 
     out = FromToMatrices.generation(model)
     model$rooms_whatif = out$RoomsMeasuresFromTo
@@ -1549,9 +1564,21 @@ server <- function(input, output,session) {
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
     file_name <- glue("WHOLEmodel.json")
-    write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+    for(flame_dir in flame_dirs){
+      write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+    }
 
-    shinyalert("Success", paste0("Model linked to FLAME GPU 2 in inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text ), "success", 1000)
+    success_text <- "Model linked to FLAME GPU 2 in "
+    i <- 0
+    for(flame_dir in flame_dirs){
+      success_text <- paste0(success_text, flame_dir, "/", input$popup_text)
+      if(i < length(flame_dirs) - 1)
+        success_text <- paste0(success_text, ", ")
+
+      i <- i + 1
+    }
+
+    shinyalert("Success", success_text, "success", 1000)
   })
 
   ### Load: ####
@@ -2732,7 +2759,7 @@ server <- function(input, output,session) {
 
         selectizeInput(
           inputId = paste0("selectInput_WaitingRoomDeterSelect_", agent),
-          label = paste0("Select second choice room in Deterministic Flow for ", agent, ":"),
+          label = paste0("Select second choice room in Determined Flow for ", agent, ":"),
           choices = choicesRoom,
           selected = roomSelected
         )
@@ -3701,10 +3728,11 @@ server <- function(input, output,session) {
 
       output$outside_contagion_plot <- renderPlot({
         ggplot(dataframe) +
-          geom_line(aes(x=day, y=percentage_infected)) +
+          geom_line(aes(x=day, y=percentage_infected), color="green") +
           ylim(0, NA) +
           labs(title = "Outside contagion", x = "Day", y = "Percentage") +
-          theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22))
+          theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22)) +
+          theme_fancy()
       })
 
       showElement("outside_contagion_plot")

@@ -225,6 +225,19 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     selected = canvasObjects$floors$Name[1]
   }
 
+  if(length(canvasObjects$floors$Name)>1){
+    output$FloorRank <- renderUI({
+      div(
+        rank_list(text = "Drag the floors in the desired order",
+                  labels =  canvasObjects$floors$Name,
+                  input_id = paste("list_floors")
+        )
+      )
+    })
+  }else{
+    output$FloorRank <- renderUI({ NULL })
+  }
+
   updateSelectizeInput(inputId = "canvas_selector",
                        selected = selected,
                        choices = c("", canvasObjects$floors$Name) )
@@ -352,10 +365,11 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   if(!is.null(canvasObjects$outside_contagion)){
     output$outside_contagion_plot <- renderPlot({
       ggplot(canvasObjects$outside_contagion) +
-        geom_line(aes(x=day, y=percentage_infected)) +
+        geom_line(aes(x=day, y=percentage_infected), color="green") +
         ylim(0, NA) +
         labs(title = "Outside contagion", x = "Day", y = "Percentage") +
-        theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22))
+        theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22)) +
+        theme_fancy()
     })
 
     showElement("outside_contagion_plot")
@@ -907,4 +921,20 @@ check_overlaps <- function(entry_exit_df, deter_flow_df) {
   } else {
     return(NULL)
   }
+}
+
+library(parallel)
+
+parallel_search_directory <- function(start_path, dir_name, n_cores = detectCores() - 1) {
+  all_dirs <- list.dirs(start_path, recursive = TRUE)
+
+  # Split directories into chunks for parallel processing
+  dir_chunks <- split(all_dirs, sort(rep(1:n_cores, length.out = length(all_dirs))))
+
+  # Parallel search using mclapply
+  matches <- mclapply(dir_chunks, function(dirs) {
+    grep(paste0("/", dir_name, "$"), dirs, value = TRUE)
+  }, mc.cores = n_cores)
+
+  return(unlist(matches))
 }
