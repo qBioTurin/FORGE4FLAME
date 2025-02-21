@@ -189,6 +189,10 @@ ui <- dashboardPage(
                       <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
                     </li>
                     <li class='home'>
+                      <b>Run</b>: run the model.
+                      <img class='home' src='Run.png' alt=Run page', width='100%'>
+                    </li>
+                    <li class='home'>
                       <b>Settings</b>: change canvas dimension, and load and save model.
                       <img class='home' src='Settings.png' alt=Settings page', width='100%'>
                     </li>
@@ -589,7 +593,7 @@ ui <- dashboardPage(
             collapsible = T,
             fluidRow(column(5, div(class = "icon-container",
                                    h4("Random flow ", icon("info-circle")),
-                                   div(class = "icon-text", "A random event should occur infrequently and last for a short duration (few minutes).")
+                                   div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
             ))),
             fluidRow(
               column(2,offset = 1,
@@ -936,7 +940,7 @@ ui <- dashboardPage(
                       offset = 1,
                       downloadButton(
                         outputId = "rds_generation",
-                        label = "Save the RDs file",
+                        label = "Save the model",
                         icon = icon("download"))
                     ),
                     column(
@@ -1579,7 +1583,7 @@ ui <- dashboardPage(
                       ),
                           fluidRow(
                             column(
-                              3,
+                              2,
                               offset = 1,
                               selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
                             )
