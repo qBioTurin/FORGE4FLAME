@@ -3795,6 +3795,7 @@ server <- function(input, output,session) {
   postprocObjects = reactiveValues(evolutionCSV = NULL,
                                    Filter_evolutionCSV = NULL,
                                    CONTACTcsv = NULL,
+                                   CONTACTmatrix = NULL,
                                    AEROSOLcsv = NULL,
                                    COUNTERScsv = NULL,
                                    A_C_COUNTERS = NULL,
@@ -3842,12 +3843,110 @@ server <- function(input, output,session) {
     }
   })
 
+  observe({
+    dir = req(dirPath())
+    show_modal_spinner()
 
+    # Evolution
+    subfolders <- list.dirs(dir, recursive = FALSE)
+    rooms_file = paste0(dir,"/rooms_mapping.txt")
+    if(!file.exists(rooms_file)){
+      shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
+      remove_modal_spinner()
+      return()
+    }
+
+    isolate({
+      G <- read_table(rooms_file,col_names = FALSE)
+      colnames(G) = c("ID","x","y","z")
+      postprocObjects$Mapping = G
+      ####
+
+      csv_files <- file.path(subfolders, "evolution.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file)
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(data_list) == 0) return(NULL)
+      postprocObjects$evolutionCSV = do.call(rbind, data_list)
+
+      csv_files <- file.path(subfolders, "counters.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file)
+          colnames(f) = c("Day","Seed",
+                          "Agents birth", "Agents deaths", "Agents in quarantine",
+                          "Number of swabs", "Number of agents infected outside the environment")
+
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(COUNTERSdata_list) == 0) return(NULL)
+      postprocObjects$COUNTERScsv = do.call(rbind, COUNTERSdata_list) %>% distinct()
+
+      csv_files <- file.path(subfolders, "AEROSOL.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "virus_concentration", "room_id"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(AEROSOLdata_list) == 0) return(NULL)
+      postprocObjects$AEROSOLcsv = do.call(rbind, AEROSOLdata_list) %>% distinct()
+
+      csv_files <- file.path(subfolders, "CONTACT.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,col_names = c("time", "agent_id1", "agent_id2", "room_id"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(CONTACTdata_list) == 0) return(NULL)
+      postprocObjects$CONTACTcsv = do.call(rbind, CONTACTdata_list) %>% distinct()
+
+      csv_files <- file.path(subfolders, "CONTACTS_MATRIX.csv")
+      data_list <- lapply(csv_files, function(file) {
+        if (file.exists(file)) {
+          f = read_csv(file,
+                       col_names = c("time", "type1", "type2", "contacts"))
+          f$Folder= basename(dirname(file))
+          f
+        } else {
+          NULL
+        }
+      })
+      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
+      if (length(CONTACTdata_list) == 0) return(NULL)
+      postprocObjects$CONTACTmatrix = do.call(rbind, CONTACTdata_list) %>% distinct()
+    })
+    remove_modal_spinner()
+    shinyalert("Everything is loaded!")
+  })
 
   #### query ####
   observe({
 
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
+    CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
     req(postprocObjects$FLAGmodelLoaded )
 
@@ -3867,7 +3966,7 @@ server <- function(input, output,session) {
         return()
       }
 
-      AEROSOLcsv$timeroomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
@@ -3881,8 +3980,8 @@ server <- function(input, output,session) {
 
       CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
       agents = names(canvasObjects$agents)
-      CONTACTcsv$agent_type1 = agents[CONTACTcsv$agent_type1+1]
-      CONTACTcsv$agent_type2 = agents[CONTACTcsv$agent_type2+1]
+      CONTACTcsv$agent_id1 = agents[CONTACTcsv$agent_id1+1]
+      CONTACTcsv$agent_id2 = agents[CONTACTcsv$agent_id2+1]
 
       postprocObjects$CONTACTcsv = CONTACTcsv  %>%
         arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
@@ -3891,6 +3990,14 @@ server <- function(input, output,session) {
         filter( time_diff != 1) %>%
         ungroup() %>%
         select(-time_diff)
+
+      CONTACTmatrix$type1 = agents[CONTACTmatrix$type1+1]
+      CONTACTmatrix$type2 = agents[CONTACTmatrix$type2+1]
+
+      postprocObjects$CONTACTmatrix = CONTACTmatrix  %>%
+        group_by(type2,type1, Folder) %>%
+        summarise(Mean = mean(contacts),
+                  Sd = sd(contacts) )
 
       # Count the number of unique meetings per hour
       C_COUNTERS <-  postprocObjects$CONTACTcsv %>%
@@ -3919,92 +4026,30 @@ server <- function(input, output,session) {
   })
 
   observe({
-    dir = req(dirPath())
-    show_modal_spinner()
+    pl = NULL
+    folderselected = req(input$selectedSubfolder)
+    isolate({
+      CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
+      c = CONTACTmatrix %>% filter(Folder == folderselected)
+      agents = names(canvasObjects$agents)
 
-  # Evolution
-    subfolders <- list.dirs(dir, recursive = FALSE)
-    rooms_file = paste0(dir,"/rooms_mapping.txt")
-    if(!file.exists(rooms_file)){
-      shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
-      remove_modal_spinner()
-      return()
-    }
+      # Ensure type1 and type2 factors include all agents
+      c$type1 <- factor(c$type1, levels = agents)
+      c$type2 <- factor(c$type2, levels = agents)
 
-  isolate({
-      G <- read_table(rooms_file,col_names = FALSE)
-      colnames(G) = c("ID","x","y","z")
-      postprocObjects$Mapping = G
-      ####
 
-      csv_files <- file.path(subfolders, "evolution.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file)
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$evolutionCSV = do.call(rbind, data_list)
-
-      csv_files <- file.path(subfolders, "counters.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,col_names = T
-                       # col_names = c("Day",	"Seed",
-                       #               "COUNTERS_CREATED_AGENTS_WITH_RATE",
-                       #               "COUNTERS_KILLED_AGENTS_WITH_RATE",
-                       #               "AGENTS_IN_QUARANTINE",	"SWABS",	"NUM_INFECTED_OUTSIDE")
-          )
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$COUNTERScsv = do.call(rbind, data_list) %>% distinct()
-
-      csv_files <- file.path(subfolders, "AEROSOL.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "x", "y", "z", "virus_concentration", "room_id"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$AEROSOLcsv = do.call(rbind, data_list) %>% distinct()
-
-      csv_files <- file.path(subfolders, "CONTACT.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "agent_id1", "agent_id2", "agent_type1",
-                                     "agent_type2",
-                                     "agent_disease_state1", "agent_disease_state2",
-                                     "agent_position_x1", "agent_position_y1", "agent_position_z1",
-                                     "agent_position_x2", "agent_position_y2", "agent_position_z2", "room_id"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$CONTACTcsv = do.call(rbind, data_list) %>% distinct()
+      pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
+        geom_tile() +
+        scale_fill_gradient(low = "blue", high = "red") +
+        theme_minimal() +
+        labs(title = "Contact Matrix Heatmap",
+             x = "",
+             y = "",
+             fill = "Mean number of contact\n per hour") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
     })
-    remove_modal_spinner()
+    output$ContactMatrix_plot = renderPlot({pl })
+
   })
 
   output$PostProc_filters <- renderUI({
@@ -4113,8 +4158,14 @@ server <- function(input, output,session) {
     })
   })
 
-  counters_colorsNames <- c("COUNTERS_CREATED_AGENTS_WITH_RATE" ,"COUNTERS_KILLED_AGENTS_WITH_RATE",
-                            "AGENTS_IN_QUARANTINE","SWABS","NUM_INFECTED_OUTSIDE")
+  output$EvolutionPlot <-  output$CountersPlot<- renderPlot({
+    ggplot()+labs(title = "Please select from the table which simulation to plot")
+  })
+  output$A_C_CountersPlot<- renderPlot({
+    ggplot()+labs(title = "Please select a room")
+  })
+  counters_colorsNames <- c( "Agents birth", "Agents deaths", "Agents in quarantine",
+                              "Number of swabs", "Number of agents infected outside the environment")
   counters_colors = viridisLite::viridis(n = length(counters_colorsNames))
   names(counters_colors) = counters_colorsNames
 

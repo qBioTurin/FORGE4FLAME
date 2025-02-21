@@ -1689,8 +1689,18 @@ ui <- dashboardPage(
                     )
                 )
               ),
+
               fluidRow(
-                box(width = 12,collapsed = F,collapsible = T,
+                box(width = 12,collapsed = T,collapsible = T,
+                    title = div(class = "icon-container", style="margin-top:20px",
+                                h3("Contact matrix", icon("info-circle")),
+                                div(class = "icon-text", "Contact matrix per hour")
+                    ),
+                      plotOutput("ContactMatrix_plot")
+                    )
+                ),
+              fluidRow(
+                box(width = 12,collapsed = T,collapsible = T,
                     title = div(class = "icon-container", style="margin-top:20px",
                                 h3("2D Visualisation", icon("info-circle")),
                                 div(class = "icon-text", "2D visulisation of the agents moving in the modeled system")
@@ -1698,7 +1708,10 @@ ui <- dashboardPage(
                     fluidRow(
                       column(2,offset = 1,
                              uiOutput("subfolderUI")
-                      )
+                      ),
+                      column(9,
+                             plotOutput("ContactMatrix_plot")
+                             )
                     ),
                     fluidRow(
                       box(width = 10, status = "primary",
