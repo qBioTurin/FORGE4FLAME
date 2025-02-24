@@ -4249,10 +4249,14 @@ server <- function(input, output,session) {
     counters_colorsNames <- c("Contacts", "Virus concentration")
     names(df)[which(names(df) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
 
+    # Define the maximum hour value
+    MAX_HOUR <- as.numeric(input$simulation_days) * 24
+
     df = df %>%
       filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
       select(-CanvasID,-Name,-area,-type) %>%
       select(-Folder) %>%
+      complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Contacts = 0, `Virus concentration` = 0)) %>%
       tidyr::gather(-hour, value =  "Number", key = "Counters")
     A_C_counters_colors = c("#E5D05AFF","#DEF5E5FF")
 
@@ -4260,34 +4264,44 @@ server <- function(input, output,session) {
     if(!is.null(CountersDisease_radioButt)){
       names(postprocObjects$A_C_COUNTERS)[which(names(postprocObjects$A_C_COUNTERS) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
 
-      # Define the maximum hour value
-      MAX_HOUR <- as.numeric(input$simulation_days) * 24
-
       # Create a complete dataframe with all hours from 0 to MAX_HOUR for each Folder
+      DfStat = postprocObjects$A_C_COUNTERS %>%
+        filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
+        select(-CanvasID,-Name,-area,-type,-Folder) %>%
+        group_by(hour) %>%
+        summarise(Mean_contacts = mean(Contacts),
+                  MinV_contacts = min(Contacts),
+                  MaxV_contacts = max(Contacts),
+                  Mean_aerosol = mean(`Virus concentration`),
+                  MinV_aerosol = min(`Virus concentration`),
+                  MaxV_aerosol = max(`Virus concentration`)) %>%
+        complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Mean_contacts = 0, MinV_contacts = 0, MaxV_contacts = 0, Mean_aerosol = 0, MinV_aerosol = 0, MaxV_aerosol = 0)) %>%
+        pivot_longer(cols = c(MinV_contacts, MaxV_contacts, MinV_aerosol, MaxV_aerosol),
+                     names_to = c("Variable", "Type"),
+                     names_pattern = "(MinV|MaxV)_(.*)",
+                     values_to = "Value") %>%
+        pivot_wider(names_from = Variable, values_from = Value)
+
       average_trajectory <- postprocObjects$A_C_COUNTERS %>%
         filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
-        select(-CanvasID,-Name,-area,-type) %>%
-        group_by(Folder, hour) %>%
+        select(-CanvasID,-Name,-area,-type,-Folder) %>%
+        group_by(hour) %>%
         summarise(
-          avg_contact_counts = mean(Contacts, na.rm = TRUE),
-          avg_virus_concentration = mean(`Virus concentration`, na.rm = TRUE)
+          Contacts = mean(Contacts, na.rm = TRUE),
+          `Virus concentration` = mean(`Virus concentration`, na.rm = TRUE)
         ) %>%
         ungroup() %>%
-        complete(Folder, hour = full_seq(0:MAX_HOUR, 1), fill = list(avg_contact_counts = 0, avg_virus_concentration = 0))
+        complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Contacts = 0, `Virus concentration` = 0))
 
-
-      DfStat = average_trajectory %>%
-        summarise(Mean_contacts = mean(avg_contact_counts),
-                  MinV_contacts = min(avg_contact_counts),
-                  MaxV_contacts = max(avg_contact_counts),
-                  Mean_aerosol = mean(avg_virus_concentration),
-                  MinV_aerosol = min(avg_virus_concentration),
-                  MaxV_aerosol = max(avg_virus_concentration))
+      average_trajectory <- average_trajectory %>%
+        pivot_longer(cols = c(Contacts, `Virus concentration`),
+                     names_to = "Type",
+                     values_to = "Value")
 
       if("Area from all simulations" %in% CountersDisease_radioButt){
         pl = pl +
-          geom_ribbon(data = average_trajectory,
-                      aes(x = hour, ymin = MinV,ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
+          geom_ribbon(data = DfStat,
+                      aes(x = hour, ymin = MinV, ymax = MaxV, group= Type, fill = Type),alpha = 0.4)+
           scale_fill_manual(values = A_C_counters_colors,
                             limits = names(A_C_counters_colors),
                             labels = names(A_C_counters_colors),
@@ -4295,24 +4309,15 @@ server <- function(input, output,session) {
       }
 
       if("Mean curves" %in% CountersDisease_radioButt){
-        DfStat <- postprocObjects$A_C_COUNTERS %>%
-          filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
-          select(-CanvasID,-Name,-area,-type) %>%
-          group_by(hour) %>%
-          summarize(Mean = mean(virus_concentration)) %>%
-          mutate(Counters = "virus_concentration")
-
-        DfStat$Counters <- as.factor(DfStat$Counters)
-
-        pl = pl + geom_line(data = DfStat,
-                            aes(x = hour, y = Mean, group= Counters, col = Counters, linetype = "Mean Curves"))+
+        pl = pl + geom_line(data = average_trajectory,
+                            aes(x = hour, y = Value, group= Type, col = Type, linetype = "Mean Curves"))+
           scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
       }
 
     }
     pl = pl +
       geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="",col="Counters", x = "Hours", linetype="Type")+
+      labs(y="",col="Variable", x = "Hours", linetype="Type")+
       scale_color_manual(values = A_C_counters_colors,
                          limits = names(A_C_counters_colors),
                          labels = names(A_C_counters_colors),
