@@ -5,16 +5,17 @@ theme_fancy <- function() {
       panel.background = element_rect(fill = "#3c3c3c", color = NA),
       panel.grid.major = element_line(color = "#666666", size = 0.3),
       panel.grid.minor = element_line(color = "#444444", size = 0.2),
-      axis.text = element_text(color = "white", size = 12),
-      axis.title = element_text(color = "white", size = 14, face = "bold"),
-      plot.title = element_text(color = "white", size = 18, face = "bold", hjust = 0.5),
+      axis.text = element_text(color = "white", size = 16),
+      axis.title = element_text(color = "white", size = 20, face = "bold"),
+      plot.title = element_text(color = "white", size = 22, face = "bold", hjust = 0.5),
       legend.background = element_rect(fill = "#2b2b2b"),
-      legend.text = element_text(color = "white"),
-      legend.key = element_rect(fill = "white" ),
-      legend.title = element_text(color = "white", face = "bold"),
+      legend.text = element_text(color = "white", size = 18),
+      legend.key.size = unit(1.5, 'cm'),
+      legend.key = element_rect(fill = "white"),
+      legend.title = element_text(color = "white", face = "bold", size = 18),
       legend.position = "bottom",
       strip.background = element_rect(fill = "white",color = "black"),
-      strip.text = element_text(color = "black", size = 14, face = "bold")
+      strip.text = element_text(color = "black", size = 18, face = "bold")
     )
 }
 

@@ -3577,7 +3577,7 @@ server <- function(input, output,session) {
                                                      Type = as.factor(Type),
                                                      Parameters= as.factor(Parameters) ),
               filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = FALSE, info = FALSE,paging = FALSE,
+              options = list(searching = TRUE, info = FALSE,paging = FALSE,
                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
   output$rooms_whatif <- renderDT({
@@ -3585,7 +3585,7 @@ server <- function(input, output,session) {
                                                     Type = as.factor(Type),
                                                     Parameters= as.factor(Parameters) ),
               filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = FALSE, info = FALSE,paging = FALSE,
+              options = list(searching = TRUE, info = FALSE,paging = FALSE,
                              sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
   })
 
@@ -3709,7 +3709,7 @@ server <- function(input, output,session) {
 
       output$outside_contagion_plot <- renderPlot({
         ggplot(dataframe) +
-          geom_line(aes(x=day, y=percentage_infected), color="green") +
+          geom_line(aes(x=day, y=percentage_infected), color="green", linewidth=1.5) +
           ylim(0, NA) +
           labs(title = "Outside contagion", x = "Day", y = "Percentage") +
           theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22)) +
@@ -3889,7 +3889,7 @@ server <- function(input, output,session) {
       data_list <- lapply(csv_files, function(file) {
         if (file.exists(file)) {
           f = read_csv(file)
-          colnames(f) = c("Day","Seed",
+          colnames(f) = c("Day",
                           "Agents birth", "Agents deaths", "Agents in quarantine",
                           "Number of swabs", "Number of agents infected outside the environment")
 
@@ -4050,12 +4050,20 @@ server <- function(input, output,session) {
       pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
         geom_tile() +
         scale_fill_gradient(low = "blue", high = "red") +
-        theme_minimal() +
+        theme_bw() +
         labs(title = "Contact Matrix Heatmap",
              x = "",
              y = "",
              fill = "Mean number of contact\n per hour") +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              axis.text = element_text(size = 16),
+              axis.title = element_text(size = 20, face = "bold"),
+              plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
+              legend.text = element_text(size = 18),
+              legend.key.size = unit(1.5, 'cm'),
+              legend.title = element_text(face = "bold", size = 18),
+              legend.position = "bottom",
+              strip.text = element_text(size = 18, face = "bold"))
     })
     output$ContactMatrix_plot = renderPlot({pl })
 
@@ -4065,7 +4073,7 @@ server <- function(input, output,session) {
     df <- req(postprocObjects$evolutionCSV )
     show_modal_spinner()
 
-    name_cols <- colnames(df%>% select(-Seed,-Folder))
+    name_cols <- colnames(df%>% select(-Folder))
     sliders = lapply(name_cols, function(col) {
       values = unique(df[[col]])
       sliderInput(
@@ -4082,7 +4090,7 @@ server <- function(input, output,session) {
 
   observe({
     df <-req(postprocObjects$evolutionCSV )
-    name_cols <- colnames(df%>% select(-Seed,-Folder))
+    name_cols <- colnames(df%>% select(-Folder))
 
     for (col in name_cols) {
       input_id <- paste0("filter_", col)
@@ -4120,15 +4128,14 @@ server <- function(input, output,session) {
 
     folder = req(info$value)
 
-    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
+    df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
       tidyr::gather(-Day, value =  "Number", key = "Compartiments")
 
-    fixed_colors <- c("Susceptible" = "green", "Exposed" = "blue", "Infected" = "red", "Recovered" = "purple", "Died" = "white")
+    fixed_colors <- c("Susceptible" = "green", "Exposed" = "blue", "Infected" = "red", "Recovered" = "purple", "Died" = "black")
 
     pl = ggplot()
     if(!is.null(EvolutionDisease_radioButt)){
       DfStat = postprocObjects$evolutionCSV %>%
-        select(-Seed) %>%
         tidyr::gather(-Day,-Folder, value =  "Number", key = "Compartiments") %>%
         group_by( Day,Compartiments ) %>%
         summarise(Mean = mean(Number),
@@ -4153,12 +4160,12 @@ server <- function(input, output,session) {
 
     }
     pl = pl +
-      geom_line(data = df, aes(x = Day, y = Number,col = Compartiments, linetype = "Simulation" ))+
-      labs(y="Comulative number of individuals",col="Compartiments")+
+      geom_line(data = df, aes(x = Day, y = Number,col = Compartiments, linetype = "Simulation" ), linewidth=1.5)+
+      labs(y="Cumulative number of individuals",col="Compartiments", linetype="Type")+
       scale_color_manual(values = fixed_colors,
                          limits = names(fixed_colors),
                          labels = names(fixed_colors),
-                         drop = FALSE)+
+                         drop = FALSE) +
       theme_fancy()
 
 
@@ -4175,7 +4182,7 @@ server <- function(input, output,session) {
   })
   counters_colorsNames <- c( "Agents birth", "Agents deaths", "Agents in quarantine",
                               "Number of swabs", "Number of agents infected outside the environment")
-  counters_colors = viridisLite::viridis(n = length(counters_colorsNames))
+  counters_colors = viridisLite::turbo(n = length(counters_colorsNames))
   names(counters_colors) = counters_colorsNames
 
   observe( {
@@ -4185,13 +4192,12 @@ server <- function(input, output,session) {
 
     folder = req(info$value)
 
-    df = df %>% filter(Folder == folder) %>% select(-Seed, -Folder) %>%
+    df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
       tidyr::gather(-Day, value =  "Number", key = "Counters")
 
     pl = ggplot()
     if(!is.null(CountersDisease_radioButt)){
       DfStat = postprocObjects$COUNTERScsv %>%
-        select(-Seed) %>%
         tidyr::gather(-Day,-Folder, value =  "Number", key = "Counters") %>%
         group_by( Day,Counters ) %>%
         summarise(Mean = mean(Number),
@@ -4216,8 +4222,8 @@ server <- function(input, output,session) {
 
     }
     pl = pl +
-      geom_line(data = df, aes(x = Day, y = Number,col = Counters, linetype = "Simulation" ))+
-      labs(y="",col="Counters")+
+      geom_line(data = df, aes(x = Day, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
+      labs(y="",col="Counters", linetype="Type")+
       scale_color_manual(values = counters_colors,
                          limits = names(counters_colors),
                          labels = names(counters_colors),
@@ -4240,29 +4246,48 @@ server <- function(input, output,session) {
     Room <- input$Room_Counters_A_C_selectize
     Room = str_split(string = Room, pattern = "\\s ; \\s")[[1]]
 
+    counters_colorsNames <- c("Contacts", "Virus concentration")
+    names(df)[which(names(df) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
+
     df = df %>%
       filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
       select(-CanvasID,-Name,-area,-type) %>%
       select(-Folder) %>%
       tidyr::gather(-hour, value =  "Number", key = "Counters")
     A_C_counters_colors = c("#E5D05AFF","#DEF5E5FF")
-    names(A_C_counters_colors) = unique(df$Counters)
 
     pl = ggplot()
     if(!is.null(CountersDisease_radioButt)){
-      DfStat = postprocObjects$A_C_COUNTERS %>%
+      names(postprocObjects$A_C_COUNTERS)[which(names(postprocObjects$A_C_COUNTERS) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
+
+      # Define the maximum hour value
+      MAX_HOUR <- as.numeric(input$simulation_days) * 24
+
+      # Create a complete dataframe with all hours from 0 to MAX_HOUR for each Folder
+      average_trajectory <- postprocObjects$A_C_COUNTERS %>%
         filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
         select(-CanvasID,-Name,-area,-type) %>%
-        tidyr::gather(-Day,-Folder, value =  "Number", key = "Counters") %>%
-        group_by( Day,Counters ) %>%
-        summarise(Mean = mean(Number),
-                  MinV = min(Number),
-                  MaxV = max(Number) )
+        group_by(Folder, hour) %>%
+        summarise(
+          avg_contact_counts = mean(Contacts, na.rm = TRUE),
+          avg_virus_concentration = mean(`Virus concentration`, na.rm = TRUE)
+        ) %>%
+        ungroup() %>%
+        complete(Folder, hour = full_seq(0:MAX_HOUR, 1), fill = list(avg_contact_counts = 0, avg_virus_concentration = 0))
+
+
+      DfStat = average_trajectory %>%
+        summarise(Mean_contacts = mean(avg_contact_counts),
+                  MinV_contacts = min(avg_contact_counts),
+                  MaxV_contacts = max(avg_contact_counts),
+                  Mean_aerosol = mean(avg_virus_concentration),
+                  MinV_aerosol = min(avg_virus_concentration),
+                  MaxV_aerosol = max(avg_virus_concentration))
 
       if("Area from all simulations" %in% CountersDisease_radioButt){
         pl = pl +
-          geom_ribbon(data = DfStat,
-                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
+          geom_ribbon(data = average_trajectory,
+                      aes(x = hour, ymin = MinV,ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
           scale_fill_manual(values = A_C_counters_colors,
                             limits = names(A_C_counters_colors),
                             labels = names(A_C_counters_colors),
@@ -4270,6 +4295,15 @@ server <- function(input, output,session) {
       }
 
       if("Mean curves" %in% CountersDisease_radioButt){
+        DfStat <- postprocObjects$A_C_COUNTERS %>%
+          filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
+          select(-CanvasID,-Name,-area,-type) %>%
+          group_by(hour) %>%
+          summarize(Mean = mean(virus_concentration)) %>%
+          mutate(Counters = "virus_concentration")
+
+        DfStat$Counters <- as.factor(DfStat$Counters)
+
         pl = pl + geom_line(data = DfStat,
                             aes(x = hour, y = Mean, group= Counters, col = Counters, linetype = "Mean Curves"))+
           scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
@@ -4277,8 +4311,8 @@ server <- function(input, output,session) {
 
     }
     pl = pl +
-      geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ))+
-      labs(y="",col="Counters", x = "Hours")+
+      geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
+      labs(y="",col="Counters", x = "Hours", linetype="Type")+
       scale_color_manual(values = A_C_counters_colors,
                          limits = names(A_C_counters_colors),
                          labels = names(A_C_counters_colors),
@@ -4501,7 +4535,7 @@ server <- function(input, output,session) {
         df$CanvasID = factor(df$CanvasID, levels = floors$Name)
       }
 
-      if( colorFeat %in% c("Contact","Aerosol","Comulative Aerosol") ){
+      if( colorFeat %in% c("Contact","Aerosol","Cumulative Aerosol") ){
         if(colorFeat == "Aerosol"){
           MinCol = min(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
@@ -4518,7 +4552,7 @@ server <- function(input, output,session) {
                          group_by(type,area,Name,CanvasID)   %>%
                          count() %>%
                          pull(n) )
-        }else if(colorFeat == "Comulative Aerosol"){
+        }else if(colorFeat == "cumulative Aerosol"){
 
           MinCol = min(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == input$selectedSubfolder) %>%
@@ -4568,7 +4602,14 @@ server <- function(input, output,session) {
         coord_fixed() +
         facet_wrap(~CanvasID,ncol = 2) +
         theme_bw() +
-        theme(legend.position = "bottom") +
+        theme(legend.position = "bottom",
+              axis.text = element_text(size = 16),
+              axis.title = element_text(size = 20, face = "bold"),
+              plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
+              legend.text = element_text(size = 14),
+              legend.key.size = unit(1.5, 'cm'),
+              legend.title = element_text(face = "bold", size = 18),
+              strip.text = element_text(size = 18, face = "bold")) +
         labs(title = paste0("Time: ", timeIn), x = "", y = "",
              color = "Disease state", shape = "Agent type")
 
@@ -4643,11 +4684,11 @@ server <- function(input, output,session) {
         filter(y != 10000)
 
 
-      if(colorFeat %in% c("Comulative Aerosol", "Aerosol") ){
+      if(colorFeat %in% c("cumulative Aerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == input$selectedSubfolder , time <= timeIn)
 
-        if(colorFeat == "Comulative Aerosol")
+        if(colorFeat == "cumulative Aerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
             mutate(virus_concentration = cumsum(virus_concentration))

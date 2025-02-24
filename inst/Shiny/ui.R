@@ -1652,7 +1652,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(10,
-                             plotOutput("EvolutionPlot")
+                             plotOutput("EvolutionPlot", width = "100%", height = "800px")
                       ),
                       column(2,
                              checkboxGroupInput("EvolutionDisease_radioButt",
@@ -1664,7 +1664,7 @@ ui <- dashboardPage(
                     div(style = "height:10px"),
                     fluidRow(
                       column(10,
-                             plotOutput("CountersPlot")
+                             plotOutput("CountersPlot", width = "100%", height = "800px")
                       ),
                       column(2,
                              checkboxGroupInput("CountersDisease_radioButt",
@@ -1692,16 +1692,6 @@ ui <- dashboardPage(
                     )
                 )
               ),
-
-              fluidRow(
-                box(width = 12,collapsed = T,collapsible = T,
-                    title = div(class = "icon-container", style="margin-top:20px",
-                                h3("Contact matrix", icon("info-circle")),
-                                div(class = "icon-text", "Contact matrix per hour")
-                    ),
-                      plotOutput("ContactMatrix_plot")
-                    )
-                ),
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
                     title = div(class = "icon-container", style="margin-top:20px",
@@ -1711,10 +1701,7 @@ ui <- dashboardPage(
                     fluidRow(
                       column(2,offset = 1,
                              uiOutput("subfolderUI")
-                      ),
-                      column(9,
-                             plotOutput("ContactMatrix_plot")
-                             )
+                      )
                     ),
                     fluidRow(
                       box(width = 10, status = "primary",
@@ -1736,7 +1723,7 @@ ui <- dashboardPage(
                                               )
                             ),
                             column(2,
-                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol","Comulative Aerosol"))
+                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol","Cumulative Aerosol"))
                             ),
                             column(2,
                                    radioButtons("visualLabel_select","Show in the room:",
@@ -1765,11 +1752,20 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(12,
-                             uiOutput("TwoDMapPlots")
+                             uiOutput("TwoDMapPlots", , width = "100%", height = "1200px")
                       )
                     )
                 )
-              )
+              ),
+              fluidRow(
+                box(width = 12,collapsed = T,collapsible = T,
+                    title = div(class = "icon-container", style="margin-top:20px",
+                                h3("Contact matrix", icon("info-circle")),
+                                div(class = "icon-text", "Contact matrix per hour")
+                    ),
+                    plotOutput("ContactMatrix_plot", width = "100%", height = "1200px")
+                )
+              ),
       )
       #### END tabs ####
     )
