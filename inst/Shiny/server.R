@@ -34,7 +34,7 @@ server <- function(input, output,session) {
                                  resources = NULL,
                                  color = "Room",
                                  matricesCanvas = NULL,
-                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100),
+                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100, prun=10),
                                  rooms_whatif = data.frame(
                                    Measure = character(),
                                    Type = character(),
@@ -1450,12 +1450,6 @@ server <- function(input, output,session) {
       remove_modal_spinner()
       return()
     }
-
-    # if(input$prun == "" || !grepl("(^[0-9]+).*", input$prun) || input$prun <= 0){
-    #   shinyalert("You must specify a number greater than 0 (> 0) as number of parallel run to execute (in the Configuration tab).")
-    #   remove_modal_spinner()
-    #   return()
-    # }
 
     enable("rds_generation")
 
@@ -3798,6 +3792,25 @@ server <- function(input, output,session) {
     canvasObjects$starting$nrun <- nrun
   })
 
+  prun <- debounce(reactive({input$prun}), 1000L)
+
+  observeEvent(nrun(),{
+    disable("rds_generation")
+    disable("flamegpu_connection")
+    prun <- input$prun
+
+    if(prun == "" || !grepl("(^[0-9]+).*", prun) || prun <= 0){
+      shinyalert("You must specify a number greater than 0 (> 0).")
+      return()
+    }
+
+    if(prun > canvasObjects$starting$nrun){
+      prun <- nrun
+    }
+
+    canvasObjects$starting$prun <- prun
+  })
+
 
   #### START post processing #####
 
@@ -4076,6 +4089,7 @@ server <- function(input, output,session) {
     name_cols <- colnames(df%>% select(-Folder))
     sliders = lapply(name_cols, function(col) {
       values = unique(df[[col]])
+      if(col == "Day") values <- values[-c(length(values))]
       sliderInput(
         inputId = paste0("filter_", col),
         label = paste("Select range for", col),
@@ -4129,15 +4143,15 @@ server <- function(input, output,session) {
     folder = req(info$value)
 
     df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
-      tidyr::gather(-Day, value =  "Number", key = "Compartiments")
+      tidyr::gather(-Day, value =  "Number", key = "Compartments")
 
     fixed_colors <- c("Susceptible" = "green", "Exposed" = "blue", "Infected" = "red", "Recovered" = "purple", "Died" = "black")
 
     pl = ggplot()
     if(!is.null(EvolutionDisease_radioButt)){
       DfStat = postprocObjects$evolutionCSV %>%
-        tidyr::gather(-Day,-Folder, value =  "Number", key = "Compartiments") %>%
-        group_by( Day,Compartiments ) %>%
+        tidyr::gather(-Day,-Folder, value =  "Number", key = "Compartments") %>%
+        group_by( Day,Compartments ) %>%
         summarise(Mean = mean(Number),
                   MinV = min(Number),
                   MaxV = max(Number) )
@@ -4145,7 +4159,7 @@ server <- function(input, output,session) {
       if("Area from all simulations" %in% EvolutionDisease_radioButt){
         pl = pl +
           geom_ribbon(data = DfStat,
-                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Compartiments, fill = Compartiments),alpha = 0.4)+
+                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Compartments, fill = Compartments),alpha = 0.4)+
           scale_fill_manual(values = fixed_colors,
                             limits = names(fixed_colors),
                             labels = names(fixed_colors),
@@ -4154,14 +4168,14 @@ server <- function(input, output,session) {
 
       if("Mean curves" %in% EvolutionDisease_radioButt){
         pl = pl + geom_line(data = DfStat,
-                            aes(x = Day, y = Mean, group= Compartiments, col = Compartiments, linetype = "Mean Curves"))+
+                            aes(x = Day, y = Mean, group= Compartments, col = Compartments, linetype = "Mean Curves"))+
           scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
       }
 
     }
     pl = pl +
-      geom_line(data = df, aes(x = Day, y = Number,col = Compartiments, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="Cumulative number of individuals",col="Compartiments", linetype="Type")+
+      geom_line(data = df, aes(x = Day, y = Number,col = Compartments, linetype = "Simulation" ), linewidth=1.5)+
+      labs(y="Cumulative number of individuals",col="Compartments", linetype="Type")+
       scale_color_manual(values = fixed_colors,
                          limits = names(fixed_colors),
                          labels = names(fixed_colors),
