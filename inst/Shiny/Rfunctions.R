@@ -825,10 +825,9 @@ FromToMatrices.generation = function(WHOLEmodel){
 
         agent_specific = a_specific %>% filter(Name != "Global")
         if(dim(agent_specific)[1] >0){
-
-          for(ii in seq_along(a_specific[,1])){
-            specific = a_specific[ii,]
-            fromto_p[,specific$From:specific$To] = specific[,i]
+          for(ii in seq_along(agent_specific[,1])){
+            specific = agent_specific[ii,]
+            fromto_p[specific$Name,specific$From:specific$To] = specific[,i]
           }
         }
         fromto_p = cbind(agents,fromto_p) # put agents name as first column
