@@ -3389,15 +3389,15 @@ server <- function(input, output,session) {
           return()
       }
 
-        if(new_dist == "Deterministic" || new_dist == "No swab"){
-          paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
-        }else{
-          params <- parse_distribution(new_time, new_dist)
-          a <- params[[1]]
-          b <- params[[2]]
+      if(new_dist == "Deterministic" || new_dist == "No swab"){
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
+      }else{
+        params <- parse_distribution(new_time, new_dist)
+        a <- params[[1]]
+        b <- params[[2]]
 
-          paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
-        }
+        paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",a,", ",b)
+      }
 
     }else{
       paramstext = "No quarantine, 0, 0"
@@ -3851,19 +3851,19 @@ server <- function(input, output,session) {
       all(file.exists(file.path(subfolder, required_files)))
     })
     if(length(subfolders) != 0){
-       subfolders[valid]
+      subfolders[valid]
     }
   })
 
   # Create a dropdown to select a subfolder
-  output$subfolderUI <- renderUI({
-    if (req(length(valid_subfolders()) != 0)) {
-      selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
-    }
-    else{
-      selectInput("selectedSubfolder", "Select Subfolder", choices = c("" ,selected = "" ))
-    }
-  })
+  # output$subfolderUI <- renderUI({
+  #   if (req(length(valid_subfolders()) != 0)) {
+  #     selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
+  #   }
+  #   else{
+  #     selectInput("selectedSubfolder", "Select Subfolder", choices = c("" ,selected = "" ))
+  #   }
+  # })
 
   observe({
     dir = req(dirPath())
@@ -3904,7 +3904,7 @@ server <- function(input, output,session) {
           f = read_csv(file)
           colnames(f) = c("Day",
                           "Agents birth", "Agents deaths", "Agents in quarantine",
-                          "Number of swabs", "Number of agents infected outside the environment")
+                          "Number of swabs", "Number of agents infected \noutside the environment")
 
           f$Folder= basename(dirname(file))
           f
@@ -4016,6 +4016,7 @@ server <- function(input, output,session) {
       CONTACTmatrix$type1 = agents[CONTACTmatrix$type1+1]
       CONTACTmatrix$type2 = agents[CONTACTmatrix$type2+1]
 
+
       postprocObjects$CONTACTmatrix = CONTACTmatrix  %>%
         group_by(type2,type1, Folder) %>%
         summarise(Mean = mean(contacts),
@@ -4049,7 +4050,9 @@ server <- function(input, output,session) {
 
   observe({
     pl = NULL
-    folderselected = req(input$selectedSubfolder)
+    info <- input$PostProc_table_cell_clicked
+    folderselected = req(info$value)
+
     isolate({
       CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
       c = CONTACTmatrix %>% filter(Folder == folderselected)
@@ -4137,10 +4140,10 @@ server <- function(input, output,session) {
   # Observe table edit and validate input
   observe( {
     info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
+
     EvolutionDisease_radioButt = input$EvolutionDisease_radioButt
     df <- req(postprocObjects$evolutionCSV )
-
-    folder = req(info$value)
 
     df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
       tidyr::gather(-Day, value =  "Number", key = "Compartments")
@@ -4195,16 +4198,16 @@ server <- function(input, output,session) {
     ggplot()+labs(title = "Please select a room")
   })
   counters_colorsNames <- c( "Agents birth", "Agents deaths", "Agents in quarantine",
-                              "Number of swabs", "Number of agents infected outside the environment")
+                             "Number of swabs", "Number of agents infected \noutside the environment")
   counters_colors = viridisLite::turbo(n = length(counters_colorsNames))
   names(counters_colors) = counters_colorsNames
 
   observe( {
     info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
+
     CountersDisease_radioButt = input$CountersDisease_radioButt
     df <- req(postprocObjects$COUNTERScsv )
-
-    folder = req(info$value)
 
     df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
       tidyr::gather(-Day, value =  "Number", key = "Counters")
@@ -4252,10 +4255,12 @@ server <- function(input, output,session) {
   })
   observe( {
     info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
+
     CountersDisease_radioButt = input$A_C_CountersDisease_radioButt
     req(input$Room_Counters_A_C_selectize != "")
     df <- req(postprocObjects$A_C_COUNTERS )
-    folder = req(info$value)
+
 
     Room <- input$Room_Counters_A_C_selectize
     Room = str_split(string = Room, pattern = "\\s ; \\s")[[1]]
@@ -4291,10 +4296,11 @@ server <- function(input, output,session) {
                   MaxV_aerosol = max(`Virus concentration`)) %>%
         complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Mean_contacts = 0, MinV_contacts = 0, MaxV_contacts = 0, Mean_aerosol = 0, MinV_aerosol = 0, MaxV_aerosol = 0)) %>%
         pivot_longer(cols = c(MinV_contacts, MaxV_contacts, MinV_aerosol, MaxV_aerosol),
-                     names_to = c("Variable", "Type"),
+                     names_to = c("Variable", "Counters"),
                      names_pattern = "(MinV|MaxV)_(.*)",
                      values_to = "Value") %>%
-        pivot_wider(names_from = Variable, values_from = Value)
+        pivot_wider(names_from = Variable, values_from = Value) %>%
+        mutate(Counters = if_else(Counters == "contacts", "Contacts","Virus concentration"))
 
       average_trajectory <- postprocObjects$A_C_COUNTERS %>%
         filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
@@ -4309,13 +4315,13 @@ server <- function(input, output,session) {
 
       average_trajectory <- average_trajectory %>%
         pivot_longer(cols = c(Contacts, `Virus concentration`),
-                     names_to = "Type",
+                     names_to = "Counters",
                      values_to = "Value")
 
       if("Area from all simulations" %in% CountersDisease_radioButt){
         pl = pl +
           geom_ribbon(data = DfStat,
-                      aes(x = hour, ymin = MinV, ymax = MaxV, group= Type, fill = Type),alpha = 0.4)+
+                      aes(x = hour, ymin = MinV, ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
           scale_fill_manual(values = A_C_counters_colors,
                             limits = names(A_C_counters_colors),
                             labels = names(A_C_counters_colors),
@@ -4324,14 +4330,14 @@ server <- function(input, output,session) {
 
       if("Mean curves" %in% CountersDisease_radioButt){
         pl = pl + geom_line(data = average_trajectory,
-                            aes(x = hour, y = Value, group= Type, col = Type, linetype = "Mean Curves"))+
+                            aes(x = hour, y = Value, group= Counters, col = Counters, linetype = "Mean Curves"))+
           scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
       }
 
     }
     pl = pl +
       geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="",col="Variable", x = "Hours", linetype="Type")+
+      labs(y="",col="Variable",fill="Variable", x = "Hours", linetype="Type")+
       scale_color_manual(values = A_C_counters_colors,
                          limits = names(A_C_counters_colors),
                          labels = names(A_C_counters_colors),
@@ -4349,9 +4355,11 @@ server <- function(input, output,session) {
 
   #### 2D visualisation ####
 
-  observeEvent(input$selectedSubfolder,{
+  observeEvent(input$PostProc_table_cell_clicked,{
     disable("rds_generation")
     disable("flamegpu_connection")
+    info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
 
     isolate({
       if(is.null(canvasObjects$roomsINcanvas)){
@@ -4359,11 +4367,9 @@ server <- function(input, output,session) {
         return()
       }
 
-      if(input$selectedSubfolder != ""){
-
         show_modal_spinner()
 
-        CSVdatapath = paste0(dirPath(), "/" , input$selectedSubfolder,"/AGENT_POSITION_AND_STATUS.csv")
+        CSVdatapath = paste0(dirPath(), "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
 
         dataframe <- read_csv(CSVdatapath)
         colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
@@ -4417,12 +4423,11 @@ server <- function(input, output,session) {
         ##
 
         shinyalert("Success", paste0("File loaded "), "success", 1000)
-      }
     })
   })
 
   observeEvent(input$animationStep,{
-  req(canvasObjects$TwoDVisual)
+    req(canvasObjects$TwoDVisual)
 
     if( input$animationStep < 1 ) {
       shinyalert("The time step cannot be less than 1 sec.",type = "error")
@@ -4470,6 +4475,9 @@ server <- function(input, output,session) {
   })
 
   observe({
+    info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
+
     roomsINcanvas = req(canvasObjects$roomsINcanvas)
     floorSelected = input$visualFloor_select
     colorFeat = input$visualColor_select
@@ -4478,6 +4486,7 @@ server <- function(input, output,session) {
     isolate({
       step = as.numeric(canvasObjects$starting$step)
       timeIn <- input$animation/step
+      timeGrid = seq(0,timeIn,1) # number of steps to reach the seconds selected
 
       disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
 
@@ -4486,7 +4495,6 @@ server <- function(input, output,session) {
       other_chars <- setdiff(unique(disease), names(fixed_colors))
       random_colors <- sample(colors(), length(other_chars))
       all_colors <- c(fixed_colors, setNames(random_colors, other_chars))
-
 
       colorDisease = data.frame(State = names(all_colors), Col = (all_colors),  stringsAsFactors = F)
       colorDisease$State = factor(x = colorDisease$State, levels = disease)
@@ -4511,7 +4519,10 @@ server <- function(input, output,session) {
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
       }else if(colorFeat == "Contact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
-          filter(Folder == input$selectedSubfolder , time <= timeIn)
+          filter(Folder == folder , time <= timeIn)%>%
+          select(-Folder)
+
+        ### Check if it has all the data for each time step
 
         if(dim(CONTACTcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
@@ -4526,7 +4537,52 @@ server <- function(input, output,session) {
 
       }else if(colorFeat == "Aerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
-          filter(Folder == input$selectedSubfolder , time <= timeIn)
+          filter(Folder == folder , time <= timeIn) %>%
+          select(-Folder)
+
+        ### Check if it has all the data for each time step
+
+        if(dim(AEROSOLcsv)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
+
+          full_grid <- merge(
+            expand.grid(
+              time = timeGrid,
+              ID = unique(postprocObjects$Mapping$ID)
+            ),
+            AEROSOLcsv %>% select(ID,Name, CanvasID,type,area) %>% distinct()
+          )
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOLcsv <- full_grid %>%
+            full_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
+            mutate(virus_concentration = ifelse(is.na(virus_concentration), 0, virus_concentration))
+
+          AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
+            rename(IDtoColor = virus_concentration)
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
+        }
+      }else if(colorFeat == "Cumulative Aerosol"){
+        AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
+          filter(Folder == folder , time <= timeIn)%>%
+          group_by(type,area,Name,CanvasID) %>%
+          mutate(virus_concentration = cumsum(virus_concentration))
+
+        full_grid <- merge(
+          expand.grid(
+            time = timeGrid,
+            ID = unique(postprocObjects$Mapping$ID)
+          ),
+          AEROSOLcsv %>% select(ID,Name, CanvasID,type,area) %>% distinct()
+        )
+        # here i give to each room for each step a virus concetration = 0 when is not present
+        AEROSOLcsv <- full_grid %>%
+          left_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
+          mutate(virus_concentration = ifelse(is.na(virus_concentration), 0, virus_concentration))
+
 
         if(dim(AEROSOLcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
@@ -4557,29 +4613,29 @@ server <- function(input, output,session) {
       if( colorFeat %in% c("Contact","Aerosol","Cumulative Aerosol") ){
         if(colorFeat == "Aerosol"){
           MinCol = min(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
+                         filter(Folder == folder) %>% pull(virus_concentration))
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>% pull(virus_concentration))
+                         filter(Folder == folder) %>% pull(virus_concentration))
         }else if(colorFeat == "Contact"){
           MinCol = min(postprocObjects$CONTACTcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>%
+                         filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID)   %>%
                          count() %>%
                          pull(n) )
           MaxCol = max(postprocObjects$CONTACTcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>%
+                         filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID)   %>%
                          count() %>%
                          pull(n) )
-        }else if(colorFeat == "cumulative Aerosol"){
+        }else if(colorFeat == "Cumulative Aerosol"){
 
           MinCol = min(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>%
+                         filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID) %>%
                          mutate(virus_concentration = cumsum(virus_concentration))  %>%
                          pull(virus_concentration))
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == input$selectedSubfolder) %>%
+                         filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID) %>%
                          mutate(virus_concentration = cumsum(virus_concentration)) %>%
                          pull(virus_concentration))
@@ -4607,7 +4663,6 @@ server <- function(input, output,session) {
       #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
       # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
 
-
       pl = ggplot() +
         scale_y_reverse() +
         geom_rect(data = df,
@@ -4628,9 +4683,7 @@ server <- function(input, output,session) {
               legend.text = element_text(size = 14),
               legend.key.size = unit(1.5, 'cm'),
               legend.title = element_text(face = "bold", size = 18),
-              strip.text = element_text(size = 18, face = "bold")) +
-        labs(title = paste0("Time: ", timeIn), x = "", y = "",
-             color = "Disease state", shape = "Agent type")
+              strip.text = element_text(size = 18, face = "bold"))
 
       canvasObjects$plot_2D <- pl
 
@@ -4659,6 +4712,9 @@ server <- function(input, output,session) {
   })
 
   observe({
+    info <- input$PostProc_table_cell_clicked
+    folder = req(info$value)
+
     pl = req( canvasObjects$plot_2D)
     simulation_log = req(canvasObjects$TwoDVisual)
     timeIn <- req(input$animation)
@@ -4703,11 +4759,11 @@ server <- function(input, output,session) {
         filter(y != 10000)
 
 
-      if(colorFeat %in% c("cumulative Aerosol", "Aerosol") ){
+      if(colorFeat %in% c("Cumulative Aerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
-          filter(Folder == input$selectedSubfolder , time <= timeIn)
+          filter(Folder == folder , time <= timeIn)
 
-        if(colorFeat == "cumulative Aerosol")
+        if(colorFeat == "Cumulative Aerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
             mutate(virus_concentration = cumsum(virus_concentration))
@@ -4729,7 +4785,7 @@ server <- function(input, output,session) {
         pl$layers[[1]]$data = df
       }else if(colorFeat == "Contact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
-          filter(Folder == input$selectedSubfolder , time <= timeIn)
+          filter(Folder == folder , time <= timeIn)
 
         if(dim(CONTACTcsv)[1] == 0){
           df$IDtoColor = 0
@@ -4749,7 +4805,6 @@ server <- function(input, output,session) {
         geom_point(data = simulation_log,
                    aes(x = x, y = z, group = id, shape = agent_type,
                        color = disease_stateString ), size = 5, stroke = 2) +
-        labs(title = paste0("Time: ", timeIn))+
         scale_shape_manual(values = shapeAgents$Shape,
                            limits = shapeAgents$Agents,
                            breaks = shapeAgents$Agents,
@@ -4770,8 +4825,16 @@ server <- function(input, output,session) {
                              size = 4)
       }
 
+      total_seconds = timeIn*step
+      days <- total_seconds %/% (24 * 3600)  # Number of days
+      remaining_seconds <- total_seconds %% (24 * 3600)
+      hours <- remaining_seconds %/% 3600  # Number of hours
+      remaining_seconds <- remaining_seconds %% 3600
+      minutes <- remaining_seconds %/% 60  # Number of minutes
+      seconds <- remaining_seconds %% 60   # Remaining seconds
+      title = labs(title = paste0(days, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"), x = "", y = "", color = "Disease state", shape = "Agent type")
 
-      output[["plot_map"]] <- renderPlot({ pl })
+      output[["plot_map"]] <- renderPlot({ pl + title })
 
     })
   })
