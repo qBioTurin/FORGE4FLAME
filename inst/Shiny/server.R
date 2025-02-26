@@ -4555,7 +4555,7 @@ server <- function(input, output,session) {
           )
           # here i give to each room for each step a virus concetration = 0 when is not present
           AEROSOLcsv <- full_grid %>%
-            left_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
+            full_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
             mutate(virus_concentration = ifelse(is.na(virus_concentration), 0, virus_concentration))
 
           AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
@@ -4662,13 +4662,6 @@ server <- function(input, output,session) {
 
       #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
       # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
-      total_seconds = timeIn*step
-      days <- total_seconds %/% (24 * 3600)  # Number of days
-      remaining_seconds <- total_seconds %% (24 * 3600)
-      hours <- remaining_seconds %/% 3600  # Number of hours
-      remaining_seconds <- remaining_seconds %% 3600
-      minutes <- remaining_seconds %/% 60  # Number of minutes
-      seconds <- remaining_seconds %% 60   # Remaining seconds
 
       pl = ggplot() +
         scale_y_reverse() +
@@ -4690,9 +4683,7 @@ server <- function(input, output,session) {
               legend.text = element_text(size = 14),
               legend.key.size = unit(1.5, 'cm'),
               legend.title = element_text(face = "bold", size = 18),
-              strip.text = element_text(size = 18, face = "bold")) +
-        labs(title = paste0(days, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"), x = "", y = "",
-             color = "Disease state", shape = "Agent type")
+              strip.text = element_text(size = 18, face = "bold"))
 
       canvasObjects$plot_2D <- pl
 
@@ -4768,11 +4759,11 @@ server <- function(input, output,session) {
         filter(y != 10000)
 
 
-      if(colorFeat %in% c("cumulative Aerosol", "Aerosol") ){
+      if(colorFeat %in% c("Cumulative Aerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
 
-        if(colorFeat == "cumulative Aerosol")
+        if(colorFeat == "Cumulative Aerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
             mutate(virus_concentration = cumsum(virus_concentration))
@@ -4834,8 +4825,16 @@ server <- function(input, output,session) {
                              size = 4)
       }
 
+      total_seconds = timeIn*step
+      days <- total_seconds %/% (24 * 3600)  # Number of days
+      remaining_seconds <- total_seconds %% (24 * 3600)
+      hours <- remaining_seconds %/% 3600  # Number of hours
+      remaining_seconds <- remaining_seconds %% 3600
+      minutes <- remaining_seconds %/% 60  # Number of minutes
+      seconds <- remaining_seconds %% 60   # Remaining seconds
+      title = labs(title = paste0(days, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"), x = "", y = "", color = "Disease state", shape = "Agent type")
 
-      output[["plot_map"]] <- renderPlot({ pl })
+      output[["plot_map"]] <- renderPlot({ pl + title })
 
     })
   })
