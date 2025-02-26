@@ -460,7 +460,7 @@ ui <- dashboardPage(
                   fluidRow(
                     column(4,
                            textInput(inputId = "textInput_resources_global",
-                                       label = "Select global resources for each room and agent type:", value = 0)
+                                     label = "Select global resources for each room and agent type:", value = 0)
                     ),
                     column(4,
                            uiOutput("selectInput_alternative_resources_global")
@@ -1211,36 +1211,36 @@ ui <- dashboardPage(
                     title = h3("Quarantine"),
                     fluidRow(
                       fluidRow(
-                      column(
-                        offset = 1,
-                        width = 2,
-                        radioButtons(inputId = "quarantine_type",
-                                     label = "Quarantine:",
-                                     choices = c("Global", "Different for each agent"),
-                                     selected = "Global"
-                        )
-                      ),
-                      conditionalPanel(
-                        condition = 'input.quarantine_type == "Different for each agent"',
                         column(
+                          offset = 1,
                           width = 2,
-                          selectizeInput(
-                            inputId = "agent_quarantine",
-                            label = "Agent:",
-                            options = list(),
-                            choices = c()
+                          radioButtons(inputId = "quarantine_type",
+                                       label = "Quarantine:",
+                                       choices = c("Global", "Different for each agent"),
+                                       selected = "Global"
                           )
                         ),
-                        column(width = 2,
-                               radioButtons(inputId = "quarantine_type_agent",
-                                            label = "Quarantine:",
-                                            choices = c("No quarantine", "Quarantine"),
-                                            selected = "No quarantine"
-                               )
-                        )
-                      ),
-                      conditionalPanel(
-                        condition = 'input.quarantine_type == "Global" || (input.quarantine_type == "Different for each agent" && input.quarantine_type_agent != "No quarantine")',
+                        conditionalPanel(
+                          condition = 'input.quarantine_type == "Different for each agent"',
+                          column(
+                            width = 2,
+                            selectizeInput(
+                              inputId = "agent_quarantine",
+                              label = "Agent:",
+                              options = list(),
+                              choices = c()
+                            )
+                          ),
+                          column(width = 2,
+                                 radioButtons(inputId = "quarantine_type_agent",
+                                              label = "Quarantine:",
+                                              choices = c("No quarantine", "Quarantine"),
+                                              selected = "No quarantine"
+                                 )
+                          )
+                        ),
+                        conditionalPanel(
+                          condition = 'input.quarantine_type == "Global" || (input.quarantine_type == "Different for each agent" && input.quarantine_type_agent != "No quarantine")',
                           conditionalPanel(
                             condition = 'input.quarantine_type == "Global"',
                             column( width = 3,
@@ -1270,46 +1270,46 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                        conditionalPanel(
-                          condition = 'input.quarantine_type != "Different for each agent" || input.quarantine_type_agent != "No quarantine"',
-                          fluidRow(
-                            column( width = 2, offset = 3,
-                                    radioButtons(inputId = "quarantine_swab_type_global",
-                                                 label = "Swab:",
-                                                 choices = c("No swab", "Swab"),
-                                                 selected = "Swab"
-                                    )
-                            ),
+                      conditionalPanel(
+                        condition = 'input.quarantine_type != "Different for each agent" || input.quarantine_type_agent != "No quarantine"',
+                        fluidRow(
+                          column( width = 2, offset = 3,
+                                  radioButtons(inputId = "quarantine_swab_type_global",
+                                               label = "Swab:",
+                                               choices = c("No swab", "Swab"),
+                                               selected = "Swab"
+                                  )
                           ),
-                          fluidRow(
-                            conditionalPanel(
-                              condition = 'input.quarantine_swab_type_global == "Swab"',
-                              fluidRow(
-                                column(
-                                  width = 2,
-                                  offset=3,
-                                  numericInput(
-                                    inputId = "quarantine_swab_sensitivity",
-                                    label = "Sensitivity:",
-                                    value = 1,min = 0,max =1
-                                  )
-                                ),
-                                column(
-                                  width = 2,
-                                  numericInput(
-                                    inputId = "quarantine_swab_specificity",
-                                    label = "Specificity:",
-                                    value = 1,min = 0,max =1
-                                  )
+                        ),
+                        fluidRow(
+                          conditionalPanel(
+                            condition = 'input.quarantine_swab_type_global == "Swab"',
+                            fluidRow(
+                              column(
+                                width = 2,
+                                offset=3,
+                                numericInput(
+                                  inputId = "quarantine_swab_sensitivity",
+                                  label = "Sensitivity:",
+                                  value = 1,min = 0,max =1
                                 )
                               ),
-                              fluidRow(
-                                column(4,offset = 3,
-                                       div(h5(tags$b("A swab every how many days?"))),
-                                       get_distribution_panel("quarantine_swab_global")
+                              column(
+                                width = 2,
+                                numericInput(
+                                  inputId = "quarantine_swab_specificity",
+                                  label = "Specificity:",
+                                  value = 1,min = 0,max =1
                                 )
                               )
+                            ),
+                            fluidRow(
+                              column(4,offset = 3,
+                                     div(h5(tags$b("A swab every how many days?"))),
+                                     get_distribution_panel("quarantine_swab_global")
+                              )
                             )
+                          )
                         ),
                         fluidRow(
                           column(1,offset = 3, numericInput(inputId = "quarantine_time_from", label = "From (day):", value = 1, min = 1)),
@@ -1581,21 +1581,21 @@ ui <- dashboardPage(
                           textInput(inputId = "prun", label = "Number of parallel simulations (when not using the visualisation):", value = "10")
                         )
                       ),
-                          fluidRow(
-                            column(
-                              2,
-                              offset = 1,
-                              selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
-                            )
-                          ),
-                          fluidRow(
-                            column(2,
-                                   offset = 1,
-                                   actionButton("run", "Run")
-                            )
-                          )
+                      fluidRow(
+                        column(
+                          2,
+                          offset = 1,
+                          selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
+                        )
+                      ),
+                      fluidRow(
+                        column(2,
+                               offset = 1,
+                               actionButton("run", "Run")
+                        )
+                      )
                     )
-                  )
+                )
               )
       ),
       tabItem(tabName = "post_process",
@@ -1629,26 +1629,33 @@ ui <- dashboardPage(
                         #   inputId = "LoadCSVsimul_Button"
                         # )
                       )
+                    ),
+                    conditionalPanel(
+                      condition = "input.dir != 'NULL'",
+                      fluidRow(
+                        column(width = 6,
+                               div(class = "icon-container", style="margin-top:20px",
+                                   h4("Query on Disease Status", icon("info-circle")),
+                                   div(class = "icon-text", "Find the simulations with defined specification on the disease.")
+                               ),
+                               uiOutput("PostProc_filters")
+                        ),
+                        column(width = 5,
+                               div(class = "icon-container", style="margin-top:20px",
+                                   h4("Resulting Simulations", icon("info-circle")),
+                                   div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
+                               ),
+                               DT::dataTableOutput("PostProc_table")
+                        )
+                      )
                     )
                 )
               ),
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
-                    title = div(class = "icon-container", style="margin-top:20px",
-                                h3("Query on Disease Status", icon("info-circle")),
-                                div(class = "icon-text", "Find the simulations with defined specification on the disease.")
-                    ),
-                    fluidRow(
-                      column(width = 6,
-                             uiOutput("PostProc_filters")
-                      ),
-                      column(width = 5,
-                             div(class = "icon-container", style="margin-top:20px",
-                                 h4("Resulting Simulations", icon("info-circle")),
-                                 div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
-                             ),
-                             DT::dataTableOutput("PostProc_table")
-                      )
+                    title =   div(class = "icon-container", style="margin-top:20px",
+                                  h3("Disease Visualisation", icon("info-circle")),
+                                  div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
                     ),
                     fluidRow(
                       column(10,
@@ -1695,14 +1702,14 @@ ui <- dashboardPage(
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
                     title = div(class = "icon-container", style="margin-top:20px",
-                                h3("2D Visualisation", icon("info-circle")),
+                                h3("2D Simulation Visualisation", icon("info-circle")),
                                 div(class = "icon-text", "2D visulisation of the agents moving in the modeled system")
                     ),
-                    fluidRow(
-                      column(2,offset = 1,
-                             uiOutput("subfolderUI")
-                      )
-                    ),
+                    # fluidRow(
+                    #   column(2,offset = 1,
+                    #          uiOutput("subfolderUI")
+                    #   )
+                    # ),
                     fluidRow(
                       box(width = 10, status = "primary",
                           solidHeader = TRUE, collapsible = T,
