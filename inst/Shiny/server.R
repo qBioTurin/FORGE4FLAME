@@ -4781,4 +4781,14 @@ server <- function(input, output,session) {
 
   })
 
+  observe({
+    in_docker <- file.exists("/.dockerenv")
+
+    if(in_docker){
+      updateSelectizeInput(session = session, "run_type", choices = c("Docker"), selected = "Docker")
+    }
+    else{
+      updateSelectizeInput(session = session, "run_type", choices = c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
+    }
+  })
 }
