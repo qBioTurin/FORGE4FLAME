@@ -1708,7 +1708,7 @@ ui <- dashboardPage(
                 box(width = 12,collapsed = T,collapsible = T,
                     title = div(class = "icon-container", style="margin-top:20px",
                                 h3("2D Simulation Visualisation", icon("info-circle")),
-                                div(class = "icon-text", "2D visulisation of the agents moving in the modeled system")
+                                div(class = "icon-text", "2D visualisation of the agents moving in the modeled system")
                     ),
                     # fluidRow(
                     #   column(2,offset = 1,
@@ -1736,9 +1736,9 @@ ui <- dashboardPage(
                             ),
                             column(2,
                                    selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area",
-                                                                                                          "Cumulative #Contacts" = "ComulContact",
+                                                                                                          "Cumulative #Contacts" = "CumulContact",
                                                                                                           "Aerosol" = "Aerosol",
-                                                                                                          "Cumulative Aerosol" = "ComulAerosol"))
+                                                                                                          "Cumulative Aerosol" = "CumulAerosol"))
                             ),
                             column(2,
                                    radioButtons("visualLabel_select","Show in the room:",
@@ -1763,10 +1763,12 @@ ui <- dashboardPage(
                              )
                       ),
                       column(1,
+                             style="padding-top:35px;padding-left:50px;",
                              actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next"),
                                           class = "btn-primary")
                       ),
-                      column(1,
+                      column(2,
+                             style="padding-top:10px;",
                              numericInput("animationStep",label = "Set the animation step (sec):", value = 1, min = 1)
                       )
                     ),

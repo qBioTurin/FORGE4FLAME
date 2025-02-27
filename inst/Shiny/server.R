@@ -3882,6 +3882,22 @@ server <- function(input, output,session) {
     isolate({
       G <- read_table(rooms_file,col_names = FALSE)
       colnames(G) = c("ID","x","y","z")
+
+      roomsINcanvas = req(canvasObjects$roomsINcanvas)
+      floors = req(canvasObjects$floors) %>%
+        mutate(y = (Order - 1) * 10, CanvasID = Name)
+
+      roomsINcanvas <- roomsINcanvas %>%
+        filter(type == "Fillingroom") %>%
+        mutate(z = y) %>%
+        select(x, z, CanvasID, w, h) %>%
+        left_join(floors, by = "CanvasID") %>%
+        select(x, y, z, w, h) %>%
+        mutate(x=x+ceiling(w/2), z=z+ceiling(h/2), ID = NA) %>%
+        select(ID, x, y, z)
+
+      G <- rbind(G, roomsINcanvas)
+
       postprocObjects$Mapping = G
       ####
 
@@ -3989,11 +4005,11 @@ server <- function(input, output,session) {
         return()
       }
 
-      roomsINcanvas = roomsINcanvas %>% mutate( coord = paste0(center_x,"-", center_y,"-", CanvasID) )
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = ifelse(type == "Fillingroom", paste0(x+ceiling(w/2),"-", y+ceiling(h/2),"-", CanvasID), paste0(center_x,"-", center_y,"-", CanvasID)))
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
-      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = unique(roomsINcanvas$CanvasID)[( y / max(y) )*2 +1] ,
+      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = unique(roomsINcanvas$CanvasID)[( y / 10 )+1] ,
                                                     coord = paste0(x,"-", z ,"-",CanvasID),
                                                     Name = rooms_id[coord] )
 
@@ -4007,19 +4023,21 @@ server <- function(input, output,session) {
       CONTACTcsv$agent_id1 = agents[CONTACTcsv$agent_id1+1]
       CONTACTcsv$agent_id2 = agents[CONTACTcsv$agent_id2+1]
 
-      postprocObjects$CONTACTcsv = CONTACTcsv  %>%
-        arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
-        group_by(CanvasID,Folder, area, type, agent_id1, agent_id2) %>%
-        mutate(time_diff = time - lag(time, default = first(time))) %>%
-        filter( time_diff != 1) %>%
-        ungroup() %>%
-        select(-time_diff)
+      postprocObjects$CONTACTcsv = CONTACTcsv
+
+      # postprocObjects$CONTACTcsv = CONTACTcsv  %>%
+      #   arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
+      #   group_by(CanvasID,Folder, area, type, agent_id1, agent_id2) %>%
+      #   mutate(time_diff = time - lag(time, default = first(time))) %>%
+      #   filter( time_diff != 1) %>%
+      #   ungroup() %>%
+      #   select(-time_diff)
 
       CONTACTmatrix$type1 = agents[CONTACTmatrix$type1+1]
       CONTACTmatrix$type2 = agents[CONTACTmatrix$type2+1]
 
 
-      postprocObjects$CONTACTmatrix = CONTACTmatrix  %>%
+      postprocObjects$CONTACTmatrix = CONTACTmatrix %>%
         group_by(type2,type1, Folder) %>%
         summarise(Mean = mean(contacts),
                   Sd = sd(contacts) )
@@ -4527,7 +4545,7 @@ server <- function(input, output,session) {
                                canvasObjects$rooms %>% select(Name,colorFill) ,
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
-      }else if(colorFeat == "ComulContact"){
+      }else if(colorFeat == "CumulContact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
           filter(Folder == folder , time <= timeIn) %>%
           select(-Folder)
@@ -4571,7 +4589,8 @@ server <- function(input, output,session) {
             roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
           roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
         }
-      }else if(colorFeat == "ComulAerosol"){
+      }else if(colorFeat == "Co
+               umulAerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)%>%
           group_by(type,area,Name,CanvasID) %>%
@@ -4609,18 +4628,18 @@ server <- function(input, output,session) {
         df$CanvasID = factor(df$CanvasID, levels = floors$Name)
       }
 
-      if( colorFeat %in% c("ComulContact","Aerosol","ComulAerosol") ){
+      if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
         MinCol =0
         if(colorFeat == "Aerosol"){
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == folder) %>% pull(virus_concentration))
-        }else if(colorFeat == "ComulContact"){
+        }else if(colorFeat == "CumulContact"){
           MaxCol = max(postprocObjects$CONTACTcsv %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID)   %>%
                          count() %>%
                          pull(n) )
-        }else if(colorFeat == "ComulAerosol"){
+        }else if(colorFeat == "CumulAerosol"){
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID) %>%
@@ -4742,15 +4761,15 @@ server <- function(input, output,session) {
       simulation_log <- simulation_log %>%
         filter(time <= timeIn) %>%
         group_by(id) %>%
-        filter(y != 10000) %>%
-        filter(time == max(time))
+        filter(time == max(time)) %>%
+        filter(y != 10000)
 
 
-      if(colorFeat %in% c("ComulAerosol", "Aerosol") ){
+      if(colorFeat %in% c("CumulAerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
 
-        if(colorFeat == "ComulAerosol")
+        if(colorFeat == "CumulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
             mutate(virus_concentration = cumsum(virus_concentration))
@@ -4774,7 +4793,7 @@ server <- function(input, output,session) {
           df = merge(df,AEROSOLcsv)
         }
         pl$layers[[1]]$data = df
-      }else if(colorFeat == "ComulContact"){
+      }else if(colorFeat == "CumulContact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
           filter(Folder == folder , time <= timeIn)
 
@@ -4802,8 +4821,9 @@ server <- function(input, output,session) {
                        color = disease_stateString ), size = 5, stroke = 2) +
         scale_shape_manual(values = shapeAgents$Shape,
                            #limits = shapeAgents$Agents,
-                           breaks = shapeAgents$Agents)
+                           breaks = shapeAgents$Agents) +
                            #drop = FALSE)
+        guides(shape = guide_legend(ncol=10, order=1))
 
 
       if(! Label  %in% c("None","Agent ID")){
