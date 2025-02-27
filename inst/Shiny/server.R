@@ -4736,7 +4736,7 @@ server <- function(input, output,session) {
         filter(time <= timeIn) %>%
         group_by(id) %>%
         filter(y != 10000) %>%
-        slice_tail(n = 1)
+        filter(time == max(time))
 
 
       if(colorFeat %in% c("ComulAerosol", "Aerosol") ){
