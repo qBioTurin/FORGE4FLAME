@@ -4214,6 +4214,8 @@ server <- function(input, output,session) {
     df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
       tidyr::gather(-Day, value =  "Number", key = "Counters")
 
+    df$Number[is.na(df$Number)] <- 0
+
     pl = ggplot()
     if(!is.null(CountersDisease_radioButt)){
       DfStat = postprocObjects$COUNTERScsv %>%
@@ -4813,7 +4815,7 @@ server <- function(input, output,session) {
                              size = 4)
       }
 
-      total_seconds = timeIn*step
+      total_seconds = timeIn*step + as.numeric(strsplit(input$initial_time, ":")[[1]][1]) * 60 * 60 + as.numeric(strsplit(input$initial_time, ":")[[1]][2]) * 60
       days <- total_seconds %/% (24 * 3600)  # Number of days
       remaining_seconds <- total_seconds %% (24 * 3600)
       hours <- remaining_seconds %/% 3600  # Number of hours
@@ -4832,4 +4834,14 @@ server <- function(input, output,session) {
 
   })
 
+  observe({
+    in_docker <- file.exists("/.dockerenv")
+
+    if(in_docker){
+      updateSelectizeInput(session = session, "run_type", choices = c("Docker"), selected = "Docker")
+    }
+    else{
+      updateSelectizeInput(session = session, "run_type", choices = c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
+    }
+  })
 }
