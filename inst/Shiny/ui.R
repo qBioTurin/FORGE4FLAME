@@ -1683,18 +1683,23 @@ ui <- dashboardPage(
                     div(style = "height:10px"),
                     fluidRow(
                       column(5,offset = 2,
-                             selectInput("Room_Counters_A_C_selectize",choices = "",label = "Choice the room:")
-                      )
-                    ),
-                    fluidRow(
-                      column(10,
-                             plotOutput("A_C_CountersPlot")
-                      ),
-                      column(2,
-                             checkboxGroupInput("A_C_CountersDisease_radioButt",
-                                                choices = c("Mean curves", "Area from all simulations"),
-                                                label = "Show:",selected = character()
+                             selectInput("Room_Counters_A_C_selectize",choices = "",
+                                         label = div(class = "icon-container", style="margin-top:20px",
+                                                     h3("Choice of the room:", icon("info-circle")),
+                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. Let note that the rooms characterized by no contacts and no virus are not proposed in the ")
+                                         )
                              )
+                      ),
+                      fluidRow(
+                        column(10,
+                               plotOutput("A_C_CountersPlot")
+                        ),
+                        column(2,
+                               checkboxGroupInput("A_C_CountersDisease_radioButt",
+                                                  choices = c("Mean curves", "Area from all simulations"),
+                                                  label = "Show:",selected = character()
+                               )
+                        )
                       )
                     )
                 )
@@ -1730,7 +1735,10 @@ ui <- dashboardPage(
                                               )
                             ),
                             column(2,
-                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area","Contact","Aerosol","Cumulative Aerosol"))
+                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area",
+                                                                                                          "Cumulative #Contacts" = "ComulContact",
+                                                                                                          "Aerosol" = "Aerosol",
+                                                                                                          "Cumulative Aerosol" = "ComulAerosol"))
                             ),
                             column(2,
                                    radioButtons("visualLabel_select","Show in the room:",
@@ -1759,7 +1767,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(12,
-                             uiOutput("TwoDMapPlots", , width = "100%", height = "1200px")
+                             uiOutput("TwoDMapPlots", width = "100%", height = "1200px")
                       )
                     )
                 )

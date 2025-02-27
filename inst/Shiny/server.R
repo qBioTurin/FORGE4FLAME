@@ -3822,7 +3822,8 @@ server <- function(input, output,session) {
                                    COUNTERScsv = NULL,
                                    A_C_COUNTERS = NULL,
                                    Mapping = NULL,
-                                   FLAGmodelLoaded = FALSE
+                                   FLAGmodelLoaded = FALSE,
+                                   MappingID_room = FALSE,
   )
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
@@ -3998,6 +3999,7 @@ server <- function(input, output,session) {
 
       Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
 
+      postprocObjects$MappingID_room = Mapping
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
 
       CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
@@ -4500,6 +4502,7 @@ server <- function(input, output,session) {
       colorDisease$State = factor(x = colorDisease$State, levels = disease)
 
       #####
+      Mapping = postprocObjects$MappingID_room
 
       if(colorFeat == "Area"){
         roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
@@ -4517,12 +4520,10 @@ server <- function(input, output,session) {
                                canvasObjects$rooms %>% select(Name,colorFill) ,
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
-      }else if(colorFeat == "Contact"){
+      }else if(colorFeat == "ComulContact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
-          filter(Folder == folder , time <= timeIn)%>%
+          filter(Folder == folder , time <= timeIn) %>%
           select(-Folder)
-
-        ### Check if it has all the data for each time step
 
         if(dim(CONTACTcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
@@ -4530,6 +4531,11 @@ server <- function(input, output,session) {
           CONTACTcsv = CONTACTcsv %>% group_by(CanvasID,Name,area,type) %>%
             summarize(counts = n()) %>%
             rename(IDtoColor = counts)
+
+          CONTACTcsv = Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
+            full_join(CONTACTcsv, by = c("Name", "CanvasID","type","area")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
           if("IDtoColor" %in% colnames(roomsINcanvas))
             roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
           roomsINcanvas = merge(roomsINcanvas,CONTACTcsv)
@@ -4546,43 +4552,23 @@ server <- function(input, output,session) {
           roomsINcanvas$IDtoColor = 0
         }else{
 
-          full_grid <- merge(
-            expand.grid(
-              time = timeGrid,
-              ID = unique(postprocObjects$Mapping$ID)
-            ),
-            AEROSOLcsv %>% select(ID,Name, CanvasID,type,area) %>% distinct()
-          )
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOLcsv <- full_grid %>%
-            full_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
-            mutate(virus_concentration = ifelse(is.na(virus_concentration), 0, virus_concentration))
-
           AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
             filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
             rename(IDtoColor = virus_concentration)
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c( "Name", "CanvasID","type","area")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
           if("IDtoColor" %in% colnames(roomsINcanvas))
             roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
           roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
         }
-      }else if(colorFeat == "Cumulative Aerosol"){
+      }else if(colorFeat == "ComulAerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)%>%
           group_by(type,area,Name,CanvasID) %>%
           mutate(virus_concentration = cumsum(virus_concentration))
-
-        full_grid <- merge(
-          expand.grid(
-            time = timeGrid,
-            ID = unique(postprocObjects$Mapping$ID)
-          ),
-          AEROSOLcsv %>% select(ID,Name, CanvasID,type,area) %>% distinct()
-        )
-        # here i give to each room for each step a virus concetration = 0 when is not present
-        AEROSOLcsv <- full_grid %>%
-          left_join(AEROSOLcsv, by = c("time", "ID","Name", "CanvasID","type","area")) %>%
-          mutate(virus_concentration = ifelse(is.na(virus_concentration), 0, virus_concentration))
-
 
         if(dim(AEROSOLcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
@@ -4590,6 +4576,12 @@ server <- function(input, output,session) {
           AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
             filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
             rename(IDtoColor = virus_concentration)
+
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
           if("IDtoColor" %in% colnames(roomsINcanvas))
             roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
           roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
@@ -4610,30 +4602,18 @@ server <- function(input, output,session) {
         df$CanvasID = factor(df$CanvasID, levels = floors$Name)
       }
 
-      if( colorFeat %in% c("Contact","Aerosol","Cumulative Aerosol") ){
+      if( colorFeat %in% c("ComulContact","Aerosol","ComulAerosol") ){
+        MinCol =0
         if(colorFeat == "Aerosol"){
-          MinCol = min(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == folder) %>% pull(virus_concentration))
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == folder) %>% pull(virus_concentration))
-        }else if(colorFeat == "Contact"){
-          MinCol = min(postprocObjects$CONTACTcsv %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID)   %>%
-                         count() %>%
-                         pull(n) )
+        }else if(colorFeat == "ComulContact"){
           MaxCol = max(postprocObjects$CONTACTcsv %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID)   %>%
                          count() %>%
                          pull(n) )
-        }else if(colorFeat == "Cumulative Aerosol"){
-
-          MinCol = min(postprocObjects$AEROSOLcsv %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID) %>%
-                         mutate(virus_concentration = cumsum(virus_concentration))  %>%
-                         pull(virus_concentration))
+        }else if(colorFeat == "ComulAerosol"){
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID) %>%
@@ -4687,8 +4667,7 @@ server <- function(input, output,session) {
 
       canvasObjects$plot_2D <- pl
 
-
-    })
+      })
 
     # ### HeatMap plot
     #
@@ -4723,6 +4702,7 @@ server <- function(input, output,session) {
     visualAgentID = input$visualAgentID_select
 
     isolate({
+      Mapping = postprocObjects$MappingID_room
       step = as.numeric(canvasObjects$starting$step)
       timeIn <- input$animation/step
 
@@ -4759,11 +4739,11 @@ server <- function(input, output,session) {
         filter(y != 10000)
 
 
-      if(colorFeat %in% c("Cumulative Aerosol", "Aerosol") ){
+      if(colorFeat %in% c("ComulAerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
 
-        if(colorFeat == "Cumulative Aerosol")
+        if(colorFeat == "ComulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
             mutate(virus_concentration = cumsum(virus_concentration))
@@ -4776,14 +4756,18 @@ server <- function(input, output,session) {
             select(virus_concentration,type,area,Name,CanvasID) %>%
             rename(IDtoColor = virus_concentration)
 
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
           if("IDtoColor" %in% colnames(df))
             df = df %>% select(-IDtoColor )
 
           df = merge(df,AEROSOLcsv)
-
         }
         pl$layers[[1]]$data = df
-      }else if(colorFeat == "Contact"){
+      }else if(colorFeat == "ComulContact"){
         CONTACTcsv = postprocObjects$CONTACTcsv   %>%
           filter(Folder == folder , time <= timeIn)
 
@@ -4794,8 +4778,12 @@ server <- function(input, output,session) {
             group_by(CanvasID,Name,area,type) %>%
             count() %>%
             rename(IDtoColor = n)
+          CONTACTcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
+            left_join(CONTACTcsv, by = c("Name", "CanvasID","type","area")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
           if("IDtoColor" %in% colnames(df))
-            df = df %>% select(- IDtoColor )
+            df = df %>% select(-IDtoColor )
           df = merge(df,CONTACTcsv)
         }
         pl$layers[[1]]$data = df
@@ -4806,9 +4794,9 @@ server <- function(input, output,session) {
                    aes(x = x, y = z, group = id, shape = agent_type,
                        color = disease_stateString ), size = 5, stroke = 2) +
         scale_shape_manual(values = shapeAgents$Shape,
-                           limits = shapeAgents$Agents,
-                           breaks = shapeAgents$Agents,
-                           drop = FALSE)
+                           #limits = shapeAgents$Agents,
+                           breaks = shapeAgents$Agents)
+                           #drop = FALSE)
 
 
       if(! Label  %in% c("None","Agent ID")){
