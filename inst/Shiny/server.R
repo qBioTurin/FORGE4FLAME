@@ -4428,8 +4428,15 @@ server <- function(input, output,session) {
     })
   })
 
-  observeEvent(input$animationStep,{
+  animationStep <- debounce(reactive({input$animationStep}), 1000L)
+
+  observeEvent(animationStep(),{
     req(canvasObjects$TwoDVisual)
+
+    if(is.na(input$animationStep) || input$animationStep == "") {
+      shinyalert("The time step cannot be less than 1 sec.", type = "error")
+      return()
+    }
 
     if( input$animationStep < 1 ) {
       shinyalert("The time step cannot be less than 1 sec.",type = "error")
