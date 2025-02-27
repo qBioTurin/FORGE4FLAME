@@ -1716,7 +1716,7 @@ ui <- dashboardPage(
                     #   )
                     # ),
                     fluidRow(
-                      box(width = 10, status = "primary",
+                      box(width = 12, status = "primary",
                           solidHeader = TRUE, collapsible = T,
                           title = div(class = "icon-container", style="margin-top:20px",
                                       h4("Features ", icon("info-circle")),
@@ -1750,6 +1750,11 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
+                      column(2,
+                             h4("2D visualisation")
+                      )
+                    ),
+                    fluidRow(
                       column(9,
                              sliderInput("animation", "Time in the animation (sec):",
                                          min = 0, max = 1,
@@ -1761,7 +1766,7 @@ ui <- dashboardPage(
                              actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next"),
                                           class = "btn-primary")
                       ),
-                      column(2,
+                      column(1,
                              numericInput("animationStep",label = "Set the animation step (sec):", value = 1, min = 1)
                       )
                     ),
