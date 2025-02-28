@@ -1686,7 +1686,7 @@ ui <- dashboardPage(
                              selectInput("Room_Counters_A_C_selectize",choices = "",
                                          label = div(class = "icon-container", style="margin-top:20px",
                                                      h3("Choice of the room:", icon("info-circle")),
-                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. Let note that the rooms characterized by no contacts and no virus are not proposed in the ")
+                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
                                          )
                              )
                       ),
@@ -1781,10 +1781,7 @@ ui <- dashboardPage(
               ),
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
-                    title = div(class = "icon-container", style="margin-top:20px",
-                                h3("Contact matrix", icon("info-circle")),
-                                div(class = "icon-text", "Contact matrix per hour")
-                    ),
+                    title = h3("Contact Matrix"),
                     plotOutput("ContactMatrix_plot", width = "100%", height = "1200px")
                 )
               ),

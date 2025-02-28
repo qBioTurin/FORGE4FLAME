@@ -4023,15 +4023,13 @@ server <- function(input, output,session) {
       CONTACTcsv$agent_id1 = agents[CONTACTcsv$agent_id1+1]
       CONTACTcsv$agent_id2 = agents[CONTACTcsv$agent_id2+1]
 
-      postprocObjects$CONTACTcsv = CONTACTcsv
-
-      # postprocObjects$CONTACTcsv = CONTACTcsv  %>%
-      #   arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
-      #   group_by(CanvasID,Folder, area, type, agent_id1, agent_id2) %>%
-      #   mutate(time_diff = time - lag(time, default = first(time))) %>%
-      #   filter( time_diff != 1) %>%
-      #   ungroup() %>%
-      #   select(-time_diff)
+      postprocObjects$CONTACTcsv = CONTACTcsv  %>%
+        arrange(CanvasID,Folder, area, type, agent_id1, agent_id2, time) %>%
+        group_by(CanvasID,Folder, area, type, agent_id1, agent_id2) %>%
+        mutate(time_diff = time - lag(time, default = first(time))) %>%
+        filter( time_diff != 1) %>%
+        ungroup() %>%
+        select(-time_diff)
 
       CONTACTmatrix$type1 = agents[CONTACTmatrix$type1+1]
       CONTACTmatrix$type2 = agents[CONTACTmatrix$type2+1]
@@ -4087,7 +4085,7 @@ server <- function(input, output,session) {
         geom_tile() +
         scale_fill_gradient(low = "blue", high = "red") +
         theme_bw() +
-        labs(title = "Contact Matrix Heatmap",
+        labs(title = "",
              x = "",
              y = "",
              fill = "Mean number of contact\n per hour") +
@@ -4589,8 +4587,7 @@ server <- function(input, output,session) {
             roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
           roomsINcanvas = merge(roomsINcanvas,AEROSOLcsv)
         }
-      }else if(colorFeat == "Co
-               umulAerosol"){
+      }else if(colorFeat == "CumulAerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)%>%
           group_by(type,area,Name,CanvasID) %>%
@@ -4855,8 +4852,11 @@ server <- function(input, output,session) {
   })
 
   #### END 2D visualisation ####
-  observeEvent(input$run,{
+  observeEvent(input$save_text_run, {
+    removeModal()
 
+    output_text <- system("docker exec flamegpu2-container echo 'Hello from container'", intern = TRUE)
+    print(output_text)
   })
 
 }
