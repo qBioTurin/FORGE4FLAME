@@ -695,10 +695,10 @@ server <- function(input, output,session) {
           }
         }
 
-        ### deleting rooms from whatif tables
+        ### Feleting rooms from whatif tables
         RoomToDelete =  paste0(objectDelete$type, "-", objectDelete$area)
-        canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>%
-          filter(Type != RoomToDelete)
+        if(nrow(canvasObjects$rooms_whatif) > 0)
+          canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != RoomToDelete)
       }
 
       deletingRoomFromCanvas(session,objectDelete,canvasObjects)
@@ -1804,7 +1804,14 @@ server <- function(input, output,session) {
 
       if(length(names(canvasObjects$agents)) == 0){
         canvasObjects$agents <- NULL
-        canvasObjects$agents_whatif <- NULL
+        canvasObjects$agents_whatif <- data.frame(
+                                         Measure = character(),
+                                         Type = character(),
+                                         Parameters = character(),
+                                         From = numeric(),
+                                         To = numeric(),
+                                         stringsAsFactors = FALSE
+                                       )
         updateSelectizeInput(session, inputId = "id_new_agent", choices = "", selected = "")
 
         updateSelectizeInput(session = session, "agent_mask",
@@ -1847,11 +1854,17 @@ server <- function(input, output,session) {
                              choices = c("", names(canvasObjects$agents)))
       }
 
-      for(i in 1:length(WHOLEmodel$resources)){
-        WHOLEmodel$resources[[i]]$roomResource <- WHOLEmodel$resources[[i]]$roomResource[, which(!names(WHOLEmodel$resources[[i]]$roomResource) == Agent)]
-        WHOLEmodel$resources[[i]]$waitingRoomsRand[which(!WHOLEmodel$resources[[i]]$waitingRoomsRand$Agent == Agent),]
-        WHOLEmodel$resources[[i]]$waitingRoomsDeter[which(!WHOLEmodel$resources[[i]]$waitingRoomsDeter$Agent == Agent),]
+      for(i in 1:length(canvasObjects$resources)){
+        canvasObjects$resources[[i]]$roomResource <- canvasObjects$resources[[i]]$roomResource[, which(!names(canvasObjects$resources[[i]]$roomResource) == Agent)]
+        canvasObjects$resources[[i]]$waitingRoomsRand[which(!canvasObjects$resources[[i]]$waitingRoomsRand$Agent == Agent),]
+        canvasObjects$resources[[i]]$waitingRoomsDeter[which(!canvasObjects$resources[[i]]$waitingRoomsDeter$Agent == Agent),]
       }
+
+      if(nrow(canvasObjects$agents_whatif) > 0)
+        canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>% filter(Type != Agent)
+
+      if(nrow(canvasObjects$initial_infected) > 0)
+        canvasObjects$initial_infected <- canvasObjects$initial_infected %>% filter(Type != Agent)
     }
   })
 
@@ -1893,12 +1906,15 @@ server <- function(input, output,session) {
       canvasObjects$agents[[Agent]]$RandFlow$Name = Agent
 
     new_agent_whatif <- canvasObjects$agents_whatif %>%
-      filter(name == input$id_agents_to_copy)
-    new_agent_whatif$name <- Agent
+      filter(Type == input$id_agents_to_copy)
 
-    canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>%
-      filter(name != Agent)
-    canvasObjects$agents_whatif <- rbind(canvasObjects$agents_whatif, new_agent_whatif)
+    if(nrow(new_agent_whatif) > 0){
+      new_agent_whatif$Type <- Agent
+
+      canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>%
+        filter(Type != Agent)
+      canvasObjects$agents_whatif <- rbind(canvasObjects$agents_whatif, new_agent_whatif)
+    }
 
     updateSelectizeInput(session = session,inputId ="id_class_agent",
                          selected = canvasObjects$agents[[Agent]]$Class)
@@ -3567,20 +3583,24 @@ server <- function(input, output,session) {
 
   ########### Render the saved data table   ##########
   output$agents_whatif <- renderDT({
-    datatable(canvasObjects$agents_whatif %>% mutate(Measure = as.factor(Measure),
-                                                     Type = as.factor(Type),
-                                                     Parameters= as.factor(Parameters) ),
-              filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = TRUE, info = FALSE,paging = FALSE,
-                             sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+    if(!is.null(canvasObjects$agents_whatif)){
+      datatable(canvasObjects$agents_whatif %>% mutate(Measure = as.factor(Measure),
+                                                       Type = as.factor(Type),
+                                                       Parameters= as.factor(Parameters) ),
+                filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
+                options = list(searching = TRUE, info = FALSE,paging = FALSE,
+                               sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+    }
   })
   output$rooms_whatif <- renderDT({
-    datatable(canvasObjects$rooms_whatif %>% mutate(Measure = as.factor(Measure),
-                                                    Type = as.factor(Type),
-                                                    Parameters= as.factor(Parameters) ),
-              filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
-              options = list(searching = TRUE, info = FALSE,paging = FALSE,
-                             sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+    if(!is.null(canvasObjects$rooms_whatif)){
+      datatable(canvasObjects$rooms_whatif %>% mutate(Measure = as.factor(Measure),
+                                                      Type = as.factor(Type),
+                                                      Parameters= as.factor(Parameters) ),
+                filter = 'top', selection = "single", rownames = FALSE, editable = TRUE,
+                options = list(searching = TRUE, info = FALSE,paging = FALSE,
+                               sort = TRUE, scrollX = TRUE, scrollY = TRUE) )
+    }
   })
 
   output$virus_info <- renderDT({
@@ -3747,7 +3767,22 @@ server <- function(input, output,session) {
       return()
     }
 
+    old_simulation_days <- canvasObjects$starting$simulation_days
     canvasObjects$starting$simulation_days <- simulation_days
+
+    if(nrow(canvasObjects$agents_whatif) > 0){
+      for(i in 1:nrow(canvasObjects$agents_whatif)){
+        if(canvasObjects$agents_whatif[i, "To"] == old_simulation_days)
+          canvasObjects$agents_whatif[i, "To"] <- simulation_days
+      }
+    }
+
+    if(nrow(canvasObjects$rooms_whatif) > 0){
+      for(i in 1:nrow(canvasObjects$rooms_whatif)){
+        if(canvasObjects$rooms_whatif[i, "To"] == old_simulation_days)
+          canvasObjects$rooms_whatif[i, "To"] <- simulation_days
+      }
+    }
 
     updateNumericInput(session = session, inputId = "ventilation_time_to", value = simulation_days)
     updateNumericInput(session = session, inputId = "mask_time_to", value = simulation_days)
@@ -4144,7 +4179,7 @@ server <- function(input, output,session) {
       DT::datatable(
         data.frame( FolderNames = paste(folders)) ,
         options = list(
-          dom = 't'  # Display only the table, not the default elements (e.g., search bar, length menu)
+          pageLength = 5
         ),
         editable = list(target = 'cell'),
         selection = 'single',
@@ -4837,14 +4872,14 @@ server <- function(input, output,session) {
                              size = 4)
       }
 
-      total_seconds = timeIn*step
+      total_seconds = timeIn*step + as.numeric(strsplit(input$initial_time, ":")[[1]][1]) * 60 * 60 + as.numeric(strsplit(input$initial_time, ":")[[1]][2]) * 60
       days <- total_seconds %/% (24 * 3600)  # Number of days
       remaining_seconds <- total_seconds %% (24 * 3600)
       hours <- remaining_seconds %/% 3600  # Number of hours
       remaining_seconds <- remaining_seconds %% 3600
       minutes <- remaining_seconds %/% 60  # Number of minutes
       seconds <- remaining_seconds %% 60   # Remaining seconds
-      title = labs(title = paste0(days, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"), x = "", y = "", color = "Disease state", shape = "Agent type")
+      title = labs(title = paste0(days+1, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"), x = "", y = "", color = "Disease state", shape = "Agent type")
 
       output[["plot_map"]] <- renderPlot({ pl + title })
 
