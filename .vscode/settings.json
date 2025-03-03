@@ -3,7 +3,8 @@
         "cmath": "cpp",
         "chrono": "cpp",
         "atomic": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "ostream": "cpp"
     },
     "cmake.sourceDirectory": "/home/dbaccega/Desktop/TrustAlert/FORGE4FLAME/inst/FLAMEGPU-FORGE4FLAME"
 }
