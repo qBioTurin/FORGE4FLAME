@@ -1482,14 +1482,16 @@ server <- function(input, output,session) {
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
       dir.create(paste0(temp_directory, "/obj"))
-      model = reactiveValuesToList(canvasObjects)
-      model$flame_dirs <- NULL
 
       matricesCanvas <- list()
       for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
         matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
       }
       canvasObjects$matricesCanvas <- matricesCanvas
+
+      model = reactiveValuesToList(canvasObjects)
+      model$flame_dirs <- NULL
+
       file_name <- glue("WHOLEmodel.RDs")
       saveRDS(model, file=file.path(temp_directory, file_name))
 
