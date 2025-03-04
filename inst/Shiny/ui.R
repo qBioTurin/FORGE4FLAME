@@ -1689,10 +1689,11 @@ ui <- dashboardPage(
                                                      div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
                                          )
                              )
-                      ),
-                      fluidRow(
+                      )
+                    ),
+                    fluidRow(
                         column(10,
-                               plotOutput("A_C_CountersPlot")
+                               plotOutput("A_C_CountersPlot", width = "100%")
                         ),
                         column(2,
                                checkboxGroupInput("A_C_CountersDisease_radioButt",
@@ -1700,7 +1701,6 @@ ui <- dashboardPage(
                                                   label = "Show:",selected = character()
                                )
                         )
-                      )
                     )
                 )
               ),

@@ -1,13 +1,13 @@
-#' @title Download for the first time all containers embedded in the workflows
+#' @title Download for the first time all containers embedded in the workflow
 #' @description This is a function that prepares the docker environment to be used for the first time the application is installed.
 #' @param containers.file, a character string with the name of the file which indicate which are
-#'  the initial set of containers to be downloaded. If NULL then the set is given by a
+#'   the initial set of containers to be downloaded. If NULL then the set is given by a
 #'   file called "containersNames.txt" located in the folder inst/Containers of F4F package.
 #' @author Pernice Simone
 #'
 #' @examples
 #'\dontrun{
-##'     #running runDocker
+#'      # Running downloadContainers
 #'      downloadContainers()
 #'
 #' }

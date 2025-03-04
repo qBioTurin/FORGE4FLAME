@@ -1648,6 +1648,17 @@ server <- function(input, output,session) {
       UpdatingData(input,output,canvasObjects,mess,areasColor, session)
       postprocObjects$FLAGmodelLoaded = TRUE
     })
+
+    postprocObjects$evolutionCSV = NULL
+    postprocObjects$Filter_evolutionCSV = NULL
+    postprocObjects$CONTACTcsv = NULL
+    postprocObjects$CONTACTmatrix = NULL
+    postprocObjects$AEROSOLcsv = NULL
+    postprocObjects$COUNTERScsv = NULL
+    postprocObjects$A_C_COUNTERS = NULL
+    postprocObjects$Mapping = NULL
+    postprocObjects$FLAGmodelLoaded = FALSE
+    postprocObjects$MappingID_room = FALSE
     # )
     removeModal()
   })
