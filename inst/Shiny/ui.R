@@ -500,14 +500,10 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            fluidRow(
-              column(10,
-                     div(class = "icon-container",
-                         h4("Agent definition ", icon("info-circle")),
-                         div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
-                     )
+            title = div(class = "icon-container",
+                  h4("Agent definition ", icon("info-circle")),
+                  div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
               ),
-            ),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
@@ -539,15 +535,11 @@ ui <- dashboardPage(
           ),
           box(
             width = 12,
-            collapsible = T,
-            fluidRow(
-              column(10,
-                     div(class = "icon-container",
-                         h4("Determined flow ", icon("info-circle")),
-                         div(class = "icon-text", "For each determined flow the first and last components must be the Spawnroom and the time associated to the last element of each flow (the Spawnroom) doesn't matter. This is because an agent starts and ends its flow outside the environment and the next entry time will be calculated automatically from the agent's time scheduling.")
-                     )
-              )
+            title = div(class = "icon-container",
+                        h4("Determined flow ", icon("info-circle")),
+                        div(class = "icon-text", "For each determined flow the first and last components must be the Spawnroom and the time associated to the last element of each flow (the Spawnroom) doesn't matter. This is because an agent starts and ends its flow outside the environment and the next entry time will be calculated automatically from the agent's time scheduling.")
             ),
+            collapsible = T,
             fluidRow(
               column(2,offset = 1,
                      selectizeInput(inputId= "Det_select_room_flow",
@@ -591,10 +583,10 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            fluidRow(column(5, div(class = "icon-container",
-                                   h4("Random flow ", icon("info-circle")),
-                                   div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
-            ))),
+            title = div(class = "icon-container",
+                        h4("Random flow ", icon("info-circle")),
+                        div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
+            ),
             fluidRow(
               column(2,offset = 1,
                      selectizeInput(inputId= "Rand_select_room_flow",
@@ -628,7 +620,7 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            fluidRow(column(5, tags$h4("Entry flow"))),
+            title = "Entry flow",
             fluidRow(
               column(4,offset = 1,
                      fluidRow(
@@ -1585,7 +1577,7 @@ ui <- dashboardPage(
                         column(
                           2,
                           offset = 1,
-                          selectInput("run_type", "Select run type:", choices=c("Without Docker (with visualisation)", "Without Docker (without visualisation)", "Docker"), selected = "Docker")
+                          selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
                         )
                       ),
                       fluidRow(
