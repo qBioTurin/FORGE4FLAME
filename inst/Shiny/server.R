@@ -4740,32 +4740,13 @@ server <- function(input, output,session) {
 
       })
 
-    # ### HeatMap plot
-    #
-    # plHeatmap = ggplot(simulation_log %>% filter(time == 7)) +
-    #   scale_y_reverse() +
-    #   facet_wrap(~CanvasID) +
-    #   geom_rect(data = df,
-    #             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill= "white")+
-    #   stat_density_2d(geom = "polygon",
-    #                   aes(x = x, y = z, group = disease_stateString, fill = disease_stateString, alpha = ..level..),
-    #                   bins = 4)  +
-    #   scale_fill_manual(values = colorDisease$Col,
-    #                     limits = (colorDisease$State),
-    #                     labels = (colorDisease$State)) +
-    #   labs(title = "Agent Concentration Heatmap",
-    #        x = "",
-    #        y = "",
-    #        fill = "Disease State") +
-    #   theme_dark()
-
   })
 
   observe({
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
 
-    pl = req( canvasObjects$plot_2D)
+    pl = req(canvasObjects$plot_2D)
     simulation_log = req(canvasObjects$TwoDVisual)
     timeIn <- req(input$animation)
     colorFeat = input$visualColor_select
@@ -4817,7 +4798,8 @@ server <- function(input, output,session) {
         if(colorFeat == "CumulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(type,area,Name,CanvasID) %>%
-            mutate(virus_concentration = cumsum(virus_concentration))
+            summarise(virus_concentration = sum(virus_concentration)) %>%
+            mutate(time = timeIn)
 
         if(dim(AEROSOLcsv)[1] == 0){
           df$IDtoColor = 0
