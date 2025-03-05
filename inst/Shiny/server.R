@@ -4522,17 +4522,13 @@ server <- function(input, output,session) {
 
     updateSliderInput(session, "animation", value = new_val)
   })
-  # Get unique CanvasIDs
-  canvas_ids <- reactive({
-    simulation_log = req(canvasObjects$TwoDVisual)
-    unique(simulation_log$CanvasID)
-  })
 
   output$TwoDMapPlots <- renderUI({
     simulation_log = req(canvasObjects$TwoDVisual)
+    num_floors_in_canvas <- unique(simulation_log$CanvasID)
 
-    H = length(canvas_ids())*300
-    plot_output_list <- plotOutput(outputId = paste0("plot_map"), height = paste0(H,"px") )
+    H = length(num_floors_in_canvas)*300
+    plot_output_list <- plotOutput(outputId = "plot_map", height = paste0(H,"px") )
 
     (plot_output_list)
   })
@@ -4850,7 +4846,7 @@ server <- function(input, output,session) {
                            #limits = shapeAgents$Agents,
                            breaks = shapeAgents$Agents) +
                            #drop = FALSE)
-        guides(shape = guide_legend(ncol=10, order=1))
+        guides(shape = guide_legend(ncol=8, order=1))
 
 
       if(! Label  %in% c("None","Agent ID")){
@@ -4879,6 +4875,22 @@ server <- function(input, output,session) {
       output[["plot_map"]] <- renderPlot({ pl + title })
 
     })
+  })
+
+  observe({
+    is_docker <- file.exists("/run/.dockerenv")
+    if(is_docker)
+      updateSelectInput(session = session, inputId = "run_type", choices = "Docker", selected = "Docker")
+    else
+      updateSelectInput(session = session, inputId = "run_type", choices = c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
+
+    output$error_docker <- renderText({""})
+
+    is_docker_compose <- !is.na(Sys.getenv("COMPOSE_PROJECT_NAME", unset = NA))
+    if(is_docker && !is_docker_compose){
+      updateSelectInput(session = session, inputId = "run_type", choices = "", selected = "")
+      output$error_docker <- renderText({"It is not possible to run a simulation inside the F4F Docker. Use Docker Compose instead."})
+    }
   })
 
   #### END 2D visualisation ####

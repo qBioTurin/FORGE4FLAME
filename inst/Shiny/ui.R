@@ -1578,7 +1578,8 @@ ui <- dashboardPage(
                           2,
                           offset = 1,
                           selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
-                        )
+                        ),
+                        column(3, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
                       ),
                       fluidRow(
                         column(2,

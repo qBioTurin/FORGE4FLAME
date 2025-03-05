@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  forge4flame:
+    image: qbioturin/forge4flame
+    ports:
+      - "3839:3838"
+    container_name: forge4flame-container
+    restart: unless-stopped
+    volumes:
+      - shared-data:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/shared-socket:/tmp/shared-socket
+
+  flamegpu:
+    image: qbioturin/flamegpu2
+    container_name: flamegpu2-container
+    runtime: nvidia
+    stdin_open: true
+    tty: true
+    privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - shared-data:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - /tmp/shared-socket:/tmp/shared-socket 
+
+volumes:
+  shared-data:
+    driver: local
