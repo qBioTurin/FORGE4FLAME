@@ -3874,6 +3874,11 @@ server <- function(input, output,session) {
   shinyDirChoose(input, "dir", roots = c(wd = wdFolders), filetypes = c('', 'csv','txt'))
 
   # Get the selected folder path
+  observe(input$dir,{
+    dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
+    # Display the selected folder path
+    output$dirPath <- renderText({dirPath})
+  })
 observeEvent(input$LoadFolderPostProc_Button,{
   req(input$dir)
 
@@ -3887,10 +3892,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
     postprocObjects$FLAGmodelLoaded = F
     postprocObjects$evolutionCSV = NULL
   }
-  postprocObjects$dirPath = dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
+  postprocObjects$dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
 
-  # Display the selected folder path
-  output$dirPath <- renderText({dirPath})
 })
 
 
@@ -4370,7 +4373,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
                          limits = names(A_C_counters_colors),
                          labels = names(A_C_counters_colors),
                          drop = FALSE)+
-      theme_fancy()+ facet_wrap(~Counters,scales = "free")
+      theme_fancy()+ facet_wrap(~Counters,scales = "free")+
+      scale_x_continuous(name = "Days", breaks = seq(0,max(df$hour), by= 24 ), labels = unique(round(df$hour/24)))
 
 
     output$A_C_CountersPlot <- renderPlot({
