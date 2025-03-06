@@ -2,7 +2,7 @@
 % Please edit documentation in R/DockerDownload.R
 \name{downloadContainers}
 \alias{downloadContainers}
-\title{Download for the first time all containers embedded in the workflows}
+\title{Download for the first time all containers embedded in the workflow}
 \usage{
 downloadContainers(containers.file = NULL, tag = "latest")
 }
@@ -16,7 +16,7 @@ This is a function that prepares the docker environment to be used for the first
 }
 \examples{
 \dontrun{
-    #running runDocker
+     # Running downloadContainers
      downloadContainers()
 
 }

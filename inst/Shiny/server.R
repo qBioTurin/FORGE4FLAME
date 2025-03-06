@@ -3927,7 +3927,7 @@ server <- function(input, output,session) {
     rooms_file = paste0(dir,"/rooms_mapping.txt")
     if(!file.exists(rooms_file)){
       shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
-      remove_modal_spinner()
+      remove_modal_progress()
       return()
     }
 
@@ -3951,88 +3951,43 @@ server <- function(input, output,session) {
       G <- rbind(G, roomsINcanvas)
 
       postprocObjects$Mapping = G
-      ####
 
-      csv_files <- file.path(subfolders, "evolution.csv")
-      data_list <- lapply(csv_files, function(file) {
+      #### read all the files
+      read_and_process_csv <- function(file, col_names = NULL) {
         if (file.exists(file)) {
-          f = read_csv(file)
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
+          ifelse(is.null(col_names),
+                 f <- read_csv(file),
+                 f <- read_csv(file, col_names = col_names)
+                 )
+          f$Folder <- basename(dirname(file))
+          return(f)
         }
-      })
-      data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(data_list) == 0) return(NULL)
-      postprocObjects$evolutionCSV = do.call(rbind, data_list)
-      update_modal_progress(0.2)
+        return(NULL)
+      }
 
-      csv_files <- file.path(subfolders, "counters.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file)
-          colnames(f) = c("Day",
-                          "Agents birth", "Agents deaths", "Agents in quarantine",
-                          "Number of swabs", "Number of agents infected \noutside the environment")
+      # List of files and column names
+      file_info <- list(
+        list(name = "evolutionCSV", file = "evolution.csv", cols = NULL),
+        list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents birth", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
+        list(name = "AEROSOLcsv", file = "AEROSOL.csv", cols = c("time", "virus_concentration", "room_id")),
+        list(name = "CONTACTcsv", file = "CONTACT.csv", cols = c("time", "agent_id1", "agent_id2", "room_id")),
+        list(name = "CONTACTmatrix", file = "CONTACTS_MATRIX.csv", cols = c("time", "type1", "type2", "contacts"))
+      )
 
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(COUNTERSdata_list) == 0) return(NULL)
-      postprocObjects$COUNTERScsv = do.call(rbind, COUNTERSdata_list) %>% distinct()
-      update_modal_progress(0.2)
+      # Process files in parallel
+      for (i in seq_along(file_info)) {
+        csv_files <- file.path(subfolders, file_info[[i]]$file)
 
-      csv_files <- file.path(subfolders, "AEROSOL.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "virus_concentration", "room_id"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(AEROSOLdata_list) == 0) return(NULL)
-      postprocObjects$AEROSOLcsv = do.call(rbind, AEROSOLdata_list) %>% distinct()
-      update_modal_progress(0.2)
+        data_list <- lapply(csv_files, read_and_process_csv, col_names = file_info[[i]]$cols)
+        data_list <-Filter(Negate(is.null), data_list) # Remove NULLs
 
-      csv_files <- file.path(subfolders, "CONTACT.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,col_names = c("time", "agent_id1", "agent_id2", "room_id"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(CONTACTdata_list) == 0) return(NULL)
-      postprocObjects$CONTACTcsv = do.call(rbind, CONTACTdata_list) %>% distinct()
-      update_modal_progress(0.2)
+        if (length(data_list) == 0) next  # Skip empty results
 
-      csv_files <- file.path(subfolders, "CONTACTS_MATRIX.csv")
-      data_list <- lapply(csv_files, function(file) {
-        if (file.exists(file)) {
-          f = read_csv(file,
-                       col_names = c("time", "type1", "type2", "contacts"))
-          f$Folder= basename(dirname(file))
-          f
-        } else {
-          NULL
-        }
-      })
-      CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
-      if (length(CONTACTdata_list) == 0) return(NULL)
-      postprocObjects$CONTACTmatrix = do.call(rbind, CONTACTdata_list) %>% distinct()
-      update_modal_progress(0.2)
+        postprocObjects[[file_info[[i]]$name]] <- bind_rows(data_list) %>% distinct()
+        update_modal_progress(i / length(file_info))
+      }
+
+
     })
     remove_modal_progress()
     shinyalert("Everything is loaded!")
@@ -4070,9 +4025,13 @@ server <- function(input, output,session) {
                                                     coord = paste0(x,"-", z ,"-",CanvasID),
                                                     Name = rooms_id[coord] )
 
-      Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name)) %>% select(-coord,-x,-y,-z)
+      Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name))
 
-      postprocObjects$MappingID_room = Mapping
+      postprocObjects$MappingID_room = merge(roomsINcanvas %>% select(-ID, -typeID),
+                                             Mapping %>% select(-y,-coord) %>% rename(center_x = x, center_y = z),all.x = T)
+
+      Mapping = Mapping %>% select(-coord,-x,-y,-z)
+
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
 
       CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
@@ -4551,7 +4510,7 @@ server <- function(input, output,session) {
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
 
-    roomsINcanvas = req(canvasObjects$roomsINcanvas)
+    roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
     colorFeat = input$visualColor_select
     Label = input$visualLabel_select
@@ -4572,9 +4531,7 @@ server <- function(input, output,session) {
       colorDisease = data.frame(State = names(all_colors), Col = (all_colors),  stringsAsFactors = F)
       colorDisease$State = factor(x = colorDisease$State, levels = disease)
 
-      #####
-      Mapping = postprocObjects$MappingID_room
-
+      ##
       if(colorFeat == "Area"){
         roomsINcanvas = merge( roomsINcanvas %>% select(-colorFill),
                                canvasObjects$areas %>% select(-ID) ,
@@ -4599,12 +4556,12 @@ server <- function(input, output,session) {
         if(dim(CONTACTcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
         }else{
-          CONTACTcsv = CONTACTcsv %>% group_by(CanvasID,Name,area,type) %>%
+          CONTACTcsv = CONTACTcsv %>% group_by(CanvasID,Name,area,type,ID) %>%
             summarize(counts = n()) %>%
             rename(IDtoColor = counts)
 
-          CONTACTcsv = Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
-            full_join(CONTACTcsv, by = c("Name", "CanvasID","type","area")) %>%
+          CONTACTcsv = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            full_join(CONTACTcsv, by = c("Name", "CanvasID","type","area","ID")) %>%
             mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
           if("IDtoColor" %in% colnames(roomsINcanvas))
@@ -4624,11 +4581,12 @@ server <- function(input, output,session) {
         }else{
 
           AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>%
+            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
             rename(IDtoColor = virus_concentration)
           # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
-            left_join(AEROSOLcsv, by = c( "Name", "CanvasID","type","area")) %>%
+          AEROSOLcsv <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c( "Name", "CanvasID","type","area","ID")) %>%
             mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
           if("IDtoColor" %in% colnames(roomsINcanvas))
@@ -4646,12 +4604,13 @@ server <- function(input, output,session) {
           roomsINcanvas$IDtoColor = 0
         }else{
           AEROSOLcsv= AEROSOLcsv %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>% select(virus_concentration,type,area,Name,CanvasID) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>%
+            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
             rename(IDtoColor = virus_concentration)
 
           # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
-            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area")) %>%
+          AEROSOLcsv <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area","ID")) %>%
             mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
           if("IDtoColor" %in% colnames(roomsINcanvas))
@@ -4682,13 +4641,13 @@ server <- function(input, output,session) {
         }else if(colorFeat == "CumulContact"){
           MaxCol = max(postprocObjects$CONTACTcsv %>%
                          filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID)   %>%
+                         group_by(type,area,Name,CanvasID,ID)   %>%
                          count() %>%
                          pull(n) )
         }else if(colorFeat == "CumulAerosol"){
           MaxCol = max(postprocObjects$AEROSOLcsv %>%
                          filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID) %>%
+                         group_by(type,area,Name,CanvasID,ID) %>%
                          mutate(virus_concentration = cumsum(virus_concentration)) %>%
                          pull(virus_concentration))
         }
@@ -4755,7 +4714,7 @@ server <- function(input, output,session) {
     visualAgentID = input$visualAgentID_select
 
     isolate({
-      Mapping = postprocObjects$MappingID_room
+      roomsINcanvas = postprocObjects$MappingID_room
       step = as.numeric(canvasObjects$starting$step)
       timeIn <- input$animation/step
 
@@ -4791,7 +4750,6 @@ server <- function(input, output,session) {
         filter(time == max(time)) %>%
         filter(y != 10000)
 
-
       if(colorFeat %in% c("CumulAerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
@@ -4807,12 +4765,12 @@ server <- function(input, output,session) {
         }else{
           AEROSOLcsv = AEROSOLcsv %>% mutate(difftime = (timeIn-time) ) %>%
             filter(difftime >= 0,  difftime == min(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID) %>%
+            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
             rename(IDtoColor = virus_concentration)
 
           # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOLcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
-            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area")) %>%
+          AEROSOLcsv <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(AEROSOLcsv, by = c("Name", "CanvasID","type","area","ID")) %>%
             mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
           if("IDtoColor" %in% colnames(df))
@@ -4829,11 +4787,12 @@ server <- function(input, output,session) {
           df$IDtoColor = 0
         }else{
           CONTACTcsv = CONTACTcsv %>%
-            group_by(CanvasID,Name,area,type) %>%
+            group_by(CanvasID,Name,area,type,ID) %>%
             count() %>%
-            rename(IDtoColor = n)
-          CONTACTcsv <- Mapping %>% select(Name, CanvasID,type,area) %>% distinct() %>%
-            left_join(CONTACTcsv, by = c("Name", "CanvasID","type","area")) %>%
+            rename(IDtoColor = n) %>% ungroup()
+
+          CONTACTcsv <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(CONTACTcsv, by = c("Name", "CanvasID","type","area","ID")) %>%
             mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
           if("IDtoColor" %in% colnames(df))
