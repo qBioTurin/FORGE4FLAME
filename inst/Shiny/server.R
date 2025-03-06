@@ -3915,7 +3915,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
       return()
 
     dir = req(postprocObjects$dirPath)
-    show_modal_progress_line()
+    show_modal_progress_line(text = "We are preparing everything.")
 
     # Evolution
     subfolders <- list.dirs(dir, recursive = FALSE)
@@ -3993,12 +3993,12 @@ observeEvent(input$LoadFolderPostProc_Button,{
     if(!postprocObjects$FLAGmodelLoaded)
       return()
 
-    show_modal_spinner()
-
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
     req(postprocObjects$FLAGmodelLoaded )
+
+    show_modal_spinner()
 
     isolate({
       dir = req(postprocObjects$dirPath)
@@ -4012,6 +4012,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
       AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
 
       if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
+        remove_modal_spinner()
         shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
         return()
       }
