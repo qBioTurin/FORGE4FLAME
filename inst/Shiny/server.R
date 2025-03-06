@@ -3853,7 +3853,8 @@ server <- function(input, output,session) {
 
   #### START post processing #####
 
-  postprocObjects = reactiveValues(evolutionCSV = NULL,
+  postprocObjects = reactiveValues(DirPath = NULL,
+                                   evolutionCSV = NULL,
                                    Filter_evolutionCSV = NULL,
                                    CONTACTcsv = NULL,
                                    CONTACTmatrix = NULL,
@@ -3873,23 +3874,30 @@ server <- function(input, output,session) {
   shinyDirChoose(input, "dir", roots = c(wd = wdFolders), filetypes = c('', 'csv','txt'))
 
   # Get the selected folder path
-  dirPath <- reactive({
-    req(input$dir)
-    if(is.null(canvasObjects$roomsINcanvas)){
+observeEvent(input$LoadFolderPostProc_Button,{
+  req(input$dir)
+
+   if(is.null(canvasObjects$roomsINcanvas)){
       shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
       return()
-    }
-    parseDirPath(roots = c(wd = wdFolders), input$dir)
-  })
+   }
+
+  if(!is.null(postprocObjects$dirPath)){
+    # to fix
+    postprocObjects$FLAGmodelLoaded = F
+    postprocObjects$evolutionCSV = NULL
+  }
+  postprocObjects$dirPath = dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
 
   # Display the selected folder path
-  output$dirPath <- renderText({
-    dirPath()
-  })
+  output$dirPath <- renderText({dirPath})
+})
+
+
 
   # Check for required files in subfolders
   valid_subfolders <- reactive({
-    dir = req(dirPath())
+    dir = req(postprocObjects$dirPath)
     subfolders <- list.dirs(dir, recursive = FALSE)
     valid <- sapply(subfolders, function(subfolder) {
       all(file.exists(file.path(subfolder, required_files)))
@@ -3899,21 +3907,11 @@ server <- function(input, output,session) {
     }
   })
 
-  # Create a dropdown to select a subfolder
-  # output$subfolderUI <- renderUI({
-  #   if (req(length(valid_subfolders()) != 0)) {
-  #     selectInput("selectedSubfolder", "Select Subfolder", choices = c("",basename(valid_subfolders())),selected = "" )
-  #   }
-  #   else{
-  #     selectInput("selectedSubfolder", "Select Subfolder", choices = c("" ,selected = "" ))
-  #   }
-  # })
-
   observe({
     if(!postprocObjects$FLAGmodelLoaded)
       return()
 
-    dir = req(dirPath())
+    dir = req(postprocObjects$dirPath)
     show_modal_progress_line()
 
     # Evolution
@@ -3949,10 +3947,10 @@ server <- function(input, output,session) {
       #### read all the files
       read_and_process_csv <- function(file, col_names = NULL) {
         if (file.exists(file)) {
-          ifelse(is.null(col_names),
-                 f <- read_csv(file),
-                 f <- read_csv(file, col_names = col_names)
-                 )
+          f <- read_csv(file)
+          if(!is.null(col_names))
+            colnames(f) = col_names
+
           f$Folder <- basename(dirname(file))
           return(f)
         }
@@ -3998,7 +3996,7 @@ server <- function(input, output,session) {
     req(postprocObjects$FLAGmodelLoaded )
 
     isolate({
-      dir = req(dirPath())
+      dir = req(postprocObjects$dirPath)
       roomsINcanvas = req(canvasObjects$roomsINcanvas)
       #### read all the areosol and contact ####
       subfolders <- list.dirs(dir, recursive = FALSE)
@@ -4055,12 +4053,12 @@ server <- function(input, output,session) {
       # Count the number of unique meetings per hour
       C_COUNTERS <-  postprocObjects$CONTACTcsv %>%
         mutate(hour = ceiling((time*step)/(60*60)) ) %>%  # Convert time to hourly bins
-        group_by(CanvasID,Name,area,type,Folder,hour) %>%
+        group_by(CanvasID,Name,area,type,Folder,hour,ID) %>%
         summarise(contact_counts = n())
 
       A_COUNTERS =postprocObjects$AEROSOLcsv   %>%
         mutate( hour = ceiling((time*step)/(60*60)) ) %>%
-        group_by(CanvasID,Name,area,type,Folder,hour) %>%
+        group_by(CanvasID,Name,area,type,Folder,hour,ID) %>%
         summarize(virus_concentration = mean(virus_concentration) )
 
       A_C_COUNTERS = merge(C_COUNTERS , A_COUNTERS, all = T)
@@ -4068,7 +4066,7 @@ server <- function(input, output,session) {
       A_C_COUNTERS[is.na(A_C_COUNTERS)] = 0
       postprocObjects$A_C_COUNTERS = A_C_COUNTERS
 
-      rooms = unique( paste(A_C_COUNTERS$CanvasID, " ; ", A_C_COUNTERS$area, " ; ", A_C_COUNTERS$Name) )
+      rooms = unique( paste(A_C_COUNTERS$CanvasID, " ; ", A_C_COUNTERS$area, " ; ", A_C_COUNTERS$Name, " ;  ID ", A_C_COUNTERS$ID) )
       updateSelectInput(session = session, inputId = "Room_Counters_A_C_selectize",
                         choices = c("",rooms),selected = "")
 
@@ -4302,8 +4300,8 @@ server <- function(input, output,session) {
     MAX_HOUR <- as.numeric(input$simulation_days) * 24
 
     df = df %>%
-      filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
-      select(-CanvasID,-Name,-area,-type) %>%
+      filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3], ID ==  gsub(Room[4],replacement = "",pattern = "ID  ") ) %>%
+      select(-CanvasID,-Name,-area,-type,-ID) %>%
       select(-Folder) %>%
       complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Contacts = 0, `Virus concentration` = 0)) %>%
       tidyr::gather(-hour, value =  "Number", key = "Counters")
@@ -4394,7 +4392,7 @@ server <- function(input, output,session) {
     isolate({
         show_modal_spinner()
 
-        CSVdatapath = paste0(dirPath(), "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
+        CSVdatapath = paste0(postprocObjects$dirPath, "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
 
         dataframe <- read_csv(CSVdatapath)
         colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
@@ -4471,7 +4469,7 @@ server <- function(input, output,session) {
       return()
     }
 
-    updateSliderInput("animation", session = session,value = input$animation, step =  input$animationStep)
+    updateSliderInput("animation", session = session, value = input$animation, step =  input$animationStep)
   })
   observeEvent(input$next_step_visual, {
     req(canvasObjects$TwoDVisual)
@@ -4692,6 +4690,21 @@ server <- function(input, output,session) {
               legend.title = element_text(face = "bold", size = 18),
               strip.text = element_text(size = 18, face = "bold"))
 
+
+      if(! Label  %in% c("None","Agent ID")){
+        df = df %>% rename(name = Name, id = ID)
+        pl = pl + geom_label(data = df,
+                             aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
+                                 label = get(tolower(Label)) ),
+                             color = "black", size = 4)
+      }else if(Label == "Agent ID"){
+        dfSim = simulation_log %>% filter(time == timeIn)
+        pl = pl + geom_label(data = dfSim,
+                             aes(x = x, y = z,
+                                 label = id, col = disease_stateString ),
+                             size = 4)
+      }
+
       canvasObjects$plot_2D <- pl
 
       })
@@ -4809,13 +4822,14 @@ server <- function(input, output,session) {
         guides(shape = guide_legend(ncol=8, order=1))
 
 
-      if(! Label  %in% c("None","Agent ID")){
-        df = df %>% rename(name = Name)
-        pl = pl + geom_label(data = df,
-                             aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
-                                 label = get(tolower(Label)) ),
-                             color = "black", size = 4)
-      }else if(Label == "Agent ID"){
+      # if(! Label  %in% c("None","Agent ID")){
+      #   df = df %>% rename(name = Name)
+      #   pl = pl + geom_label(data = df,
+      #                        aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
+      #                            label = get(tolower(Label)) ),
+      #                        color = "black", size = 4)
+      # }else
+        if(Label == "Agent ID"){
         dfSim = simulation_log %>% filter(time == timeIn)
         pl = pl + geom_label(data = dfSim,
                              aes(x = x, y = z,
