@@ -4840,8 +4840,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
       #                        color = "black", size = 4)
       # }else
         if(Label == "Agent ID"){
-        dfSim = simulation_log %>% filter(time == timeIn)
-        pl = pl + geom_label(data = dfSim,
+        #dfSim = simulation_log %>% filter(time == timeIn)
+        pl = pl + geom_label(data = simulation_log,
                              aes(x = x, y = z,
                                  label = id, col = disease_stateString ),
                              size = 4)
