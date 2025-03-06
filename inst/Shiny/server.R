@@ -3874,7 +3874,7 @@ server <- function(input, output,session) {
   shinyDirChoose(input, "dir", roots = c(wd = wdFolders), filetypes = c('', 'csv','txt'))
 
   # Get the selected folder path
-  observe(input$dir,{
+  observeEvent(input$dir,{
     dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
     # Display the selected folder path
     output$dirPath <- renderText({dirPath})
