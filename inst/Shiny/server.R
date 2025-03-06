@@ -3915,7 +3915,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
       return()
 
     dir = req(postprocObjects$dirPath)
-    show_modal_progress_line(text = "We are preparing everything.")
+    show_modal_progress_line()
 
     # Evolution
     subfolders <- list.dirs(dir, recursive = FALSE)
@@ -3998,7 +3998,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
     req(postprocObjects$FLAGmodelLoaded )
 
-    show_modal_spinner()
+    show_modal_spinner(text = "We are preparing everything.")
 
     isolate({
       dir = req(postprocObjects$dirPath)
