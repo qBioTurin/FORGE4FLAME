@@ -1744,9 +1744,9 @@ ui <- dashboardPage(
                                                                                                           "Cumulative Aerosol" = "CumulAerosol"))
                             ),
                             column(2,
-                                   radioButtons("visualLabel_select","Show in the room:",
+                                   radioButtons("visualLabel_select","Show in the plot:",
                                                 selected = "None",
-                                                choices = c("None","ID","Name", "Type", "Area","Agent ID"))
+                                                choices = c("None", "ID", "Name", "Type", "Area", "Agent ID"))
                             )
 
                           )
