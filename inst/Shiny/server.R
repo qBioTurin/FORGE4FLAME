@@ -4379,7 +4379,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
                          labels = names(A_C_counters_colors),
                          drop = FALSE)+
       theme_fancy()+ facet_wrap(~Counters,scales = "free")+
-      scale_x_continuous(name = "Day", breaks = seq(0,max(df$hour), by= 24 ), labels = unique(round(df$hour/24)))
+      scale_x_continuous(name = "Day", breaks = seq(0,max(df$hour), by= 24 ), labels = seq(0,max(df$hour), by= 24 )/24)
 
 
     output$A_C_CountersPlot <- renderPlot({
