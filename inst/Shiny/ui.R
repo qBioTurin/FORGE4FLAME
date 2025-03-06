@@ -1602,7 +1602,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(
-                        width = 4,
+                        width = 1,
                         offset = 1,
                         shinyDirButton("dir", "Select Folder", "Upload")
                         # fileInput(
@@ -1614,7 +1614,16 @@ ui <- dashboardPage(
                         # )
                       ),
                       column(
-                        width = 6,
+                        1,
+                        #style = "margin-top: 20px;",
+                        actionButton(
+                          label = "Load",
+                          icon = shiny::icon("upload"),
+                          inputId = "LoadFolderPostProc_Button"
+                        )
+                      ),
+                      column(
+                        width = 5,
                         style = "margin-top: 20px;",
                         verbatimTextOutput("dirPath")
                         # actionButton(
@@ -1737,7 +1746,7 @@ ui <- dashboardPage(
                             column(2,
                                    radioButtons("visualLabel_select","Show in the room:",
                                                 selected = "None",
-                                                choices = c("None","Name", "Type", "Area","Agent ID"))
+                                                choices = c("None","ID","Name", "Type", "Area","Agent ID"))
                             )
 
                           )
