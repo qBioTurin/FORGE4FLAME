@@ -23,6 +23,7 @@
 #' @import shiny
 #' @import shinyWidgets
 #' @import htmltools
+# @import future.apply
 #'
 #' @importFrom utils read.table write.table
 #'
