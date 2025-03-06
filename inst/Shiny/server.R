@@ -4750,8 +4750,6 @@ server <- function(input, output,session) {
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
 
-        print("CIAO")
-
         if(colorFeat == "CumulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
             group_by(ID, type,area,Name,CanvasID) %>%
