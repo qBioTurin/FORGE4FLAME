@@ -3884,6 +3884,10 @@ server <- function(input, output,session) {
   # Get the selected folder path
   dirPath <- reactive({
     req(input$dir)
+    if(is.null(canvasObjects$roomsINcanvas)){
+      shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
+      return()
+    }
     parseDirPath(roots = c(wd = wdFolders), input$dir)
   })
 
@@ -3916,7 +3920,7 @@ server <- function(input, output,session) {
 
   observe({
     dir = req(dirPath())
-    show_modal_spinner()
+    show_modal_progress_line()
 
     # Evolution
     subfolders <- list.dirs(dir, recursive = FALSE)
@@ -3962,6 +3966,7 @@ server <- function(input, output,session) {
       data_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(data_list) == 0) return(NULL)
       postprocObjects$evolutionCSV = do.call(rbind, data_list)
+      update_modal_progress(0.2)
 
       csv_files <- file.path(subfolders, "counters.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -3980,6 +3985,7 @@ server <- function(input, output,session) {
       COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(COUNTERSdata_list) == 0) return(NULL)
       postprocObjects$COUNTERScsv = do.call(rbind, COUNTERSdata_list) %>% distinct()
+      update_modal_progress(0.2)
 
       csv_files <- file.path(subfolders, "AEROSOL.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -3995,6 +4001,7 @@ server <- function(input, output,session) {
       AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(AEROSOLdata_list) == 0) return(NULL)
       postprocObjects$AEROSOLcsv = do.call(rbind, AEROSOLdata_list) %>% distinct()
+      update_modal_progress(0.2)
 
       csv_files <- file.path(subfolders, "CONTACT.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -4009,6 +4016,7 @@ server <- function(input, output,session) {
       CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(CONTACTdata_list) == 0) return(NULL)
       postprocObjects$CONTACTcsv = do.call(rbind, CONTACTdata_list) %>% distinct()
+      update_modal_progress(0.2)
 
       csv_files <- file.path(subfolders, "CONTACTS_MATRIX.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -4024,8 +4032,9 @@ server <- function(input, output,session) {
       CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(CONTACTdata_list) == 0) return(NULL)
       postprocObjects$CONTACTmatrix = do.call(rbind, CONTACTdata_list) %>% distinct()
+      update_modal_progress(0.2)
     })
-    remove_modal_spinner()
+    remove_modal_progress()
     shinyalert("Everything is loaded!")
   })
 
@@ -4428,11 +4437,6 @@ server <- function(input, output,session) {
     folder = req(info$value)
 
     isolate({
-      if(is.null(canvasObjects$roomsINcanvas)){
-        shinyalert("Error", "A F4F model must loaded", "error", 5000)
-        return()
-      }
-
         show_modal_spinner()
 
         CSVdatapath = paste0(dirPath(), "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
@@ -4634,8 +4638,9 @@ server <- function(input, output,session) {
       }else if(colorFeat == "CumulAerosol"){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)%>%
-          group_by(type,area,Name,CanvasID) %>%
-          mutate(virus_concentration = cumsum(virus_concentration))
+          group_by(ID, type,area,Name,CanvasID) %>%
+          summarise(virus_concentration = sum(virus_concentration)) %>%
+          mutate(time = timeIn) %>% ungroup()
 
         if(dim(AEROSOLcsv)[1] == 0){
           roomsINcanvas$IDtoColor = 0
@@ -4793,9 +4798,9 @@ server <- function(input, output,session) {
 
         if(colorFeat == "CumulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
-            group_by(type,area,Name,CanvasID) %>%
+            group_by(ID, type,area,Name,CanvasID) %>%
             summarise(virus_concentration = sum(virus_concentration)) %>%
-            mutate(time = timeIn)
+            mutate(time = timeIn) %>% ungroup()
 
         if(dim(AEROSOLcsv)[1] == 0){
           df$IDtoColor = 0
