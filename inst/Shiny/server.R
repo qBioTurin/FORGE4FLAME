@@ -1596,6 +1596,7 @@ server <- function(input, output,session) {
     }
     else{
       isolate({
+        postprocObjects$FLAGmodelLoaded = FALSE
         if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
           shinyalert("Error","Please select one RDs file.", "error", 5000)
           return()
@@ -1622,6 +1623,7 @@ server <- function(input, output,session) {
   observeEvent(input$confirmUpload,{
     disable("rds_generation")
     disable("flamegpu_connection")
+    postprocObjects$FLAGmodelLoaded = FALSE
     # clear the object
     for(i in names(canvasObjects))
       canvasObjects[[i]] = canvasObjectsSTART[[i]]
@@ -1650,17 +1652,6 @@ server <- function(input, output,session) {
       UpdatingData(input,output,canvasObjects,mess,areasColor, session)
       postprocObjects$FLAGmodelLoaded = TRUE
     })
-
-    postprocObjects$evolutionCSV = NULL
-    postprocObjects$Filter_evolutionCSV = NULL
-    postprocObjects$CONTACTcsv = NULL
-    postprocObjects$CONTACTmatrix = NULL
-    postprocObjects$AEROSOLcsv = NULL
-    postprocObjects$COUNTERScsv = NULL
-    postprocObjects$A_C_COUNTERS = NULL
-    postprocObjects$Mapping = NULL
-    postprocObjects$FLAGmodelLoaded = FALSE
-    postprocObjects$MappingID_room = FALSE
     # )
     removeModal()
   })
@@ -3919,6 +3910,9 @@ server <- function(input, output,session) {
   # })
 
   observe({
+    if(!postprocObjects$FLAGmodelLoaded)
+      return()
+
     dir = req(dirPath())
     show_modal_progress_line()
 
@@ -3985,7 +3979,7 @@ server <- function(input, output,session) {
       COUNTERSdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(COUNTERSdata_list) == 0) return(NULL)
       postprocObjects$COUNTERScsv = do.call(rbind, COUNTERSdata_list) %>% distinct()
-      update_modal_progress(0.2)
+      update_modal_progress(0.4)
 
       csv_files <- file.path(subfolders, "AEROSOL.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -4001,7 +3995,7 @@ server <- function(input, output,session) {
       AEROSOLdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(AEROSOLdata_list) == 0) return(NULL)
       postprocObjects$AEROSOLcsv = do.call(rbind, AEROSOLdata_list) %>% distinct()
-      update_modal_progress(0.2)
+      update_modal_progress(0.6)
 
       csv_files <- file.path(subfolders, "CONTACT.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -4016,7 +4010,7 @@ server <- function(input, output,session) {
       CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(CONTACTdata_list) == 0) return(NULL)
       postprocObjects$CONTACTcsv = do.call(rbind, CONTACTdata_list) %>% distinct()
-      update_modal_progress(0.2)
+      update_modal_progress(0.8)
 
       csv_files <- file.path(subfolders, "CONTACTS_MATRIX.csv")
       data_list <- lapply(csv_files, function(file) {
@@ -4032,7 +4026,7 @@ server <- function(input, output,session) {
       CONTACTdata_list <- Filter(Negate(is.null), data_list)  # Remove NULL entries
       if (length(CONTACTdata_list) == 0) return(NULL)
       postprocObjects$CONTACTmatrix = do.call(rbind, CONTACTdata_list) %>% distinct()
-      update_modal_progress(0.2)
+      update_modal_progress(1)
     })
     remove_modal_progress()
     shinyalert("Everything is loaded!")
@@ -4040,6 +4034,8 @@ server <- function(input, output,session) {
 
   #### query ####
   observe({
+    if(!postprocObjects$FLAGmodelLoaded)
+      return()
 
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
@@ -4795,6 +4791,8 @@ server <- function(input, output,session) {
       if(colorFeat %in% c("CumulAerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
           filter(Folder == folder , time <= timeIn)
+
+        print("CIAO")
 
         if(colorFeat == "CumulAerosol")
           AEROSOLcsv = AEROSOLcsv %>%
