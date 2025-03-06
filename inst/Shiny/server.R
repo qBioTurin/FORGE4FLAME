@@ -4379,7 +4379,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
                          labels = names(A_C_counters_colors),
                          drop = FALSE)+
       theme_fancy()+ facet_wrap(~Counters,scales = "free")+
-      scale_x_continuous(name = "Days", breaks = seq(0,max(df$hour), by= 24 ), labels = unique(round(df$hour/24)))
+      scale_x_continuous(name = "Day", breaks = seq(0,max(df$hour), by= 24 ), labels = unique(round(df$hour/24)))
 
 
     output$A_C_CountersPlot <- renderPlot({
@@ -4706,13 +4706,14 @@ observeEvent(input$LoadFolderPostProc_Button,{
                              aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
                                  label = get(tolower(Label)) ),
                              color = "black", size = 4)
-      }else if(Label == "Agent ID"){
-        dfSim = simulation_log %>% filter(time == timeIn)
-        pl = pl + geom_label(data = dfSim,
-                             aes(x = x, y = z,
-                                 label = id, col = disease_stateString ),
-                             size = 4)
       }
+      # else if(Label == "Agent ID"){
+      #   dfSim = simulation_log %>% filter(time == timeIn)
+      #   pl = pl + geom_label(data = dfSim,
+      #                        aes(x = x, y = z,
+      #                            label = id, col = disease_stateString ),
+      #                        size = 4)
+      # }
 
       canvasObjects$plot_2D <- pl
 
