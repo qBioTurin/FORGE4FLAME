@@ -3990,6 +3990,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
     if(!postprocObjects$FLAGmodelLoaded)
       return()
 
+    show_modal_spinner()
+
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
@@ -4073,6 +4075,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
     })
+
+    remove_modal_spinner()
 
   })
 
