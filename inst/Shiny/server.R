@@ -1296,178 +1296,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    show_modal_spinner()
-
-    if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
-      shinyalert(paste0("No agent is defined."))
-      remove_modal_spinner()
-      return()
-    }
-
-    if(is.null(canvasObjects$rooms) || length(canvasObjects$rooms) == 0){
-      shinyalert(paste0("No room is defined."))
-      remove_modal_spinner()
-      return()
-    }
-
-    if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
-      shinyalert(paste0("No room is drew in the canvas."))
-      remove_modal_spinner()
-      return()
-    }
-
-    spawnroom <- canvasObjects$roomsINcanvas %>%
-      filter(type == "Spawnroom")
-
-    if(nrow(spawnroom) != 1){
-      shinyalert(paste0("There must be exactly one Spawnroom in the canvas."))
-      remove_modal_spinner()
-      return()
-    }
-
-    rooms <- canvasObjects$roomsINcanvas %>%
-      filter(!type %in% c("Spawnroom", "Fillingroom", "Stair", "Waitingroom"))
-
-    if(nrow(rooms) < 1){
-      shinyalert(paste0("There must at least one room in the canvas with a type different from Spawnroom, Fillingroom, Stair, and Waitingroom."))
-      remove_modal_spinner()
-      return()
-    }
-
-    for(agent in 1:length(canvasObjects$agents)){
-      if(is.null(canvasObjects$agents[[agent]]$DeterFlow) || nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
-        shinyalert(paste0("No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
-        remove_modal_spinner()
-        return()
-      }
-
-      for(df in 1:length(unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID))){
-        df_local <- canvasObjects$agents[[agent]]$DeterFlow %>%
-          filter(FlowID == unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID)[df])
-
-        rooms_type <- unique(df_local$Room)
-
-        if(length(rooms_type) <= 1){
-          shinyalert(paste0("The flow ", df, " of agent ", names(canvasObjects$agents)[[agent]], " has less then two rooms' types. The first and last rooms must be the Spawnroom with at least another type of room in the middle."))
-          remove_modal_spinner()
-          return()
-        }
-
-        if(!("Spawnroom" == strsplit(df_local$Room[1], "-")[[1]][1]) || !("Spawnroom" == strsplit(df_local$Room[nrow(df_local)], "-")[[1]][1])){
-          shinyalert(paste0("The first and/or the last rooms of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " are not a Spawnroom."))
-          remove_modal_spinner()
-          return()
-        }
-
-        df_local$Time[nrow(df_local)] <- 0
-        label <- strsplit(df_local$Label[nrow(df_local)], "-")[[1]]
-        df_local$Label[nrow(df_local)] <- paste0(label[1], " - ", label[2], " - 0 min - ", label[4])
-      }
-
-      if(is.null(canvasObjects$agents[[agent]]$EntryExitTime) || nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
-        shinyalert(paste0("No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
-        remove_modal_spinner()
-        return()
-      }
-
-      if(canvasObjects$agents[[agent]]$entry_type != "Daily Rate"){
-        for(df in 1:length(unique(canvasObjects$agents[[agent]]$EntryExitTime$FlowID))){
-          # Sovrapposition check
-          overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
-          if(!is.null(overlaps)){
-            shinyalert(paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], "."))
-            remove_modal_spinner()
-            return()
-          }
-        }
-      }
-    }
-
-    if(is.null(canvasObjects$disease$beta_contact)){
-      shinyalert("You must insert the beta contact parameter (in the Infection page).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(is.null(canvasObjects$disease$beta_aerosol)){
-      shinyalert("You must insert the beta aerosol parameter (in the Infection page).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(is.null(canvasObjects$disease$gamma_time)){
-      shinyalert("You must insert the gamma parameter (in the Infection page).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(grepl("E", canvasObjects$disease$Name)){
-      if(is.null(canvasObjects$disease$alpha_time)){
-        shinyalert("You must insert the alpha parameter (in the Infection page).")
-        remove_modal_spinner()
-        return()
-      }
-    }
-
-
-    if(grepl("D", canvasObjects$disease$Name)){
-      if(is.null(canvasObjects$disease$lambda_time)){
-        shinyalert("You must insert the lambda parameter (in the Infection page).")
-        remove_modal_spinner()
-        return()
-      }
-    }
-
-
-    if(canvasObjects$disease$Name[length(canvasObjects$disease$Name)] == "S"){
-      if(is.null(canvasObjects$disease$nu_time)){
-        shinyalert("You must insert the nu parameter (in the Infection page).")
-        remove_modal_spinner()
-        return()
-      }
-    }
-
-    if (!(grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", input$initial_time) || grepl("^\\d{1,2}$", input$initial_time))){
-      shinyalert("The format of the initial time (in the Configuration page) should be: hh:mm (e.g. 06:15, or 20).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(input$seed == "" || !grepl("(^[0-9]+).*", input$seed) || input$seed < 0){
-      shinyalert("You must specify a number greater or equals than 0 (>= 0) as seed (in the Configuration tab).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days <= 0){
-      shinyalert("You must specify a number greater than 0 (> 0) as number of days to simulate (in the Configuration tab).")
-      remove_modal_spinner()
-      return()
-    }
-
-    if(input$nrun == "" || !grepl("(^[0-9]+).*", input$nrun) || input$nrun <= 0){
-      shinyalert("You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration tab).")
-      remove_modal_spinner()
-      return()
-    }
-
-    enable("rds_generation")
-
-    if(is.null(canvasObjects$flame_dirs)){
-      flame_dirs <- parallel_search_directory("~", "FLAMEGPU-FORGE4FLAME/resources/f4f")
-
-      canvasObjects$flame_dirs <- flame_dirs
-
-      if(length(flame_dirs) == 0){
-        output$flame_link <- renderText({
-          paste0("The directory FORGE4FLAME/inst/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist anywhere. Check you are in the correct directory.")
-        })
-        remove_modal_spinner()
-        return()
-      }
-    }
-
-    remove_modal_spinner()
+    check()
 
     enable("flamegpu_connection")
   })
@@ -4917,11 +4746,68 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   #### END 2D visualisation ####
-  observeEvent(input$save_text_run, {
-    removeModal()
+  observeEvent(input$run, {
+    check()
 
-    output_text <- system("docker exec flamegpu2-container echo 'Hello from container'", intern = TRUE)
-    print(output_text)
+    showModal(
+      modalDialog(
+        title = "Insert a directory name to identify uniquely this model",
+        textInput("popup_text", "Directory name:", ""),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("save_text_run", "Save")
+        )
+      )
+    )
+    #output_text <- system("docker exec flamegpu2-container echo 'Hello from container'", intern = TRUE)
+    #print(output_text)
+  })
+
+  observeEvent(input$save_text_run, {
+    flame_dirs <- canvasObjects$flame_dirs
+
+    for(flame_dir in flame_dirs){
+      if(!dir.exists(paste0(flame_dir, input$popup_text))){
+        system(paste0("mkdir ", flame_dir, "/", input$popup_text))
+      }
+    }
+
+    matricesCanvas <- list()
+    for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
+      matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
+    }
+    canvasObjects$matricesCanvas <- matricesCanvas
+
+    canvasObjects$TwoDVisual <- NULL
+    canvasObjects$plot_2D <- NULL
+
+    model = reactiveValuesToList(canvasObjects)
+    model$flame_dirs <- NULL
+
+    file_name <- glue("WHOLEmodel.RDs")
+    for(flame_dir in flame_dirs){
+      saveRDS(model, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+    }
+
+    out = FromToMatrices.generation(model)
+    model$rooms_whatif = out$RoomsMeasuresFromTo
+    model$agents_whatif = out$AgentMeasuresFromTo
+    model$initial_infected = out$initial_infected
+    model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
+    file_name <- glue("WHOLEmodel.json")
+    for(flame_dir in flame_dirs){
+      write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+    }
+
+    success_text <- "Model linked to FLAME GPU 2 in "
+    i <- 0
+    for(flame_dir in flame_dirs){
+      success_text <- paste0(success_text, flame_dir, "/", input$popup_text)
+      if(i < length(flame_dirs) - 1)
+        success_text <- paste0(success_text, ", ")
+
+      i <- i + 1
+    }
   })
 
 }

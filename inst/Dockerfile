@@ -20,7 +20,7 @@ RUN git config --global url."https://github.com/".insteadOf "git@github.com:" &&
 
 # Copia gli script dell'applicazione nel container
 RUN mkdir -p /srv/shiny-server/F4F
-RUN cp -r /usr/local/lib/R/site-library/F4F/* /srv/shiny-server/F4F/
+RUN cp -r /usr/local/lib/R/site-library/FORGE4FLAME/* /srv/shiny-server/F4F/
 
 # Copia il file app.R nel container
 #COPY app.R /srv/shiny-server/
