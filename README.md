@@ -4,9 +4,9 @@
   <img src="./inst/Shiny/www/F4Ficon.png" alt="F4F Logo" width="300">
 </p>
 
-Shiny application to build a customised environment wit different rooms for flame ABM simulations
+Shiny application to build a customised environment with different rooms for flame ABM simulations
 
-**A cellular biologist’s toolbox for data analysis.**
+See <a href="https://github.com/qBioTurin/FORGE4FLAME/blob/main/UserGuide.pdf">user guide</a> for more information. 
 
 ## Required Installed Packages
 
