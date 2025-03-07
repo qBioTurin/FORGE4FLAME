@@ -1597,6 +1597,17 @@ server <- function(input, output,session) {
     else{
       isolate({
         postprocObjects$FLAGmodelLoaded = FALSE
+        postprocObjects$DirPath = NULL
+        postprocObjects$evolutionCSV = NULL
+        postprocObjects$Filter_evolutionCSV = NULL
+        postprocObjects$CONTACTcsv = NULL
+        postprocObjects$CONTACTmatrix = NULL
+        postprocObjects$AEROSOLcsv = NULL
+        postprocObjects$COUNTERScsv = NULL
+        postprocObjects$A_C_COUNTERS = NULL
+        postprocObjects$Mapping = NULL
+        postprocObjects$FLAGmodelLoaded = FALSE
+        postprocObjects$MappingID_room = FALSE
         if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
           shinyalert("Error","Please select one RDs file.", "error", 5000)
           return()
@@ -1651,6 +1662,17 @@ server <- function(input, output,session) {
 
       UpdatingData(input,output,canvasObjects,mess,areasColor, session)
       postprocObjects$FLAGmodelLoaded = TRUE
+      postprocObjects$DirPath = NULL
+      postprocObjects$evolutionCSV = NULL
+      postprocObjects$Filter_evolutionCSV = NULL
+      postprocObjects$CONTACTcsv = NULL
+      postprocObjects$CONTACTmatrix = NULL
+      postprocObjects$AEROSOLcsv = NULL
+      postprocObjects$COUNTERScsv = NULL
+      postprocObjects$A_C_COUNTERS = NULL
+      postprocObjects$Mapping = NULL
+      postprocObjects$FLAGmodelLoaded = FALSE
+      postprocObjects$MappingID_room = FALSE
     })
     # )
     removeModal()
@@ -3911,9 +3933,6 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observe({
-    if(!postprocObjects$FLAGmodelLoaded)
-      return()
-
     dir = req(postprocObjects$dirPath)
     show_modal_progress_line()
 
@@ -3990,9 +4009,6 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
   #### query ####
   observe({
-    if(!postprocObjects$FLAGmodelLoaded)
-      return()
-
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
@@ -4292,6 +4308,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
   observe( {
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
+    days <- req(canvasObjects$starting$simulation_days)
 
     CountersDisease_radioButt = input$A_C_CountersDisease_radioButt
     req(input$Room_Counters_A_C_selectize != "")
@@ -4315,7 +4332,12 @@ observeEvent(input$LoadFolderPostProc_Button,{
       tidyr::gather(-hour, value =  "Number", key = "Counters")
     A_C_counters_colors = c("#E5D05AFF","#DEF5E5FF")
 
-    pl = ggplot()
+
+    max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
+    divisor <- 24 * (as.integer(max_day / 20) + 1)
+
+    pl = ggplot() +
+      scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
     if(!is.null(CountersDisease_radioButt)){
       names(postprocObjects$A_C_COUNTERS)[which(names(postprocObjects$A_C_COUNTERS) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
 
@@ -4355,22 +4377,40 @@ observeEvent(input$LoadFolderPostProc_Button,{
                      values_to = "Value")
 
       if("Area from all simulations" %in% CountersDisease_radioButt){
+        max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
+        divisor <- 24 * (as.integer(max_day / 20) + 1)
+
+        DfStat <- DfStat %>%
+          complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
+
         pl = pl +
           geom_ribbon(data = DfStat,
                       aes(x = hour, ymin = MinV, ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
           scale_fill_manual(values = A_C_counters_colors,
                             limits = names(A_C_counters_colors),
                             labels = names(A_C_counters_colors),
-                            drop = FALSE)
+                            drop = FALSE) +
+          scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
       }
 
       if("Mean curves" %in% CountersDisease_radioButt){
+        max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
+        divisor <- 24 * (as.integer(max_day / 20) + 1)
+
+        average_trajectory <- average_trajectory %>%
+          complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
+
         pl = pl + geom_line(data = average_trajectory,
                             aes(x = hour, y = Value, group= Counters, col = Counters, linetype = "Mean Curves"))+
-          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
+          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed")) +
+          scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
       }
 
     }
+
+    df <- df %>%
+      complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
+
     pl = pl +
       geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
       labs(y="",col="Variable",fill="Variable", x = "Hours", linetype="Type")+
@@ -4378,8 +4418,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
                          limits = names(A_C_counters_colors),
                          labels = names(A_C_counters_colors),
                          drop = FALSE)+
-      theme_fancy()+ facet_wrap(~Counters,scales = "free")+
-      scale_x_continuous(name = "Day", breaks = seq(0,max(df$hour), by= 24 ), labels = seq(0,max(df$hour), by= 24 )/24)
+      theme_fancy()+ facet_wrap(~Counters,scales = "free")
 
 
     output$A_C_CountersPlot <- renderPlot({

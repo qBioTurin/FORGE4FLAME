@@ -334,7 +334,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
 
 
-    if(selected[length(selected)] == "S"){
+    if(grepl("^([^S]*S[^S]*S[^S]*)$", selected[length(selected)])){
       params <- parse_distribution(canvasObjects$disease$nu_time, canvasObjects$disease$nu_dist)
       nu_dist <- canvasObjects$disease$nu_dist
       nu_a <- params[[1]]
