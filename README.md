@@ -1,57 +1,100 @@
-# F4F: Forge4Flame
+# Forge4Flame (F4F)
 
 <p align="center">
   <img src="./inst/Shiny/www/F4Ficon.png" alt="F4F Logo" width="300">
 </p>
 
-Shiny application to build a customised environment with different rooms for flame ABM simulations
+Forge4Flame (F4F) is a user-friendly R Shiny dashboard designed to streamline the creation of FLAME GPU 2 [1, 2] ABMs, automatically generating the necessary code. With its intuitive interface, users can easily define key components, including the model’s environment, the agents interacting within it, the disease model, and other essential elements for agent-based simulations.
 
 See <a href="https://github.com/qBioTurin/FORGE4FLAME/blob/main/UserGuide.pdf">user guide</a> for more information. 
 
-## Required Installed Packages
-
-F4F is implemented in R Shiny. It requires several CRAN packages to operate: 
-
+## How to download
+### Repository
+Cloning the repository is optional, especially for users intending to use the F4F package, dockers, or Slurm---see the following sections for more details. To clone it, use the following Bash command:
 ```
-shiny-dashboard, shinyjs, jsonlite, dplyr, shinythemes, colourpicker, glue,
-readr, zip, sortable, shinyalert, shinybusy, shinyBS, stringr, gg-plot2, tidyr, DT, shiny, shinyWidgets, shinyFiles, htmltools.
+git clone --recurse-submodules https://github.com/qBioTurin/FORGE4FLAME.git
 ```
+The main directory, `FORGE4FLAME`, contains the R Shiny application, while the `FORGE4FLAME/inst/FLAMEGPU\-FORGE4FLAME` directory stores the FLAME GPU 2 template used by F4F.
 
-These packages are automatically installed.
-Furthermore, it also requires the EBImage and the EBImageExtra packages. The user must install these packages manually using the following R commands:
-
-```r
-if (!requireNamespace ("BiocManager" , quietly = TRUE ))
-install.packages("BiocManager")
-BiocManager::install ("EBImage")
-
-if (!requireNamespace ("remotes " , quietly = TRUE))
-install.packages ( "remotes")
-library (remotes)
-install_github ("ornelles/EBImageExtra")
+### F4F
+To install the F4F R package it is possible to use the R package devtools [3] or remotes [4], through these R commands:
 ```
-
-
-## How to Install
-To install the F4F R package it is possible to use the R package devtools or remotes,through these R commands:
-
-```r
-if (!requireNamespace("devtools", quietly = TRUE))
-install.packages("remotes")
+if(!requireNamespace("devtools", quietly = TRUE))
+  install.packages("remotes")
+        
 library(devtools)
 install_github("https://github.com/qBioTurin/FORGE4FLAME")
 ```
-or:
-
-```r
-if (!requireNamespace("remotes", quietly = TRUE))
-install.packages("remotes")
+or
+```
+if(!requireNamespace("remotes", quietly = TRUE))
+  install.packages("remotes")
+        
 library(remotes)
 install_github("https://github.com/qBioTurin/FORGE4FLAME")
 ```
 
-## How to Run
+### Dependencies
+F4F is implemented in R Shiny. It requires several CRAN packages to operate: 
+```
+shiny-dashboard, shinyjs, jsonlite, dplyr, shinythemes, colourpicker, glue, readr, zip, sortable, shinyalert, shinybusy, shinyBS, stringr, gg-plot2, tidyr, DT, shiny, shinyWidgets, shinyFiles, htmltools.
+```
+These packages are automatically installed. Furthermore, it also requires the EBImage and the EBImageExtra packages. The user must install these packages manually using the following R commands:
 
+```r
+if (!requireNamespace ("BiocManager" , quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install ("EBImage")
+
+if (!requireNamespace ("remotes " , quietly = TRUE))
+  install.packages ( "remotes")
+
+library (remotes)
+install_github ("ornelles/EBImageExtra")
+```
+
+### FLAMEGPU2 
+To install FLAME GPU 2 dependencies, refer to the official documentation [here](https://github.com/FLAMEGPU/FLAMEGPU2).
+
+## Docker
+Users can download the Docker images for FLAME GPU 2 to avoid any potential dependency-related issues. In this context, the user must have Docker installed on their
+computer. For more information, refer to [this document](https://docs.docker.com/engine/installation/).
+
+Additionally, the user needs to ensure they have the necessary permissions to run Docker without using sudo. To create the Docker group and add the user on a Unix
+system, follow these steps:
+
+• Create the docker group:
+```
+$ sudo groupadd docker
+```
+
+• Add user to the docker group:
+
+```
+$ sudo usermod -aG docker $USER
+```
+
+• Log out and log back in so that group membership is re-evaluated.
+
+Additionally, the user must have the NVIDIA driver (installation instructions can be found [here](https://www.nvidia.com/en-us/drivers/)) and the NVIDIA container toolkit (installation instructions can be found [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)) installed.
+To download the Docker images, run the following Bash commands:
+
+```
+docker pull qbioturin/forge4flame
+docker pull qbioturin/flamegpu2
+```
+An alternative method for downloading Docker images is via F4F, provided that the user has installed the R package for installation instructions):
+```
+library(FORGE4FLAME)
+FORGE4FLAME::downloadContainers()
+```
+
+## Slurm
+To run FLAME GPU 2 simulations on an HPC system, the user must install Slurm on it (more information [here](https://slurm.schedmd.com/quickstart_admin.html)). Generally, Docker cannot be used on HPC systems due to privacy concerns. Therefore, the user must install all necessary FLAME GPU 2 dependencies on the user's system before running simulations.
+However, on HPC4AI [1] (more information [here](https://hpc4ai.unito.it/documentation/)), FLAME GPU 2 can also be executed using Docker, thanks to a tool that addresses privacy concerns.
+
+## How to Run
 ### Without Docker
 To run F4F without using Docker, the user can open the FORGE4FLAME.Rproj file with
 RStudio—after cloning the repository—and run it through the Run App button or run the
@@ -229,6 +272,14 @@ F4F developers have no liability for any use of F4F functions, including without
 ## How to cite
 
 ```
-Nature
+To do
 ```
 
+# References
+- [1] Paul Richmond et al. “FLAME GPU 2: A framework for flexible and performant agent based simulation on GPUs”. In: Software: Practice and Experience (2023). doi: https://doi.org/10.1002/spe.3207.
+
+- [2] Paul Richmond et al. FLAME GPU. Version 2.0.0-rc. Dec. 2022. doi: 10.5281/zenodo.7434228. url: https://doi.org/10.5281/zenodo.7434228.
+
+- [3] Hadley Wickham et al. devtools: Tools to Make Developing R Packages Easier. https://devtools.r-lib.org/, https://github.com/r-lib/devtools. 2022.
+
+- [4] Gábor Csárdi et al. remotes: R Package Installation from Remote Repositories, Including ’GitHub’. R package version 2.5.0, https://github.com/r-lib/remotes#readme. 2024. url: https://remotes.r-lib.org.
