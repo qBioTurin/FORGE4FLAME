@@ -1,35 +1,30 @@
-# Immagine base di Shiny Server
+
 FROM rocker/shiny:latest
 
-# Dipendenze di sistema necessarie
+
 RUN apt-get update && apt-get install -y \
-    libfftw3-dev git
+    libfftw3-dev \
+    libmagick++-dev \
+    git \
+    docker.io
 
-# Pacchetti R necessari
-RUN R -e "install.packages(c('remotes', 'shiny', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
 
-# Installa BiocManager e EBImage
+RUN R -e "install.packages(c('devtools', 'remotes', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
+
+
 RUN R -e "install.packages('BiocManager', repos='http://cran.rstudio.com/')"
 RUN R -e "BiocManager::install('EBImage', force=TRUE)"
 
-# Installa devtools e EBImageExtra
-RUN R -e "install.packages('devtools')"
-RUN R -e "devtools::install_github('ornelles/EBImageExtra', force=TRUE)"
-RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    R -e "devtools::install_github('qBioTurin/FORGE4FLAME')"
 
-# Copia gli script dell'applicazione nel container
-RUN mkdir -p /srv/shiny-server/F4F
-RUN cp -r /usr/local/lib/R/site-library/FORGE4FLAME/* /srv/shiny-server/F4F/
+RUN git clone https://github.com/ornelles/EBImageExtra.git /usr/local/src/EBImageExtra
+RUN R -e "devtools::install('/usr/local/src/EBImageExtra', dependencies = TRUE, force = TRUE)"
 
-# Copia il file app.R nel container
-#COPY app.R /srv/shiny-server/
-
-# Imposta i permessi corretti per Shiny Server
-RUN chown -R shiny:shiny /srv/shiny-server
+RUN git clone https://github.com/qBioTurin/FORGE4FLAME.git /usr/local/src/FORGE4FLAME
+RUN R -e "devtools::install('/usr/local/src/FORGE4FLAME', dependencies = TRUE, force = TRUE)"
+RUN R -e "library(FORGE4FLAME)"
 
 # Espone la porta per Shiny Server
 EXPOSE 3838
 
-# Comando per eseguire automaticamente l'applicazione Shiny
-CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app.R', host = '0.0.0.0', port = 3838)"]
+# Comando per avviare direttamente l'app Shiny 
+CMD ["R", "-e", "library(shiny); library(FORGE4FLAME); FORGE4FLAME::FORGE4FLAME.run(FromDocker = TRUE)"]
