@@ -97,7 +97,7 @@ However, on HPC4AI [1] (more information [here](https://hpc4ai.unito.it/document
 ## How to Run
 ### F4F
 #### Without Docker
-To run F4F without using Docker, the user can open the FORGE4FLAME.Rproj file with RStudio---after cloning the repository---and run it through the Run App button or run the following R commands after installing the package (see above):
+To run F4F without using Docker, run the following R commands after installing the package (see above):
 
 ```r
 library(FORGE4FLAME)
