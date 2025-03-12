@@ -939,8 +939,10 @@ parallel_search_directory <- function(start_path, dir_name, n_cores = detectCore
   return(unlist(matches))
 }
 
-check <- function(){
+check <- function(canvasObjects, input, output){
   show_modal_spinner()
+
+
 
   if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
     shinyalert(paste0("No agent is defined."))

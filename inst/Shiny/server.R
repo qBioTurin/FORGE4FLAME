@@ -1296,7 +1296,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    check()
+    check(canvasObjects, input, output)
 
     enable("flamegpu_connection")
   })
@@ -4747,7 +4747,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
   #### END 2D visualisation ####
   observeEvent(input$run, {
-    check()
+    check(canvasObjects, input, output)
 
     showModal(
       modalDialog(
