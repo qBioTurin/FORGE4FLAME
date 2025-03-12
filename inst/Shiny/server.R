@@ -1296,7 +1296,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    check()
+    check(canvasObjects, input, output)
 
     enable("flamegpu_connection")
   })
@@ -3720,15 +3720,16 @@ server <- function(input, output,session) {
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
                       "evolution.csv" )
   # Allow user to select a folder
-  wdFolders = str_split(string = dirname(getwd()),pattern = "/")
-  wdFolders= paste0(wdFolders[[1]][1:3],collapse = "/")
-  shinyDirChoose(input, "dir", roots = c(wd = wdFolders), filetypes = c('', 'csv','txt'))
+  vols = F4FgetVolumes(exclude = "")
+
+  shinyDirChoose(input, "dir", roots = vols,
+                 session = session)
 
   # Get the selected folder path
   observeEvent(input$dir,{
-    dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
-    # Display the selected folder path
-    output$dirPath <- renderText({dirPath})
+    dirPath = parseDirPath(vols, input$dir)
+    if(length(dirPath) != 0 )
+      output$dirPath <- renderText({dirPath})
   })
 observeEvent(input$LoadFolderPostProc_Button,{
   req(input$dir)
@@ -3743,7 +3744,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     postprocObjects$FLAGmodelLoaded = F
     postprocObjects$evolutionCSV = NULL
   }
-  postprocObjects$dirPath = parseDirPath(roots = c(wd = wdFolders), input$dir)
+  postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
 
 })
 
@@ -4747,7 +4748,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
   #### END 2D visualisation ####
   observeEvent(input$run, {
-    check()
+    check(canvasObjects, input, output)
 
     showModal(
       modalDialog(
