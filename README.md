@@ -109,7 +109,7 @@ To run it using Docker, execute the following Bash command (if running on a serv
 ```
 docker run -p 3839:3838 qbioturin/forge4flame
 ```
-In this case, there is no need to download the F4F repository or install the package. In addition, in this case, it is not possible to run a FLAME GPU 2 simulation using the _Run_ button in the **Run** page. 
+In this case, there is no need to download the F4F repository or install the package. In addition, it is not possible to run a FLAME GPU 2 simulation using the _Run_ button in the **Run** page. 
 
 ### FLAME GPU 2
 #### Without docker
