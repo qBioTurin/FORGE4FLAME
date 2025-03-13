@@ -97,7 +97,7 @@ However, on HPC4AI [1] (more information [here](https://hpc4ai.unito.it/document
 ## How to Run
 ### F4F
 #### Without Docker
-To run F4F without using Docker, the user can open the FORGE4FLAME.Rproj file with RStudio---after cloning the repository---and run it through the Run App button or run the following R commands after installing the package (see above):
+To run F4F without using Docker, run the following R commands after installing the package (see above):
 
 ```r
 library(FORGE4FLAME)
@@ -169,7 +169,7 @@ To use the Docker Compose, the user must download the YAML file [here](https://g
 ```
 docker compose up -d --build
 ```
-To run a FLAME GPU 2 simulation using Docker Compose, the user must use the Run page of F4F. Results will be saved in a directory named `results/CustomModel` within the current directory. To stop the containers, run the following Bash command:
+To run a FLAME GPU 2 simulation using Docker Compose, the user must use the Run page of F4F. Results will be saved in a directory named `results/NameOfTheModel` within the current directory. To stop the containers, run the following Bash command:
 ```
 docker compose down
 ```
