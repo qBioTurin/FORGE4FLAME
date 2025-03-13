@@ -47,7 +47,7 @@ if (!requireNamespace ("BiocManager" , quietly = TRUE))
 
 BiocManager::install ("EBImage")
 
-if (!requireNamespace ("remotes " , quietly = TRUE))
+if(!requireNamespace ("remotes " , quietly = TRUE))
   install.packages ( "remotes")
 
 library (remotes)
@@ -105,9 +105,9 @@ FORGE4FLAME::FORGE4FLAME.run()
 ```
 
 #### With Docker
-To run it using Docker, execute the following Bash command (if running on a server, ensure that port 3839 is exposed and accessible via http://<server-hostname>:3839):
+To run it using Docker, execute the following Bash command (if running on a server, ensure that port 3838 is exposed and accessible via http://<server-hostname>:3838; if running locally, access at \url{http://localhost:3838/}):
 ```
-docker run -p 3839:3838 qbioturin/forge4flame
+docker run -p 3838:3838 qbioturin/forge4flame
 ```
 In this case, there is no need to download the F4F repository or install the package. In addition, it is not possible to run a FLAME GPU 2 simulation using the _Run_ button in the **Run** page. 
 
