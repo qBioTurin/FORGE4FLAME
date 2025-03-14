@@ -4763,6 +4763,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observeEvent(input$save_text_run, {
+    removeModal()
+
     matricesCanvas <- list()
     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
       matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
@@ -4785,14 +4787,14 @@ observeEvent(input$LoadFolderPostProc_Button,{
     is_docker_compose <- !is.na(Sys.getenv("COMPOSE_PROJECT_NAME", unset = NA))
     if(is_docker_compose){
       file_name <- glue("WHOLEmodel.RDs")
-      saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+      saveRDS(model_RDS, file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
       file_name <- glue("WHOLEmodel.json")
-      write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+      write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
     }
     else{
       if(input$run_type == "Docker"){
-        system(paste0("mkdir inst/Data/", input$popup_text))
+        system(paste0("mkdir -p inst/Data/", input$popup_text))
 
         file_name <- glue("WHOLEmodel.RDs")
         saveRDS(model_RDS, file=file.path(paste0("inst/Data/", input$popup_text), file_name))
@@ -4805,35 +4807,47 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
         for(flame_dir in flame_dirs){
           if(!dir.exists(paste0(flame_dir, input$popup_text))){
-            system(paste0("mkdir ", flame_dir, "/", input$popup_text))
+            system(paste0("mkdir -p ", flame_dir, "/", input$popup_text))
           }
         }
 
         file_name <- glue("WHOLEmodel.RDs")
-        for(flame_dir in flame_dirs){
-          saveRDS(model_RDS, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        }
+        saveRDS(model_RDS, file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+        # for(flame_dir in flame_dirs){
+        #   saveRDS(model_RDS, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+        # }
 
 
         file_name <- glue("WHOLEmodel.json")
-        for(flame_dir in flame_dirs){
-          write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        }
+        write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+        # for(flame_dir in flame_dirs){
+        #   write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+        # }
       }
     }
 
     if(is_docker_compose){
-      system(paste0('docker exec -u $UID:$UID flamegpu2-container /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '"'))
+      cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > ', input$popup_text, '_output.log 2>&1')
+      system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
+             ignore.stderr = FALSE, show.output.on.console = TRUE)
     }
     else{
       if(input$run_type == "Docker"){
-        system(paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v $(pwd)/inst/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" &'))
+        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v $(pwd)/inst/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > ', input$popup_text, '_output.log 2>&1')
+        system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
+               ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else if(input$run_type == "Local"){
-        system(paste0("cd inst/FLAMEGPU-FORGE4FLAME && ./abm_ensemble.sh -expdir ", input$popup_text, " & && cd ../.."))
+        cmd <- paste0("cd inst/FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
+                      input$popup_text, " > ", input$popup_text, "_output.log 2>&1")
+        system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
+               ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else{
-        system(paste0("cd inst/FLAMEGPU-FORGE4FLAME && ./abm.sh -expdir ", input$popup_text, " -v ON & && cd ../.."))
+        cmd <- paste0("cd inst/FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
+                      input$popup_text, " -v ON > ", input$popup_text, "_output.log 2>&1")
+        system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
+               ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
     }
   })
