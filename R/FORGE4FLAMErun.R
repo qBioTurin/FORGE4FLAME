@@ -50,6 +50,8 @@ FORGE4FLAME.run <-function(FromDocker = F)
        app$staticPaths <- list(
         `/` = httpuv::staticPath(system.file("Shiny","www", package = "FORGE4FLAME"), indexhtml = FALSE, fallthrough = TRUE)
       )
+
+    setwd(system.file(package = "FORGE4FLAME"))
     shiny::runApp(app, host = '0.0.0.0', port = 3838)
   }else{
       app <-shinyApp(ui, server,
@@ -61,6 +63,7 @@ FORGE4FLAME.run <-function(FromDocker = F)
         `/` = httpuv::staticPath(system.file("Shiny","www", package = "FORGE4FLAME"), indexhtml = FALSE, fallthrough = TRUE)
       )
 
+    setwd(system.file(package = "FORGE4FLAME"))
     shiny::runApp(app)
   }
 }
