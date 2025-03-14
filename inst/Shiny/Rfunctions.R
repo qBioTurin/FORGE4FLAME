@@ -939,6 +939,8 @@ parallel_search_directory <- function(start_path, dir_name, n_cores = detectCore
 }
 
 F4FgetVolumes=function(exclude){
+  library(xfun)
+  library(fs)
   osSystem <- Sys.info()["sysname"]
   if (osSystem == "Darwin") {
     volumes <- fs::dir_ls("/Volumes")
