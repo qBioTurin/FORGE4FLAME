@@ -4797,7 +4797,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     }
     else{
       if(input$run_type == "Docker"){
-        system(paste0("mkdir -p inst/Data/", input$popup_text))
+        system(paste0("mkdir -p Data/", input$popup_text))
 
         file_name <- glue("WHOLEmodel.RDs")
         saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
