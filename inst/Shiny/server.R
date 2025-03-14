@@ -4762,6 +4762,9 @@ observeEvent(input$LoadFolderPostProc_Button,{
     )
   })
 
+  file_path <- reactiveValues(path = "")
+  log_active <- reactiveVal(FALSE)
+
   observeEvent(input$save_text_run, {
     removeModal()
 
@@ -4805,26 +4808,18 @@ observeEvent(input$LoadFolderPostProc_Button,{
       else{
         flame_dirs <- canvasObjects$flame_dirs
 
-        # for(flame_dir in flame_dirs){
-        if(!dir.exists(paste0(flame_dir, input$popup_text))){
-          system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
-        }
-        # }
+        system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
         file_name <- glue("WHOLEmodel.RDs")
         saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-        # for(flame_dir in flame_dirs){
-        #   saveRDS(model_RDS, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        # }
-
 
         file_name <- glue("WHOLEmodel.json")
         write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-        # for(flame_dir in flame_dirs){
-        #   write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        # }
       }
     }
+
+    file_path$path <- paste0("FLAMEGPU-FORGE4FLAME/", input$popup_text, "_output.log")
+    log_active(TRUE)
 
     if(is_docker_compose){
       cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > ', input$popup_text, '_output.log 2>&1')
@@ -4850,5 +4845,32 @@ observeEvent(input$LoadFolderPostProc_Button,{
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
     }
+  })
+
+  # Reactive poll that checks for changes in the file every 1 second
+  file_data <- reactivePoll(
+    intervalMillis = 1000,  # Check every 1 second (1000 ms)
+    session = session,
+    checkFunc = function() {
+      if (log_active()) {
+      # Check if the file's modification time has changed
+        file.info(file_path$path)$mtime
+      }
+    },
+    valueFunc = function() {
+      if (log_active()) {
+        # Return the file content when it changes
+        if (file.exists(file_path$path)) {
+          readLines(file_path$path)
+        } else {
+          "File not found."
+        }
+      }
+    }
+  )
+
+  # Output the content of the log file
+  output$log_content <- renderText({
+    paste(file_data(), collapse = "\n")
   })
 }

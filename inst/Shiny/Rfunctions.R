@@ -1157,7 +1157,7 @@ check <- function(canvasObjects, input, output){
   enable("rds_generation")
 
   if(is.null(canvasObjects$flame_dirs)){
-    flame_dirs <- parallel_search_directory("~", "FLAMEGPU-FORGE4FLAME/resources/f4f")
+    flame_dirs <- parallel_search_directory(".", "FLAMEGPU-FORGE4FLAME/resources/f4f")
 
     canvasObjects$flame_dirs <- flame_dirs
 

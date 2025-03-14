@@ -1588,6 +1588,16 @@ ui <- dashboardPage(
                                actionButton("run", "Run")
                         )
                       )
+                    ),
+                    br(),
+                    fluidRow(
+                      box(
+                        style = "padding-top:20px;",
+                        title = "Log Simulation",
+                        status = "primary", solidHeader = TRUE, width = 12, height = "600px",
+                        div(style = "height: 500px; overflow-y: scroll;",
+                            verbatimTextOutput("log_content"))
+                      )
                     )
                 )
               )
