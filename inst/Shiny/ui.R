@@ -1583,11 +1583,11 @@ ui <- dashboardPage(
                         column(3, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
                       ),
                       fluidRow(
-                        column(2,
+                        column(1,
                                offset = 1,
                                actionButton("run", "Run")
                         ),
-                        column(2,
+                        column(1,
                                actionButton("stop_run", "Stop")
                         )
                       )

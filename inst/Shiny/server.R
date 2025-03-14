@@ -4848,10 +4848,10 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observeEvent(input$stop_run, {
-    pid <- system("pgrep -f 'FLAMEGPU'", intern = TRUE)
+    pid <- system("pgrep -f 'FLAMEGPUABM'", intern = TRUE)
 
-    if(!is.null(pid) && pid != ""){
-      system(paste0("kill -9 ", pid))
+    if(pid != ""){
+      lapply(pid, function(p){system(paste0("kill -9 ", p))})
     }
   })
 
