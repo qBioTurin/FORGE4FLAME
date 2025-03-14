@@ -1296,9 +1296,10 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    check(canvasObjects, input, output)
+    output <- check(canvasObjects, input, output)
 
-    enable("flamegpu_connection")
+    if(!is.null(output))
+      enable("flamegpu_connection")
   })
 
   output$rds_generation <- downloadHandler(
@@ -4731,7 +4732,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observe({
-    is_docker <- file.exists("/run/.dockerenv")
+    is_docker <- file.exists("/.dockerenv")
     if(is_docker)
       updateSelectInput(session = session, inputId = "run_type", choices = "Docker", selected = "Docker")
     else
@@ -4747,25 +4748,36 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   #### END 2D visualisation ####
-  observeEvent(input$run, {
-    check(canvasObjects, input, output)
 
-    showModal(
-      modalDialog(
-        title = "Insert a directory name to identify uniquely this model",
-        textInput("popup_text", "Directory name:", ""),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton("save_text_run", "Save")
+  shinyDirChoose(input, "dir_results", roots = vols,
+                 session = session)
+
+  observeEvent(input$run, {
+    output <- check(canvasObjects, input, output)
+    if(!is.null(output)){
+      showModal(
+        modalDialog(
+          title = "Insert a directory name to identify uniquely this model",
+          textInput("popup_text", "Directory name:", ""),
+          shinyDirButton("dir_results", "Select Folder", "Upload"),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("save_text_run", "Save")
+          )
         )
       )
-    )
+    }
   })
 
   run_simulation <- reactiveValues(path = "")
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
+    if(is.null(input$dir_results) || input$dir_results == ""){
+      shinyalert("Missing directories for results. Please, select one.")
+      return()
+    }
+
     removeModal()
 
     matricesCanvas <- list()
@@ -4787,40 +4799,29 @@ observeEvent(input$LoadFolderPostProc_Button,{
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
 
-    is_docker_compose <- !is.na(Sys.getenv("COMPOSE_PROJECT_NAME", unset = NA))
-    if(is_docker_compose){
+    if(input$run_type == "Docker"){
+      system(paste0("mkdir -p Data/", input$popup_text))
+
+      file_name <- glue("WHOLEmodel.RDs")
+      saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
+
+      file_name <- glue("WHOLEmodel.json")
+      write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
+    }
+    else{
+      system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
+
       file_name <- glue("WHOLEmodel.RDs")
       saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
       file_name <- glue("WHOLEmodel.json")
       write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
     }
-    else{
-      if(input$run_type == "Docker"){
-        system(paste0("mkdir -p Data/", input$popup_text))
-
-        file_name <- glue("WHOLEmodel.RDs")
-        saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
-
-        file_name <- glue("WHOLEmodel.json")
-        write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
-      }
-      else{
-        flame_dirs <- canvasObjects$flame_dirs
-
-        system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
-
-        file_name <- glue("WHOLEmodel.RDs")
-        saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-
-        file_name <- glue("WHOLEmodel.json")
-        write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-      }
-    }
 
     run_simulation$path <- paste0("FLAMEGPU-FORGE4FLAME/", input$popup_text, "_output.log")
     log_active(TRUE)
 
+    is_docker_compose <- dir.exists("/tmp/shared-socket")
     if(is_docker_compose){
       cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
       system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
@@ -4839,7 +4840,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else{
-        cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
+        cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm.sh -expdir ",
                       input$popup_text, " -v ON > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
