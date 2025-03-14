@@ -4850,7 +4850,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
   observeEvent(input$stop_run, {
     pid <- system("pgrep -f 'FLAMEGPUABM'", intern = TRUE)
 
-    if(pid != ""){
+    if(length(pid) > 0){
       lapply(pid, function(p){system(paste0("kill -9 ", p))})
     }
   })
