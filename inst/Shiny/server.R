@@ -4812,17 +4812,15 @@ observeEvent(input$LoadFolderPostProc_Button,{
         }
 
         file_name <- glue("WHOLEmodel.RDs")
-        saveRDS(model_RDS, file=file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-        # for(flame_dir in flame_dirs){
-        #   saveRDS(model_RDS, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        # }
+        for(flame_dir in flame_dirs){
+          saveRDS(model_RDS, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+        }
 
 
         file_name <- glue("WHOLEmodel.json")
-        write_json(x = model, path = file.path(paste0("inst/FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
-        # for(flame_dir in flame_dirs){
-        #   write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-        # }
+        for(flame_dir in flame_dirs){
+          write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
+        }
       }
     }
 
