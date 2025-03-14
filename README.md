@@ -20,7 +20,7 @@ The main directory, `FORGE4FLAME`, contains the R Shiny application, while the `
 To install the F4F R package it is possible to use the R package devtools [3] or remotes [4], through these R commands:
 ```r
 if(!requireNamespace("devtools", quietly = TRUE))
-  install.packages("remotes")
+  install.packages("devtools")
         
 library(devtools)
 install_github("https://github.com/qBioTurin/FORGE4FLAME")
