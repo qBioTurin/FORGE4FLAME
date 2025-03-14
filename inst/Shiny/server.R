@@ -4805,11 +4805,11 @@ observeEvent(input$LoadFolderPostProc_Button,{
       else{
         flame_dirs <- canvasObjects$flame_dirs
 
-        for(flame_dir in flame_dirs){
-          if(!dir.exists(paste0(flame_dir, input$popup_text))){
-            system(paste0("mkdir -p ", flame_dir, "/", input$popup_text))
-          }
+        # for(flame_dir in flame_dirs){
+        if(!dir.exists(paste0(flame_dir, input$popup_text))){
+          system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
         }
+        # }
 
         file_name <- glue("WHOLEmodel.RDs")
         saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
