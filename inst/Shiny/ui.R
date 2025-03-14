@@ -1588,7 +1588,6 @@ ui <- dashboardPage(
                                actionButton("run", "Run")
                         ),
                         column(2,
-                               offset = 1,
                                actionButton("stop_run", "Stop")
                         )
                       )
@@ -1597,7 +1596,7 @@ ui <- dashboardPage(
                     fluidRow(
                       box(
                         style = "padding-top:20px;",
-                        title = "Log Simulation",
+                        title = "Simulation Log",
                         status = "primary", solidHeader = TRUE, width = 12, height = "600px",
                         div(style = "height: 500px; overflow-y: scroll;",
                             verbatimTextOutput("log_content"))

@@ -4762,7 +4762,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     )
   })
 
-  run_simulation <- reactiveValues(path = "", pid = NULL)
+  run_simulation <- reactiveValues(path = "")
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
@@ -4845,15 +4845,13 @@ observeEvent(input$LoadFolderPostProc_Button,{
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
     }
-
-    pid <- system("pgrep -f 'FLAMEGPU'", intern = TRUE)
   })
 
   observeEvent(input$stop_run, {
-    if(!is.null(run_simulation$pid)){
-      system(paste0("kill -9 ", run_simulation$pid))
+    pid <- system("pgrep -f 'FLAMEGPU'", intern = TRUE)
 
-      run_simulation$pid <- NULL
+    if(!is.null(pid) && pid != ""){
+      system(paste0("kill -9 ", pid))
     }
   })
 
