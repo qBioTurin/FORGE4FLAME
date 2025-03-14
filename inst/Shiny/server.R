@@ -4762,7 +4762,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     )
   })
 
-  file_path <- reactiveValues(path = "")
+  run_simulation <- reactiveValues(path = "", pid = NULL)
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
@@ -4818,7 +4818,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
       }
     }
 
-    file_path$path <- paste0("FLAMEGPU-FORGE4FLAME/", input$popup_text, "_output.log")
+    run_simulation$path <- paste0("FLAMEGPU-FORGE4FLAME/", input$popup_text, "_output.log")
     log_active(TRUE)
 
     if(is_docker_compose){
@@ -4845,6 +4845,16 @@ observeEvent(input$LoadFolderPostProc_Button,{
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
     }
+
+    pid <- system("pgrep -f 'FLAMEGPU'", intern = TRUE)
+  })
+
+  observeEvent(input$stop_run, {
+    if(!is.null(run_simulation$pid)){
+      system(paste0("kill -9 ", run_simulation$pid))
+
+      run_simulation$pid <- NULL
+    }
   })
 
   # Reactive poll that checks for changes in the file every 1 second
@@ -4854,14 +4864,14 @@ observeEvent(input$LoadFolderPostProc_Button,{
     checkFunc = function() {
       if (log_active()) {
       # Check if the file's modification time has changed
-        file.info(file_path$path)$mtime
+        file.info(run_simulation$path)$mtime
       }
     },
     valueFunc = function() {
       if (log_active()) {
         # Return the file content when it changes
-        if (file.exists(file_path$path)) {
-          readLines(file_path$path)
+        if (file.exists(run_simulation$path)) {
+          readLines(run_simulation$path)
         } else {
           "File not found."
         }

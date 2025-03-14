@@ -1586,6 +1586,10 @@ ui <- dashboardPage(
                         column(2,
                                offset = 1,
                                actionButton("run", "Run")
+                        ),
+                        column(2,
+                               offset = 1,
+                               actionButton("stop_run", "Stop")
                         )
                       )
                     ),
