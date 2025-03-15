@@ -4754,18 +4754,33 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
   observeEvent(input$run, {
     output <- check(canvasObjects, input, output)
+    is_docker_compose <- dir.exists("/tmp/shared-socket")
     if(!is.null(output)){
-      showModal(
-        modalDialog(
-          title = "Insert a directory name to identify uniquely this model",
-          textInput("popup_text", "Directory name:", ""),
-          shinyDirButton("dir_results", "Select Folder", "Upload"),
-          footer = tagList(
-            modalButton("Cancel"),
-            actionButton("save_text_run", "Save")
+      if(!is_docker_compose){
+        showModal(
+          modalDialog(
+            title = "Insert a directory name to identify uniquely this model",
+            textInput("popup_text", "Directory name:", ""),
+            shinyDirButton("dir_results", "Select Folder", "Upload"),
+            footer = tagList(
+              modalButton("Cancel"),
+              actionButton("save_text_run", "Save")
+            )
           )
         )
-      )
+      }
+      else{
+        showModal(
+          modalDialog(
+            title = "Insert a directory name to identify uniquely this model",
+            textInput("popup_text", "Directory name:", ""),
+            footer = tagList(
+              modalButton("Cancel"),
+              actionButton("save_text_run", "Save")
+            )
+          )
+        )
+      }
     }
   })
 
@@ -4773,7 +4788,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
-    if(is.null(input$dir_results) || input$dir_results == ""){
+    is_docker_compose <- dir.exists("/tmp/shared-socket")
+    if(!is_docker_compose && (is.null(input$dir_results) || input$dir_results == "")){
       shinyalert("Missing directories for results. Please, select one.")
       return()
     }
@@ -4799,7 +4815,6 @@ observeEvent(input$LoadFolderPostProc_Button,{
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
 
-    is_docker_compose <- dir.exists("/tmp/shared-socket")
     if(is_docker_compose){
       system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
@@ -4840,19 +4855,19 @@ observeEvent(input$LoadFolderPostProc_Button,{
     }
     else{
       if(input$run_type == "Docker"){
-        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
+        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v ', input$dir_results, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else if(input$run_type == "Local"){
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
-                      input$popup_text, " > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -resdir ", input$dir_results, " > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else{
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm.sh -expdir ",
-                      input$popup_text, " -v ON > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -v ON -resdir ", input$dir_results, " > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
@@ -4860,11 +4875,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observeEvent(input$stop_run, {
-    pid <- system("pgrep -f 'FLAMEGPUABM'", intern = TRUE)
-
-    if(length(pid) > 0){
-      lapply(pid, function(p){system(paste0("kill -9 ", p))})
-    }
+    system("docker exec flamegpu2-container pkill -f FLAMEGPUABM")
   })
 
   # Reactive poll that checks for changes in the file every 1 second
