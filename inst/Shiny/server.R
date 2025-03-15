@@ -4799,16 +4799,8 @@ observeEvent(input$LoadFolderPostProc_Button,{
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
 
-    if(input$run_type == "Docker"){
-      system(paste0("mkdir -p Data/", input$popup_text))
-
-      file_name <- glue("WHOLEmodel.RDs")
-      saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
-
-      file_name <- glue("WHOLEmodel.json")
-      write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
-    }
-    else{
+    is_docker_compose <- dir.exists("/tmp/shared-socket")
+    if(is_docker_compose){
       system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
       file_name <- glue("WHOLEmodel.RDs")
@@ -4817,11 +4809,30 @@ observeEvent(input$LoadFolderPostProc_Button,{
       file_name <- glue("WHOLEmodel.json")
       write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
     }
+    else{
+      if(input$run_type == "Docker"){
+        system(paste0("mkdir -p Data/", input$popup_text))
+
+        file_name <- glue("WHOLEmodel.RDs")
+        saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
+
+        file_name <- glue("WHOLEmodel.json")
+        write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
+      }
+      else{
+        system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
+
+        file_name <- glue("WHOLEmodel.RDs")
+        saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+
+        file_name <- glue("WHOLEmodel.json")
+        write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
+      }
+    }
 
     run_simulation$path <- paste0("FLAMEGPU-FORGE4FLAME/", input$popup_text, "_output.log")
     log_active(TRUE)
 
-    is_docker_compose <- dir.exists("/tmp/shared-socket")
     if(is_docker_compose){
       cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
       system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
