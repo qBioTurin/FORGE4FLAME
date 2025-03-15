@@ -4801,7 +4801,6 @@ server <- function(input, output,session) {
 
   observeEvent(input$save_text_run, {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    browser()
     if(!is_docker_compose && length(input$dir_results) == 0){
       shinyalert("Missing directories for results. Please, select one.")
       return()
