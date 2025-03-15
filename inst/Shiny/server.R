@@ -4740,7 +4740,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
     output$error_docker <- renderText({""})
 
-    is_docker_compose <- dir.exists("/tmp/shared-socket")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker && !is_docker_compose){
       updateSelectInput(session = session, inputId = "run_type", choices = "", selected = "")
       output$error_docker <- renderText({"It is not possible to run a simulation inside the F4F Docker. Use Docker Compose instead."})
@@ -4754,7 +4754,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
   observeEvent(input$run, {
     output <- check(canvasObjects, input, output)
-    is_docker_compose <- dir.exists("/tmp/shared-socket")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is.null(output)){
       if(!is_docker_compose){
         showModal(
@@ -4788,7 +4788,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
-    is_docker_compose <- dir.exists("/tmp/shared-socket")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is_docker_compose && (is.null(input$dir_results) || input$dir_results == "")){
       shinyalert("Missing directories for results. Please, select one.")
       return()
@@ -4875,7 +4875,23 @@ observeEvent(input$LoadFolderPostProc_Button,{
   })
 
   observeEvent(input$stop_run, {
-    system("docker exec flamegpu2-container pkill -f FLAMEGPUABM")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(is_docker_compose){
+      system("docker exec flamegpu2-container pkill -f FLAMEGPUABM")
+    }
+    else{
+      if(input$run_type == "Docker"){
+        system("docker stop qbioturin/flamegpu2")
+      }
+      else{
+        pids <- system("pgrep FLAMEGPUABM", intern = TRUE)
+        if (length(pids) > 0) {
+          for (pid in pids) {
+            system(paste0("kill -9 ", pid))
+          }
+        }
+      }
+    }
   })
 
   # Reactive poll that checks for changes in the file every 1 second

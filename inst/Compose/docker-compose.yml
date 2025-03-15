@@ -4,6 +4,8 @@ services:
   forge4flame:
     image: qbioturin/forge4flame:latest
     container_name: forge4flame-container
+    environment:
+      - DOCKER_COMPOSE=ON
     ports:
       - "3839:3838"
     volumes:
@@ -15,6 +17,8 @@ services:
   flamegpu:
     image: qbioturin/flamegpu2:latest
     container_name: flamegpu2-container
+    environment:
+      - DOCKER_COMPOSE=ON
     runtime: nvidia
     stdin_open: true
     tty: true
