@@ -4740,7 +4740,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
     output$error_docker <- renderText({""})
 
-    is_docker_compose <- !is.na(Sys.getenv("COMPOSE_PROJECT_NAME", unset = NA))
+    is_docker_compose <- dir.exists("/tmp/shared-socket")
     if(is_docker && !is_docker_compose){
       updateSelectInput(session = session, inputId = "run_type", choices = "", selected = "")
       output$error_docker <- renderText({"It is not possible to run a simulation inside the F4F Docker. Use Docker Compose instead."})
