@@ -414,7 +414,7 @@ server <- function(input, output,session) {
           return()
         }
 
-      if(!grepl("^[-]+$", Name)){
+        if(!grepl("^[-]+$", Name)){
           shinyalert("The type cannot contain special charachters.")
           return()
         }
@@ -1666,13 +1666,13 @@ server <- function(input, output,session) {
       if(length(names(canvasObjects$agents)) == 0){
         canvasObjects$agents <- NULL
         canvasObjects$agents_whatif <- data.frame(
-                                         Measure = character(),
-                                         Type = character(),
-                                         Parameters = character(),
-                                         From = numeric(),
-                                         To = numeric(),
-                                         stringsAsFactors = FALSE
-                                       )
+          Measure = character(),
+          Type = character(),
+          Parameters = character(),
+          From = numeric(),
+          To = numeric(),
+          stringsAsFactors = FALSE
+        )
         updateSelectizeInput(session, inputId = "id_new_agent", choices = "", selected = "")
 
         updateSelectizeInput(session = session, "agent_mask",
@@ -3737,22 +3737,22 @@ server <- function(input, output,session) {
     if(length(dirPath) != 0 )
       output$dirPath <- renderText({dirPath})
   })
-observeEvent(input$LoadFolderPostProc_Button,{
-  req(input$dir)
+  observeEvent(input$LoadFolderPostProc_Button,{
+    req(input$dir)
 
-   if(is.null(canvasObjects$roomsINcanvas)){
+    if(is.null(canvasObjects$roomsINcanvas)){
       shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
       return()
-   }
+    }
 
-  if(!is.null(postprocObjects$dirPath)){
-    # to fix
-    postprocObjects$FLAGmodelLoaded = F
-    postprocObjects$evolutionCSV = NULL
-  }
-  postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
+    if(!is.null(postprocObjects$dirPath)){
+      # to fix
+      postprocObjects$FLAGmodelLoaded = F
+      postprocObjects$evolutionCSV = NULL
+    }
+    postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
 
-})
+  })
 
 
 
@@ -4274,62 +4274,62 @@ observeEvent(input$LoadFolderPostProc_Button,{
     folder = req(info$value)
 
     isolate({
-        show_modal_spinner()
+      show_modal_spinner()
 
-        CSVdatapath = paste0(postprocObjects$dirPath, "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
+      CSVdatapath = paste0(postprocObjects$dirPath, "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
 
-        dataframe <- read_csv(CSVdatapath)
-        colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
-                                  "disease_state")
+      dataframe <- read_csv(CSVdatapath)
+      colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
+                                "disease_state")
 
 
-        floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
+      floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
 
-        Nfloors = length(floors$CanvasID)
-        simulation_log = dataframe %>%
-          select(time, id, agent_type, x, y, z, disease_state) %>%
-          filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
+      Nfloors = length(floors$CanvasID)
+      simulation_log = dataframe %>%
+        select(time, id, agent_type, x, y, z, disease_state) %>%
+        filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
 
-        floors$y = seq(0,10*(Nfloors-1),by = 10)
-        #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
+      floors$y = seq(0,10*(Nfloors-1),by = 10)
+      #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
 
-        simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
-          mutate(time = as.numeric(time)) %>%
-          filter(!is.na(time))
+      simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
+        mutate(time = as.numeric(time)) %>%
+        filter(!is.na(time))
 
-        simulation_log = simulation_log %>%
-          group_by(id) %>%
-          arrange(time) %>%
-          #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
-          tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
-          ungroup() #%>%
-        #filter(y != 10000)
+      simulation_log = simulation_log %>%
+        group_by(id) %>%
+        arrange(time) %>%
+        #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
+        tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
+        ungroup() #%>%
+      #filter(y != 10000)
 
-        # add agent names to the simulation log!
-        if(!is.null(names(canvasObjects$agents))){
-          simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
-        }
+      # add agent names to the simulation log!
+      if(!is.null(names(canvasObjects$agents))){
+        simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
+      }
 
-        canvasObjects$TwoDVisual <- simulation_log
+      canvasObjects$TwoDVisual <- simulation_log
 
-        simulation_log = simulation_log %>%
-          filter(y != 10000)
+      simulation_log = simulation_log %>%
+        filter(y != 10000)
 
-        remove_modal_spinner()
+      remove_modal_spinner()
 
-        ## updating slider and selectize
-        step = as.numeric(canvasObjects$starting$step)
-        updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
-        updateSliderInput("animation", session = session,
-                          max = max(simulation_log$time)*step, min = min(simulation_log$time)*step,
-                          value = min(simulation_log$time)*step, step = step )
-        updateSelectInput("visualFloor_select", session = session,
-                          choices = c("All",unique(floors$CanvasID)))
-        updateSelectInput("visualAgent_select", session = session,
-                          choices = c("All",sort(unique(simulation_log$agent_type))))
-        ##
+      ## updating slider and selectize
+      step = as.numeric(canvasObjects$starting$step)
+      updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
+      updateSliderInput("animation", session = session,
+                        max = max(simulation_log$time)*step, min = min(simulation_log$time)*step,
+                        value = min(simulation_log$time)*step, step = step )
+      updateSelectInput("visualFloor_select", session = session,
+                        choices = c("All",unique(floors$CanvasID)))
+      updateSelectInput("visualAgent_select", session = session,
+                        choices = c("All",sort(unique(simulation_log$agent_type))))
+      ##
 
-        shinyalert("Success", paste0("File loaded "), "success", 1000)
+      shinyalert("Success", paste0("File loaded "), "success", 1000)
     })
   })
 
@@ -4592,7 +4592,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
 
       canvasObjects$plot_2D <- pl
 
-      })
+    })
 
   })
 
@@ -4703,7 +4703,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
         scale_shape_manual(values = shapeAgents$Shape,
                            #limits = shapeAgents$Agents,
                            breaks = shapeAgents$Agents) +
-                           #drop = FALSE)
+        #drop = FALSE)
         guides(shape = guide_legend(ncol=8, order=1))
 
 
@@ -4714,7 +4714,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
       #                            label = get(tolower(Label)) ),
       #                        color = "black", size = 4)
       # }else
-        if(Label == "Agent ID"){
+      if(Label == "Agent ID"){
         #dfSim = simulation_log %>% filter(time == timeIn)
         pl = pl + geom_label(data = simulation_log,
                              aes(x = x, y = z,
@@ -4767,6 +4767,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
             title = "Insert a directory name to identify uniquely this model",
             textInput("popup_text", "Directory name:", ""),
             shinyDirButton("dir_results", "Select Folder", "Upload"),
+            verbatimTextOutput("dirResultsPath"),
             footer = tagList(
               modalButton("Cancel"),
               actionButton("save_text_run", "Save")
@@ -4789,17 +4790,26 @@ observeEvent(input$LoadFolderPostProc_Button,{
     }
   })
 
+  observeEvent(input$dir_results,{
+    dirPath = parseDirPath(vols, input$dir_results)
+    if(length(dirPath) != 0 )
+      output$dirResultsPath <- renderText({dirPath})
+  })
+
   run_simulation <- reactiveValues(path = "")
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    if(!is_docker_compose && (is.null(input$dir_results) || input$dir_results == "")){
+    browser()
+    if(!is_docker_compose && length(input$dir_results) == 0){
       shinyalert("Missing directories for results. Please, select one.")
       return()
     }
 
     removeModal()
+
+    pathResults <- parseDirPath(vols, input$dir_results)
 
     matricesCanvas <- list()
     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
@@ -4860,19 +4870,19 @@ observeEvent(input$LoadFolderPostProc_Button,{
     }
     else{
       if(input$run_type == "Docker"){
-        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v ', input$dir_results, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
+        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v ', pathResults, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else if(input$run_type == "Local"){
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
-                      input$popup_text, " -resdir ", input$dir_results, " > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -resdir ", pathResults, " > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else{
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm.sh -expdir ",
-                      input$popup_text, " -v ON -resdir ", input$dir_results, " > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -v ON -resdir ", pathResults, " > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
@@ -4905,7 +4915,7 @@ observeEvent(input$LoadFolderPostProc_Button,{
     session = session,
     checkFunc = function() {
       if (log_active()) {
-      # Check if the file's modification time has changed
+        # Check if the file's modification time has changed
         file.info(run_simulation$path)$mtime
       }
     },

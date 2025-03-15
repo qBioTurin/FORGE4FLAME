@@ -942,62 +942,42 @@ parallel_search_directory <- function(start_path, dir_name, n_cores = detectCore
 F4FgetVolumes=function(exclude){
   library(xfun)
   library(fs)
+
   osSystem <- Sys.info()["sysname"]
+  userHome <- path_expand("~")  # Get the user's home directory
+
   if (osSystem == "Darwin") {
-    volumes <- fs::dir_ls("/Volumes")
+    volumes <- fs::dir_ls(userHome)
     names(volumes) <- basename(volumes)
   }
   else if (osSystem == "Linux") {
-    volumes <- c(Computer = "/")
-    if (isTRUE(dir_exists("/media"))) {
-      media <- dir_ls("/media")
+    volumes <- c(Home = userHome)
+    media_path <- file.path(userHome, "media")
+    if (isTRUE(dir_exists(media_path))) {
+      media <- dir_ls(media_path)
       names(media) <- basename(media)
       volumes <- c(volumes, media)
     }
   }
   else if (osSystem == "Windows") {
-    wmic <- paste0(Sys.getenv("SystemRoot"), "\\System32\\Wbem\\WMIC.exe")
-    if (!file.exists(wmic)) {
-      volumes_info <- system2("powershell", "$dvr=[System.IO.DriveInfo]::GetDrives();Write-Output $dvr.length $dvr.name $dvr.VolumeLabel;",
-                              stdout = TRUE)
-      num = as.integer(volumes_info[1])
-      if (num == 0)
-        return(NULL)
-      mat <- matrix(volumes_info[-1], nrow = num, ncol = 2)
-      mat[, 1] <- gsub(":\\\\$", ":/", mat[, 1])
-      sel <- mat[, 2] == ""
-      mat[sel, 2] <- mat[sel, 1]
-      volumes <- mat[, 1]
-      volNames <- mat[, 2]
-      volNames <- paste0(volNames, " (", gsub(":/$", ":",
-                                              volumes), ")")
-    }
-    else {
-      volumes <- system(paste(wmic, "logicaldisk get Caption"),
-                        intern = TRUE, ignore.stderr = TRUE)
-      volumes <- sub(" *\\r$", "", volumes)
-      keep <- !tolower(volumes) %in% c("caption", "")
-      volumes <- volumes[keep]
-      volNames <- system(paste(wmic, "/FAILFAST:1000 logicaldisk get VolumeName"),
-                         intern = TRUE, ignore.stderr = TRUE)
-      volNames <- sub(" *\\r$", "", volNames)
-      volNames <- volNames[keep]
-      volNames <- paste0(volNames, ifelse(volNames == "",
-                                          "", " "))
-      volNames <- paste0(volNames, "(", volumes, ")")
-    }
-    names(volumes) <- volNames
-    volumes <- gsub(":$", ":/", volumes)
+    userHome <- gsub("\\\\", "/", userHome)  # Convert Windows path format
+    volumes <- c(Home = userHome)
+
+    # Check for mounted drives inside user home (e.g., OneDrive, Network Drives)
+    possible_drives <- fs::dir_ls(userHome, type = "directory")
+    names(possible_drives) <- basename(possible_drives)
+    volumes <- c(volumes, possible_drives)
   }
   else {
     stop("unsupported OS")
   }
+
   if (!is.null(exclude)) {
     volumes <- volumes[!names(volumes) %in% exclude]
   }
-  volumes
-}
 
+  return(volumes)
+}
 
 check <- function(canvasObjects, input, output){
   show_modal_spinner()
