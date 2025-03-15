@@ -351,6 +351,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateTextInput(session, inputId = "seed", value = canvasObjects$starting$seed)
   updateRadioButtons(session, inputId = "initial_day", selected = canvasObjects$starting$day)
   updateTextInput(session, inputId = "nrun", value = canvasObjects$starting$nrun)
+  updateTextInput(session, inputId = "prun", value = canvasObjects$starting$prun)
   updateTextInput(session, inputId = "initial_time", value = canvasObjects$starting$time)
   updateTextInput(session, inputId = "simulation_days", value = canvasObjects$starting$simulation_days)
   updateSelectizeInput(session, inputId = "step", choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60), selected = as.numeric(canvasObjects$starting$step))
