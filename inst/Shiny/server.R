@@ -4770,7 +4770,7 @@ server <- function(input, output,session) {
             verbatimTextOutput("dirResultsPath"),
             footer = tagList(
               modalButton("Cancel"),
-              actionButton("save_text_run", "Save")
+              actionButton("save_text_run", "Run")
             )
           )
         )
@@ -4782,7 +4782,7 @@ server <- function(input, output,session) {
             textInput("popup_text", "Directory name:", ""),
             footer = tagList(
               modalButton("Cancel"),
-              actionButton("save_text_run", "Save")
+              actionButton("save_text_run", "Run")
             )
           )
         )
