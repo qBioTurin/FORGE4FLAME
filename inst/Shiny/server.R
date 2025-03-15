@@ -4869,7 +4869,7 @@ server <- function(input, output,session) {
     }
     else{
       if(input$run_type == "Docker"){
-        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v ', pathResults, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
+        cmd <- paste0('docker run --user $UID:$UID --rm --gpus all --runtime nvidia --name FLAMEGPUABM -v ', getwd(), '/Data/', input$popup_text, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v ', pathResults, ':/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2 /usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
@@ -4895,7 +4895,7 @@ server <- function(input, output,session) {
     }
     else{
       if(input$run_type == "Docker"){
-        system("docker stop qbioturin/flamegpu2")
+        system("docker stop FLAMEGPUABM")
       }
       else{
         pids <- system("pgrep FLAMEGPUABM", intern = TRUE)
