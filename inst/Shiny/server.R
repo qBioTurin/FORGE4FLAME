@@ -414,6 +414,11 @@ server <- function(input, output,session) {
           return()
         }
 
+      if(!grepl("^[-]+$", Name)){
+          shinyalert("The type cannot contain special charachters.")
+          return()
+        }
+
         if(is.null(canvasObjects$types)) {
           canvasObjects$types <- data.frame(Name=Name, ID=4, Color = "rgba(0, 0, 0, 1)" )
         }else{
