@@ -4875,13 +4875,13 @@ server <- function(input, output,session) {
       }
       else if(input$run_type == "Local"){
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm_ensemble.sh -expdir ",
-                      input$popup_text, " -resdir ", pathResults, " > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -resdir ", pathResults, " -subdir ON > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
       else{
         cmd <- paste0("cd FLAMEGPU-FORGE4FLAME && nohup ./abm.sh -expdir ",
-                      input$popup_text, " -v ON -resdir ", pathResults, " > ", input$popup_text, "_output.log 2>&1")
+                      input$popup_text, " -v ON -resdir ", pathResults, " -subdir ON > ", input$popup_text, "_output.log 2>&1")
         system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
                ignore.stderr = FALSE, show.output.on.console = TRUE)
       }
