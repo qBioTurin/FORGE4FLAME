@@ -2534,7 +2534,7 @@ server <- function(input, output,session) {
                     data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
                   )
                 }else{
-                  NULL
+                    data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter")
                 }
               }
               else NULL
@@ -2629,7 +2629,7 @@ server <- function(input, output,session) {
           roomSelected = choicesRoom[1]
 
         selectizeInput(
-          inputId = paste0("selectInput_WaitingRoomDeterSelect_", agent),
+          inputId = paste0("selectInput_WaitingRoomDeteSelect_", agent),
           label = paste0("Select second choice room in Determined Flow for ", agent, ":"),
           choices = choicesRoom,
           selected = roomSelected
