@@ -3410,8 +3410,10 @@ server <- function(input, output,session) {
     INITagents<- c()
 
     for(a in 1:length(canvasObjects$agents)){
-      if(canvasObjects$agents[[a]]$entry_type == "Time window")
-        INITagents <- c(INITagents, names(canvasObjects$agents)[a])
+      if(!is.null(canvasObjects$agents[[a]]$entry_type)){
+        if(canvasObjects$agents[[a]]$entry_type == "Time window")
+          INITagents <- c(INITagents, names(canvasObjects$agents)[a])
+      }
     }
 
     updateSelectizeInput(session, inputId = "agent_initial_infected", choices = c("", INITagents))
