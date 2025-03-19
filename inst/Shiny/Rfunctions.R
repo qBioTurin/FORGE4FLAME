@@ -1137,20 +1137,6 @@ check <- function(canvasObjects, input, output){
 
   enable("rds_generation")
 
-  if(is.null(canvasObjects$flame_dirs)){
-    flame_dirs <- parallel_search_directory(".", "FLAMEGPU-FORGE4FLAME/resources/f4f")
-
-    canvasObjects$flame_dirs <- flame_dirs
-
-    if(length(flame_dirs) == 0){
-      output$flame_link <- renderText({
-        paste0("The directory FORGE4FLAME/inst/FLAMEGPU-FORGE4FLAME/resources/f4f/ does not exist anywhere. Check you are in the correct directory.")
-      })
-      remove_modal_spinner()
-      return(NULL)
-    }
-  }
-
   remove_modal_spinner()
   return("OK")
 }

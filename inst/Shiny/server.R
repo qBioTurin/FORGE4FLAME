@@ -1325,7 +1325,6 @@ server <- function(input, output,session) {
       canvasObjects$matricesCanvas <- matricesCanvas
 
       model = reactiveValuesToList(canvasObjects)
-      model$flame_dirs <- NULL
 
       file_name <- glue("WHOLEmodel.RDs")
       saveRDS(model, file=file.path(temp_directory, file_name))
@@ -1364,14 +1363,6 @@ server <- function(input, output,session) {
   observeEvent(input$save_text, {
     removeModal()
 
-    flame_dirs <- canvasObjects$flame_dirs
-
-    for(flame_dir in flame_dirs){
-      if(!dir.exists(paste0(flame_dir, input$popup_text))){
-        system(paste0("mkdir ", flame_dir, "/", input$popup_text))
-      }
-    }
-
     matricesCanvas <- list()
     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
       matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
@@ -1382,12 +1373,9 @@ server <- function(input, output,session) {
     canvasObjects$plot_2D <- NULL
 
     model = reactiveValuesToList(canvasObjects)
-    model$flame_dirs <- NULL
 
     file_name <- glue("WHOLEmodel.RDs")
-    for(flame_dir in flame_dirs){
-      saveRDS(model, file=file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-    }
+    saveRDS(model, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     out = FromToMatrices.generation(model)
     model$rooms_whatif = out$RoomsMeasuresFromTo
@@ -1395,19 +1383,9 @@ server <- function(input, output,session) {
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
     file_name <- glue("WHOLEmodel.json")
-    for(flame_dir in flame_dirs){
-      write_json(x = model, path = file.path(paste0(flame_dir, "/", input$popup_text), file_name))
-    }
+    write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-    success_text <- "Model linked to FLAME GPU 2 in "
-    i <- 0
-    for(flame_dir in flame_dirs){
-      success_text <- paste0(success_text, flame_dir, "/", input$popup_text)
-      if(i < length(flame_dirs) - 1)
-        success_text <- paste0(success_text, ", ")
-
-      i <- i + 1
-    }
+    success_text <- "Model linked to FLAME GPU 2 in FLAMEGPU-FORGE4FLAME/resources/f4f/"
 
     shinyalert("Success", success_text, "success", 1000)
   })
@@ -4802,8 +4780,15 @@ server <- function(input, output,session) {
   log_active <- reactiveVal(FALSE)
 
   observeEvent(input$save_text_run, {
+    if(input$popup_text == ""){
+      shinyalert("Missing directories name. Please, write one.")
+      return()
+    }
+
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    if(!is_docker_compose && length(input$dir_results) == 0){
+    if(!is_docker_compose && (is.null(input$dir_results) ||
+       (is.numeric(input$dir_results) && input$dir_results == 0) ||
+       (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
       shinyalert("Missing directories for results. Please, select one.")
       return()
     }
@@ -4822,7 +4807,6 @@ server <- function(input, output,session) {
     canvasObjects$plot_2D <- NULL
 
     model = reactiveValuesToList(canvasObjects)
-    model$flame_dirs <- NULL
     model_RDS = model
 
     out = FromToMatrices.generation(model)
@@ -4900,12 +4884,8 @@ server <- function(input, output,session) {
         system("docker stop FLAMEGPUABM")
       }
       else{
-        pids <- system("pgrep FLAMEGPUABM", intern = TRUE)
-        if (length(pids) > 0) {
-          for (pid in pids) {
-            system(paste0("kill -9 ", pid))
-          }
-        }
+        system("pkill -f abm.sh")
+        system("pkill -f abm_ensemble.sh")
       }
     }
   })
