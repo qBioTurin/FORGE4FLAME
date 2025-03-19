@@ -152,24 +152,24 @@ To run FLAME GPU 2 using Docker, run the following Bash commands:
 ```
 # Executing a single run without using the FLAMEGPU2 3D visualization :
 
-docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v AbsolutePathToTheDirectoryWithTheModel:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2/usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm.sh -expdir CustomModel"
+docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v /Absolute/Path/To/The/Directory/With/The/Model/NameOfTheModel:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/NameOfTheModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results qbioturin/flamegpu2/usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm.sh -expdir NameOfTheModel"
 
 ######################## ##### ##### ##### ##### ##### ###### ######
 # Executing n runs without using the FLAMEGPU2 3D visualization :
 
-docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v AbsolutePathToTheDirectoryWithTheModel:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/CustomModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results
-qbioturin/flamegpu2/usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir CustomModel"
+docker run --user $UID:$UID --rm --gpus all --runtime nvidia -v /Absolute/Path/To/The/Directory/With/The/Model/NameOfTheModel:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f/NameOfTheModel -v $(pwd):/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results
+qbioturin/flamegpu2/usr/bin/bash -c "/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/abm_ensemble.sh -expdir NameOfTheModel"
 ```
 
-In particular, `AbsolutePathToTheDirectoryWithTheModel` represents the absolute path to the local directory that contains the model to run (the JSON and the RDs files). These files will be saved in a
-directory named `CustomModel` inside the Docker (in `FLAMEGPU-FORGE4FLAME/resources/f4f`). Results will be saved in a directory named `results/CustomModel` within the current directory.
+In particular, `/Absolute/Path/To/The/Directory/With/The/Model/NameOfTheModel` represents the absolute path to the local directory that contains the model to run (the JSON and the RDs files). These files will be saved in a
+directory named `NameOfTheModel` inside the Docker (in `FLAMEGPU-FORGE4FLAME/resources/f4f`). Results will be saved in a directory named `results/NameOfTheModel` within the current directory. The user must replace the directory name containing the model with `NameOfTheModel`.
 
 ## Docker Compose
 To use the Docker Compose, the user must download the YAML file [here](https://github.com/qBioTurin/FORGE4FLAME/blob/main/inst/Compose/docker-compose.yml). To start both F4F and FLAME GPU 2 containers, navigate to the directory containing the YAML file and run the following Bash command (if running on a server, ensure that port 3839 is exposed and accessible via http://<server-hostname>:3839; if running locally, access to http://localhost:3839):
 ```
 docker compose up -d --build
 ```
-To run a FLAME GPU 2 simulation using Docker Compose, the user must use the Run page of F4F. Results will be saved in a directory named `results/NameOfTheModel` within the current directory. To stop the containers, run the following Bash command:
+To run a FLAME GPU 2 simulation using Docker Compose, the user must use the Run page of F4F. Results will be saved in a directory named `results/NameOfTheModel` within the current directory, where \texttt{NameOfTheModel} is the name selected by the user when clicking on the *Run* button in the **Run** page. To stop the containers, run the following Bash command:
 ```
 docker compose down
 ```
