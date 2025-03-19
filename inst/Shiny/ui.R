@@ -1571,16 +1571,15 @@ ui <- dashboardPage(
                         column(
                           offset = 1,
                           width = 2,
-                          textInput(inputId = "prun", label = "Number of parallel simulations (when not using the visualisation):", value = "10")
+                          textInput(inputId = "prun", label = "Number of parallel simulations:", value = "10")
                         )
                       ),
                       fluidRow(
-                        column(
-                          2,
+                        column(2,
                           offset = 1,
                           selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
                         ),
-                        column(3, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
+                        column(6, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
                       ),
                       fluidRow(
                         column(1,
