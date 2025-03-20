@@ -4287,6 +4287,9 @@ server <- function(input, output,session) {
 
       # add agent names to the simulation log!
       if(!is.null(names(canvasObjects$agents))){
+        agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+        agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+        canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
         simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
       }
 
