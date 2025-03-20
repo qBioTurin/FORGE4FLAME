@@ -4749,6 +4749,8 @@ server <- function(input, output,session) {
 
     if(is_docker_compose){
       vols = F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results")
+      shinyDirChoose(input, "dir", roots = vols,
+                     session = session)
     }
   })
 
