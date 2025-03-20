@@ -9,7 +9,8 @@ services:
     ports:
       - "3839:3838"
     volumes:
-      - shared-data:/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - f4f-data:/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - results-data:/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/shared-socket:/tmp/shared-socket
     restart: unless-stopped
@@ -31,10 +32,13 @@ services:
               count: all
               capabilities: [gpu]
     volumes:
-      - shared-data:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - f4f-data:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/resources/f4f
+      - results-data:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/results
       - .:/home/docker/flamegpu2/FLAMEGPU-FORGE4FLAME/flamegpu2_results
       - /tmp/shared-socket:/tmp/shared-socket
 
 volumes:
-  shared-data:
+  f4f-data:
+    driver: local
+  results-data:
     driver: local

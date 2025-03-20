@@ -1303,7 +1303,9 @@ server <- function(input, output,session) {
 
     output <- check(canvasObjects, input, output)
 
-    if(!is.null(output))
+    is_docker <- file.exists("/.dockerenv")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(!is.null(output) && (!is_docker || is_docker_compose))
       enable("flamegpu_connection")
   })
 
@@ -3713,6 +3715,8 @@ server <- function(input, output,session) {
 
   # Get the selected folder path
   observeEvent(input$dir,{
+
+
     dirPath = parseDirPath(vols, input$dir)
     if(length(dirPath) != 0 )
       output$dirPath <- renderText({dirPath})
@@ -4738,12 +4742,21 @@ server <- function(input, output,session) {
     if(is_docker && !is_docker_compose){
       updateSelectInput(session = session, inputId = "run_type", choices = "", selected = "")
       output$error_docker <- renderText({"It is not possible to run a simulation inside the F4F Docker. Use Docker Compose instead."})
+      output$error_docker_postproc <- renderText({"It is not possible to visualise simulation's results using the F4F Docker. Use Docker Compose instead."})
+      disable("dir")
+      disable("LoadFolderPostProc_Button")
+    }
+
+    if(is_docker_compose){
+      vols = F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results")
     }
   })
 
   #### END 2D visualisation ####
 
-  shinyDirChoose(input, "dir_results", roots = vols,
+  vols_dir_results <-  F4FgetVolumes(exclude = "")
+
+  shinyDirChoose(input, "dir_results", roots = vols_dir_results,
                  session = session)
 
   observeEvent(input$run, {
@@ -4781,7 +4794,7 @@ server <- function(input, output,session) {
   })
 
   observeEvent(input$dir_results,{
-    dirPath = parseDirPath(vols, input$dir_results)
+    dirPath = parseDirPath(vols_dir_results, input$dir_results)
     if(length(dirPath) != 0 )
       output$dirResultsPath <- renderText({dirPath})
   })
@@ -4805,7 +4818,7 @@ server <- function(input, output,session) {
 
     removeModal()
 
-    pathResults <- parseDirPath(vols, input$dir_results)
+    pathResults <- parseDirPath(vols_dir_results, input$dir_results)
 
     matricesCanvas <- list()
     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){

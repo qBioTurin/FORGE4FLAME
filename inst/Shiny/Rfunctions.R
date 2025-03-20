@@ -939,12 +939,12 @@ parallel_search_directory <- function(start_path, dir_name, n_cores = detectCore
   return(unlist(matches))
 }
 
-F4FgetVolumes=function(exclude){
+F4FgetVolumes=function(exclude, from="~"){
   library(xfun)
   library(fs)
 
   osSystem <- Sys.info()["sysname"]
-  userHome <- path_expand("~")  # Get the user's home directory
+  userHome <- path_expand(from)  # Get the user's home directory
 
   if (osSystem == "Darwin") {
     volumes <- fs::dir_ls(userHome)

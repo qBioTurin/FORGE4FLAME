@@ -1578,7 +1578,9 @@ ui <- dashboardPage(
                         column(2,
                           offset = 1,
                           selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
-                        ),
+                        )
+                      ),
+                      fluidRow(
                         column(6, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
                       ),
                       fluidRow(
@@ -1647,6 +1649,9 @@ ui <- dashboardPage(
                         # )
                       )
                     ),
+                    fluidRow(
+                      column(6, textOutput("error_docker_postproc"), tags$style("#error_docker {color:red;margin-top:30px;}"))
+                    )
                     conditionalPanel(
                       condition = "input.dir != 'NULL'",
                       fluidRow(
