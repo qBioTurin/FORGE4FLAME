@@ -1581,7 +1581,7 @@ ui <- dashboardPage(
                         )
                       ),
                       fluidRow(
-                        column(6, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
+                        column(6, offset = 1, textOutput("error_docker"), tags$style("#error_docker {color:red;}"))
                       ),
                       fluidRow(
                         column(1,
@@ -1650,7 +1650,7 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                      column(6, textOutput("error_docker_postproc"), tags$style("#error_docker {color:red;margin-top:30px;}"))
+                      column(6, offset = 1, textOutput("error_docker_postproc"), tags$style("#error_docker_postproc {color:red;}"))
                     ),
                     conditionalPanel(
                       condition = "input.dir != 'NULL'",
