@@ -4760,7 +4760,6 @@ server <- function(input, output,session) {
                  session = session)
 
   observeEvent(input$run, {
-    output$dirResultsPath <- renderText({""})
     output <- check(canvasObjects, input, output)
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is.null(output)){
@@ -4810,13 +4809,15 @@ server <- function(input, output,session) {
 
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is_docker_compose && (is.null(input$dir_results) ||
-       (is.numeric(input$dir_results) && input$dir_results == 0) ||
+       (is.numeric(input$dir_results) && input$dir_results <= 1) ||
        (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
       shinyalert("Missing directories for results. Please, select one.")
       return()
     }
 
     removeModal()
+
+    output$dirResultsPath <- renderText({ "" })
 
     pathResults <- parseDirPath(vols_dir_results, input$dir_results)
 
