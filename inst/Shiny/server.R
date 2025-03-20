@@ -3798,7 +3798,7 @@ server <- function(input, output,session) {
       # List of files and column names
       file_info <- list(
         list(name = "evolutionCSV", file = "evolution.csv", cols = NULL),
-        list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents birth", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
+        list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents births", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
         list(name = "AEROSOLcsv", file = "AEROSOL.csv", cols = c("time", "virus_concentration", "room_id")),
         list(name = "CONTACTcsv", file = "CONTACT.csv", cols = c("time", "agent_id1", "agent_id2", "room_id")),
         list(name = "CONTACTmatrix", file = "CONTACTS_MATRIX.csv", cols = c("time", "type1", "type2", "contacts"))
@@ -4747,6 +4747,7 @@ server <- function(input, output,session) {
                  session = session)
 
   observeEvent(input$run, {
+    output$dirResultsPath <- renderText({""})
     output <- check(canvasObjects, input, output)
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is.null(output)){
@@ -4886,7 +4887,8 @@ server <- function(input, output,session) {
   observeEvent(input$stop_run, {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
-      system("docker exec flamegpu2-container pkill -f FLAMEGPUABM")
+      system("docker exec flamegpu2-container pkill -f abm.sh")
+      system("docker exec flamegpu2-container pkill -f abm_ensemble.sh")
     }
     else{
       if(input$run_type == "Docker"){
