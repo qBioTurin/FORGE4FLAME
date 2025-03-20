@@ -3867,6 +3867,9 @@ server <- function(input, output,session) {
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
 
       CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
+      agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+      agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+      canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
       agents = names(canvasObjects$agents)
       CONTACTcsv$agent_id1 = agents[CONTACTcsv$agent_id1+1]
       CONTACTcsv$agent_id2 = agents[CONTACTcsv$agent_id2+1]
@@ -3924,6 +3927,9 @@ server <- function(input, output,session) {
     isolate({
       CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
       c = CONTACTmatrix %>% filter(Folder == folderselected)
+      agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+      agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+      canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
       agents = names(canvasObjects$agents)
 
       # Ensure type1 and type2 factors include all agents
