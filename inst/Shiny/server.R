@@ -3739,7 +3739,11 @@ server <- function(input, output,session) {
       postprocObjects$FLAGmodelLoaded = F
       postprocObjects$evolutionCSV = NULL
     }
-    postprocObjects$dirPath = parseDirPath(roots = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", input$dir)
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(is_docker_compose)
+      postprocObjects$dirPath = parseDirPath(roots = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", input$dir)
+    else
+      postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
 
   })
 
