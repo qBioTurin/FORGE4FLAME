@@ -3717,8 +3717,13 @@ server <- function(input, output,session) {
   observeEvent(input$dir,{
     req(input$dir)  # Ensure input$dir is not NULL
     if (!is.list(input$dir)) return()  # Avoid accessing $path on an atomic vector
-    req(input$dir$path)
-    dirPath = parseDirPath(vols, input$dir)
+
+    # Ensure the user clicked "Select" and the path is not empty or NA
+    dirPath <- parseDirPath(vols, input$dir)
+    if (is.null(dirPath) || dirPath == "" || length(dirPath) == 0) {
+      return()  # Exit the event if no valid directory path is selected
+    }
+
     if(length(dirPath) != 0 ){
       is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
       if(is_docker_compose){
