@@ -3729,12 +3729,12 @@ server <- function(input, output,session) {
 
     if(length(dirPath) != 0 ){
       is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-      # if(is_docker_compose){
-      #   output$dirPath <- renderText({paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", basename(dirPath))})
-      # }
-      # else{
+      if(is_docker_compose){
+        output$dirPath <- renderText({paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", basename(dirPath))})
+      }
+      else{
       output$dirPath <- renderText({dirPath})
-      # }
+      }
     }
   }, ignoreInit = TRUE)
 
@@ -4767,12 +4767,8 @@ server <- function(input, output,session) {
       disable("dir")
       disable("LoadFolderPostProc_Button")
     }
-
     if(is_docker_compose){
-      vols(F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", "results"))
-
-      # shinyDirChoose(input, "dir", roots = vols,
-      #                session = session)
+      vols(F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", custom_name =  "results"))
     }
   })
 
