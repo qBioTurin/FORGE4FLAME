@@ -951,7 +951,7 @@ F4FgetVolumes=function(exclude, from="~", custom_name="Home"){
     names(volumes) <- basename(volumes)
   }
   else if (osSystem == "Linux") {
-    volumes <- c(paste(custom_name) = userHome)
+    volumes <- c(setNames(userHome, custom_name))
     media_path <- file.path(userHome, "media")
     if (isTRUE(dir_exists(media_path))) {
       media <- dir_ls(media_path)
@@ -961,7 +961,7 @@ F4FgetVolumes=function(exclude, from="~", custom_name="Home"){
   }
   else if (osSystem == "Windows") {
     userHome <- gsub("\\\\", "/", userHome)  # Convert Windows path format
-    volumes <- c(paste(custom_name) = userHome)
+    volumes <- c(setNames(userHome, custom_name))
 
     # Check for mounted drives inside user home (e.g., OneDrive, Network Drives)
     possible_drives <- fs::dir_ls(userHome, type = "directory")
