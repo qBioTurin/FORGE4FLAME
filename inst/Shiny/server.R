@@ -3715,11 +3715,16 @@ server <- function(input, output,session) {
 
   # Get the selected folder path
   observeEvent(input$dir,{
-
-
     dirPath = parseDirPath(vols, input$dir)
-    if(length(dirPath) != 0 )
-      output$dirPath <- renderText({dirPath})
+    if(length(dirPath) != 0 ){
+      is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+      if(is_docker_compose){
+        output$dirPath <- renderText({paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", input$dir)})
+      }
+      else{
+        output$dirPath <- renderText({dirPath})
+      }
+    }
   })
   observeEvent(input$LoadFolderPostProc_Button,{
     req(input$dir)
