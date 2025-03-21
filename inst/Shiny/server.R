@@ -3739,7 +3739,7 @@ server <- function(input, output,session) {
       postprocObjects$FLAGmodelLoaded = F
       postprocObjects$evolutionCSV = NULL
     }
-    postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
+    postprocObjects$dirPath = parseDirPath(roots = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", input$dir)
 
   })
 
