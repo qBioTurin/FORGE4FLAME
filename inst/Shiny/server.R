@@ -3708,10 +3708,13 @@ server <- function(input, output,session) {
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
                       "evolution.csv" )
   # Allow user to select a folder
-  vols = F4FgetVolumes(exclude = "")
+  # vols = F4FgetVolumes(exclude = "")
+  vols <- reactiveVal(F4FgetVolumes(exclude = ""))
 
-  shinyDirChoose(input, "dir", roots = vols,
-                 session = session)
+  observe({
+    shinyDirChoose(input, "dir", roots = vols(),
+                   session = session)
+  })
 
   # Get the selected folder path
   observeEvent(input$dir,{
@@ -3719,7 +3722,7 @@ server <- function(input, output,session) {
     if (!is.list(input$dir)) return()  # Avoid accessing $path on an atomic vector
 
     # Ensure the user clicked "Select" and the path is not empty or NA
-    dirPath <- parseDirPath(vols, input$dir)
+    dirPath <- parseDirPath(vols(), input$dir)
     if (is.null(dirPath) || dirPath == "" || length(dirPath) == 0) {
       return()  # Exit the event if no valid directory path is selected
     }
@@ -3734,6 +3737,7 @@ server <- function(input, output,session) {
       }
     }
   }, ignoreInit = TRUE)
+
   observeEvent(input$LoadFolderPostProc_Button,{
     req(input$dir)
 
@@ -3751,7 +3755,7 @@ server <- function(input, output,session) {
     if(is_docker_compose)
       postprocObjects$dirPath = parseDirPath(roots = c("results"="/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/"), input$dir)
     else
-      postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
+      postprocObjects$dirPath = parseDirPath(roots = vols(), input$dir)
 
   })
 
@@ -4765,9 +4769,10 @@ server <- function(input, output,session) {
     }
 
     if(is_docker_compose){
-      vols = F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", "results")
-      shinyDirChoose(input, "dir", roots = vols,
-                     session = session)
+      vols(F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", "results"))
+
+      # shinyDirChoose(input, "dir", roots = vols,
+      #                session = session)
     }
   })
 
