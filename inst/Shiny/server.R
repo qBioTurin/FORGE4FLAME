@@ -3729,12 +3729,12 @@ server <- function(input, output,session) {
 
     if(length(dirPath) != 0 ){
       is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-      if(is_docker_compose){
-        output$dirPath <- renderText({paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", basename(dirPath))})
-      }
-      else{
-        output$dirPath <- renderText({dirPath})
-      }
+      # if(is_docker_compose){
+      #   output$dirPath <- renderText({paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", basename(dirPath))})
+      # }
+      # else{
+      output$dirPath <- renderText({dirPath})
+      # }
     }
   }, ignoreInit = TRUE)
 
