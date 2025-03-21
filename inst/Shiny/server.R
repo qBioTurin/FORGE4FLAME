@@ -3715,6 +3715,9 @@ server <- function(input, output,session) {
 
   # Get the selected folder path
   observeEvent(input$dir,{
+    req(input$dir)  # Ensure input$dir is not NULL
+    if (!is.list(input$dir)) return()  # Avoid accessing $path on an atomic vector
+    req(input$dir$path)
     dirPath = parseDirPath(vols, input$dir)
     if(length(dirPath) != 0 ){
       is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
@@ -3725,7 +3728,7 @@ server <- function(input, output,session) {
         output$dirPath <- renderText({dirPath})
       }
     }
-  })
+  }, ignoreInit = TRUE)
   observeEvent(input$LoadFolderPostProc_Button,{
     req(input$dir)
 
