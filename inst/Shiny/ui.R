@@ -1652,6 +1652,15 @@ ui <- dashboardPage(
                     fluidRow(
                       column(6, offset = 1, textOutput("error_docker_postproc"), tags$style("#error_docker_postproc {color:red;}"))
                     ),
+                    fluidRow(
+                      column(width = 5, offset = 1,
+                             div(class = "icon-container", id="div_compose", style="margin-top:20px; visibility:hidden;",
+                                 h4("Select a folder", icon("info-circle")),
+                                 div(class = "icon-text", "Click on the table to select a folder.")
+                             ),
+                             div(id = "div_compose_table", style="visibility:hidden;", DT::dataTableOutput("Folder_Selection_Compose"))
+                      )
+                    ),
                     conditionalPanel(
                       condition = "input.dir != 'NULL'",
                       fluidRow(

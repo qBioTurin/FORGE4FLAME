@@ -3739,7 +3739,13 @@ server <- function(input, output,session) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$LoadFolderPostProc_Button,{
-    req(input$dir)
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(is_docker_compose){
+      dirname <- req(input$Folder_Selection_Compose_cell_clicked)
+    }
+    else{
+      dirname <- req(input$dir)
+    }
 
     if(is.null(canvasObjects$roomsINcanvas)){
       shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
@@ -3751,12 +3757,8 @@ server <- function(input, output,session) {
       postprocObjects$FLAGmodelLoaded = F
       postprocObjects$evolutionCSV = NULL
     }
-    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    if(is_docker_compose)
-      postprocObjects$dirPath = parseDirPath(roots = c("results"="/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/"), input$dir)
-    else
-      postprocObjects$dirPath = parseDirPath(roots = vols(), input$dir)
 
+    postprocObjects$dirPath = parseDirPath(roots = vols(), dirname)
   })
 
 
@@ -4768,7 +4770,26 @@ server <- function(input, output,session) {
       disable("LoadFolderPostProc_Button")
     }
     if(is_docker_compose){
-      vols(F4FgetVolumes(exclude = "", from = "/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", custom_name =  "results"))
+      disable("dir")
+      disable("LoadFolderPostProc_Button")
+
+      showElement("div_compose")
+      showElement("Folder_Selection_Compose")
+
+      directories <- list.dirs("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", recursive = FALSE)
+      dir_names <- basename(directories)
+
+      output$Folder_Selection_Compose <- DT::renderDataTable(
+        DT::datatable(data.frame(Directory = dir_names),
+                      options = list(
+                        columnDefs = list(list(className = 'dt-left', targets=0)),
+                        pageLength = 5
+                      ),
+                      selection = 'single',
+                      rownames = FALSE,
+                      colnames = c("Directory Name")
+        )
+      )
     }
   })
 
