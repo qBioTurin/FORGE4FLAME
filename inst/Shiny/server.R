@@ -4769,12 +4769,12 @@ server <- function(input, output,session) {
       disable("dir")
       disable("LoadFolderPostProc_Button")
     }
+
     if(is_docker_compose){
       disable("dir")
-      disable("LoadFolderPostProc_Button")
 
       showElement("div_compose")
-      showElement("Folder_Selection_Compose")
+      showElement("div_compose_table")
 
       directories <- list.dirs("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", recursive = FALSE)
       dir_names <- basename(directories)
