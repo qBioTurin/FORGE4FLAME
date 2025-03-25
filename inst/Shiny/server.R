@@ -3735,7 +3735,8 @@ server <- function(input, output,session) {
   observeEvent(input$LoadFolderPostProc_Button,{
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
-      dirname <- req(input$Folder_Selection_Compose_cell_clicked)
+      req(input$Folder_Selection_Compose_cell_clicked$value)
+      dirname <- input$Folder_Selection_Compose_cell_clicked$value
     }
     else{
       dirname <- req(input$dir)
