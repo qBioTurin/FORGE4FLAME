@@ -4769,7 +4769,10 @@ server <- function(input, output,session) {
       disable("dir")
       disable("LoadFolderPostProc_Button")
     }
+  })
 
+  observeEvent(input$SideTabs, {
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
       disable("dir")
 
@@ -4787,7 +4790,6 @@ server <- function(input, output,session) {
                       colnames = c("Directory Name")
         )
       )
-
     }
   })
 
