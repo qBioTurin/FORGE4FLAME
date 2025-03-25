@@ -4773,7 +4773,7 @@ server <- function(input, output,session) {
     if(is_docker_compose){
       disable("dir")
 
-      directories <- list.dirs(".", recursive = FALSE)
+      directories <- list.dirs("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", recursive = FALSE)
       dir_names <- basename(directories)
 
       output$Folder_Selection_Compose <- DT::renderDataTable(
