@@ -3707,7 +3707,6 @@ server <- function(input, output,session) {
                       "evolution.csv" )
   # Allow user to select a folder
   vols = F4FgetVolumes(exclude = "")
-
   shinyDirChoose(input, "dir", roots = vols,
                  session = session)
 

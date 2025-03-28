@@ -947,7 +947,9 @@ F4FgetVolumes=function(exclude){
   userHome <- path_expand("~")  # Get the user's home directory
 
   if (osSystem == "Darwin") {
-    volumes <- fs::dir_ls(userHome)
+    #volumes <- fs::dir_ls(userHome)
+    #names(volumes) <- basename(volumes)
+    volumes <- userHome
     names(volumes) <- basename(volumes)
   }
   else if (osSystem == "Linux") {
