@@ -939,12 +939,12 @@ parallel_search_directory <- function(start_path, dir_name, n_cores = detectCore
   return(unlist(matches))
 }
 
-F4FgetVolumes=function(exclude){
+F4FgetVolumes=function(exclude, from="~", custom_name="Home"){
   library(xfun)
   library(fs)
 
   osSystem <- Sys.info()["sysname"]
-  userHome <- path_expand("~")  # Get the user's home directory
+  userHome <- path_expand(from)  # Get the user's home directory
 
   if (osSystem == "Darwin") {
     #volumes <- fs::dir_ls(userHome)
@@ -953,7 +953,7 @@ F4FgetVolumes=function(exclude){
     names(volumes) <- basename(volumes)
   }
   else if (osSystem == "Linux") {
-    volumes <- c(Home = userHome)
+    volumes <- c(setNames(userHome, custom_name))
     media_path <- file.path(userHome, "media")
     if (isTRUE(dir_exists(media_path))) {
       media <- dir_ls(media_path)
@@ -963,7 +963,7 @@ F4FgetVolumes=function(exclude){
   }
   else if (osSystem == "Windows") {
     userHome <- gsub("\\\\", "/", userHome)  # Convert Windows path format
-    volumes <- c(Home = userHome)
+    volumes <- c(setNames(userHome, custom_name))
 
     # Check for mounted drives inside user home (e.g., OneDrive, Network Drives)
     possible_drives <- fs::dir_ls(userHome, type = "directory")

@@ -1578,8 +1578,10 @@ ui <- dashboardPage(
                         column(2,
                           offset = 1,
                           selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
-                        ),
-                        column(6, textOutput("error_docker"), tags$style("#error_docker {color:red;margin-top:30px;}"))
+                        )
+                      ),
+                      fluidRow(
+                        column(6, offset = 1, textOutput("error_docker"), tags$style("#error_docker {color:red;}"))
                       ),
                       fluidRow(
                         column(1,
@@ -1645,6 +1647,14 @@ ui <- dashboardPage(
                         #   icon = shiny::icon("upload"),
                         #   inputId = "LoadCSVsimul_Button"
                         # )
+                      )
+                    ),
+                    fluidRow(
+                      column(6, offset = 1, textOutput("error_docker_postproc"), tags$style("#error_docker_postproc {color:red;}"))
+                    ),
+                    fluidRow(
+                      column(width = 4, offset = 1, style = "margin-top: 20px;",
+                             DT::dataTableOutput("Folder_Selection_Compose")
                       )
                     ),
                     conditionalPanel(

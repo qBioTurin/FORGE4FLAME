@@ -1303,7 +1303,9 @@ server <- function(input, output,session) {
 
     output <- check(canvasObjects, input, output)
 
-    if(!is.null(output))
+    is_docker <- file.exists("/.dockerenv")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(!is.null(output) && (!is_docker || is_docker_compose))
       enable("flamegpu_connection")
   })
 
@@ -3706,18 +3708,36 @@ server <- function(input, output,session) {
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
                       "evolution.csv" )
   # Allow user to select a folder
+
   vols = F4FgetVolumes(exclude = "")
   shinyDirChoose(input, "dir", roots = vols,
                  session = session)
 
   # Get the selected folder path
   observeEvent(input$dir,{
-    dirPath = parseDirPath(vols, input$dir)
-    if(length(dirPath) != 0 )
+    req(input$dir)  # Ensure input$dir is not NULL
+    if (!is.list(input$dir)) return()  # Avoid accessing $path on an atomic vector
+
+    # Ensure the user clicked "Select" and the path is not empty or NA
+    dirPath <- parseDirPath(vols(), input$dir)
+    if (is.null(dirPath) || dirPath == "" || length(dirPath) == 0) {
+      return()  # Exit the event if no valid directory path is selected
+    }
+
+    if(length(dirPath) != 0 ){
       output$dirPath <- renderText({dirPath})
-  })
+    }
+  }, ignoreInit = TRUE)
+
   observeEvent(input$LoadFolderPostProc_Button,{
-    req(input$dir)
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(is_docker_compose){
+      req(input$Folder_Selection_Compose_cell_clicked$value)
+      dirname <- input$Folder_Selection_Compose_cell_clicked$value
+    }
+    else{
+      dirname <- req(input$dir)
+    }
 
     if(is.null(canvasObjects$roomsINcanvas)){
       shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
@@ -3729,8 +3749,13 @@ server <- function(input, output,session) {
       postprocObjects$FLAGmodelLoaded = F
       postprocObjects$evolutionCSV = NULL
     }
-    postprocObjects$dirPath = parseDirPath(roots = vols, input$dir)
 
+    if(is_docker_compose){
+      postprocObjects$dirPath = paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", dirname)
+    }
+    else{
+      postprocObjects$dirPath = parseDirPath(roots = vols(), dirname)
+    }
   })
 
 
@@ -3797,7 +3822,7 @@ server <- function(input, output,session) {
       # List of files and column names
       file_info <- list(
         list(name = "evolutionCSV", file = "evolution.csv", cols = NULL),
-        list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents birth", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
+        list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents births", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
         list(name = "AEROSOLcsv", file = "AEROSOL.csv", cols = c("time", "virus_concentration", "room_id")),
         list(name = "CONTACTcsv", file = "CONTACT.csv", cols = c("time", "agent_id1", "agent_id2", "room_id")),
         list(name = "CONTACTmatrix", file = "CONTACTS_MATRIX.csv", cols = c("time", "type1", "type2", "contacts"))
@@ -3866,6 +3891,9 @@ server <- function(input, output,session) {
       postprocObjects$AEROSOLcsv =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
 
       CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
+      agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+      agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+      canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
       agents = names(canvasObjects$agents)
       CONTACTcsv$agent_id1 = agents[CONTACTcsv$agent_id1+1]
       CONTACTcsv$agent_id2 = agents[CONTACTcsv$agent_id2+1]
@@ -3923,6 +3951,9 @@ server <- function(input, output,session) {
     isolate({
       CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
       c = CONTACTmatrix %>% filter(Folder == folderselected)
+      agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+      agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+      canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
       agents = names(canvasObjects$agents)
 
       # Ensure type1 and type2 factors include all agents
@@ -4286,6 +4317,9 @@ server <- function(input, output,session) {
 
       # add agent names to the simulation log!
       if(!is.null(names(canvasObjects$agents))){
+        agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+        agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+        canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
         simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
       }
 
@@ -4728,12 +4762,39 @@ server <- function(input, output,session) {
     if(is_docker && !is_docker_compose){
       updateSelectInput(session = session, inputId = "run_type", choices = "", selected = "")
       output$error_docker <- renderText({"It is not possible to run a simulation inside the F4F Docker. Use Docker Compose instead."})
+      output$error_docker_postproc <- renderText({"It is not possible to visualise simulation's results using the F4F Docker. Use Docker Compose instead."})
+      disable("dir")
+      disable("LoadFolderPostProc_Button")
+    }
+  })
+
+  observeEvent(input$SideTabs, {
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(is_docker_compose){
+      disable("dir")
+
+      directories <- list.dirs("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results", recursive = FALSE)
+      dir_names <- basename(directories)
+
+      output$Folder_Selection_Compose <- DT::renderDataTable(
+        DT::datatable(data.frame(Directory = dir_names),
+                      options = list(
+                        columnDefs = list(list(className = 'dt-left', targets=0)),
+                        pageLength = 5
+                      ),
+                      selection = 'single',
+                      rownames = FALSE,
+                      colnames = c("Directory Name")
+        )
+      )
     }
   })
 
   #### END 2D visualisation ####
 
-  shinyDirChoose(input, "dir_results", roots = vols,
+  vols_dir_results <-  F4FgetVolumes(exclude = "")
+
+  shinyDirChoose(input, "dir_results", roots = vols_dir_results,
                  session = session)
 
   observeEvent(input$run, {
@@ -4770,7 +4831,7 @@ server <- function(input, output,session) {
   })
 
   observeEvent(input$dir_results,{
-    dirPath = parseDirPath(vols, input$dir_results)
+    dirPath = parseDirPath(vols_dir_results, input$dir_results)
     if(length(dirPath) != 0 )
       output$dirResultsPath <- renderText({dirPath})
   })
@@ -4786,7 +4847,7 @@ server <- function(input, output,session) {
 
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is_docker_compose && (is.null(input$dir_results) ||
-       (is.numeric(input$dir_results) && input$dir_results == 0) ||
+       (is.numeric(input$dir_results) && input$dir_results <= 1) ||
        (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
       shinyalert("Missing directories for results. Please, select one.")
       return()
@@ -4794,7 +4855,9 @@ server <- function(input, output,session) {
 
     removeModal()
 
-    pathResults <- parseDirPath(vols, input$dir_results)
+    output$dirResultsPath <- renderText({ "" })
+
+    pathResults <- parseDirPath(vols_dir_results, input$dir_results)
 
     matricesCanvas <- list()
     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
@@ -4876,7 +4939,8 @@ server <- function(input, output,session) {
   observeEvent(input$stop_run, {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
-      system("docker exec flamegpu2-container pkill -f FLAMEGPUABM")
+      system("docker exec flamegpu2-container pkill -f abm.sh")
+      system("docker exec flamegpu2-container pkill -f abm_ensemble.sh")
     }
     else{
       if(input$run_type == "Docker"){
