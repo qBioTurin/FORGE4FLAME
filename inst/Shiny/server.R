@@ -3719,7 +3719,7 @@ server <- function(input, output,session) {
     if (!is.list(input$dir)) return()  # Avoid accessing $path on an atomic vector
 
     # Ensure the user clicked "Select" and the path is not empty or NA
-    dirPath <- parseDirPath(vols(), input$dir)
+    dirPath <- parseDirPath(vols, input$dir)
     if (is.null(dirPath) || dirPath == "" || length(dirPath) == 0) {
       return()  # Exit the event if no valid directory path is selected
     }
@@ -3754,7 +3754,7 @@ server <- function(input, output,session) {
       postprocObjects$dirPath = paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", dirname)
     }
     else{
-      postprocObjects$dirPath = parseDirPath(roots = vols(), dirname)
+      postprocObjects$dirPath = parseDirPath(roots = vols, dirname)
     }
   })
 
@@ -4273,6 +4273,21 @@ server <- function(input, output,session) {
 
   })
 
+  # output$DownloadPostProc_Button <- downloadHandler(
+  #   filename = function() {
+  #     paste('PostProcData', Sys.Date(), '.RDs', sep='')
+  #   },
+  #   content = function(file) {
+  #     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
+  #     evolutionCSV = req(postprocObjects$evolutionCSV)
+  #     Mapping = req(postprocObjects$Mapping)
+  #
+  #     manageSpinner(TRUE)
+  #
+  #
+  #     manageSpinner(FALSE)
+  #   }
+  # )
   #### end query post processing ####
 
   #### 2D visualisation ####

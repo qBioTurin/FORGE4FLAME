@@ -1618,7 +1618,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(
-                        width = 1,
+                        width = 2,
                         offset = 1,
                         shinyDirButton("dir", "Select Folder", "Upload")
                         # fileInput(
@@ -1639,14 +1639,14 @@ ui <- dashboardPage(
                         )
                       ),
                       column(
-                        width = 5,
-                        style = "margin-top: 20px;",
+                        width = 4,
+                        #style = "margin-top: 20px;",
                         verbatimTextOutput("dirPath")
-                        # actionButton(
-                        #   label = "Load",
-                        #   icon = shiny::icon("upload"),
-                        #   inputId = "LoadCSVsimul_Button"
-                        # )
+                      ),
+                      column(
+                        width = 3,
+                        #style = "margin-top: 20px;",
+                        downloadButton("DownloadPostProc_Button", label = "Download")
                       )
                     ),
                     fluidRow(
