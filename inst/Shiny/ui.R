@@ -1646,7 +1646,7 @@ ui <- dashboardPage(
                       column(
                         width = 3,
                         #style = "margin-top: 20px;",
-                        downloadButton("DownloadPostProc_Button", label = "Download")
+                        #downloadButton("DownloadPostProc_Button", label = "Download")
                       )
                     ),
                     fluidRow(
