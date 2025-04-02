@@ -3793,16 +3793,16 @@ server <- function(input, output,session) {
       floors = req(canvasObjects$floors) %>%
         mutate(y = (Order - 1) * 10, CanvasID = Name)
 
-      roomsINcanvas <- roomsINcanvas %>%
+      fillroomsINcanvas <- roomsINcanvas %>%
         filter(type == "Fillingroom") %>%
         mutate(z = y) %>%
         select(x, z, CanvasID, w, h) %>%
         left_join(floors, by = "CanvasID") %>%
         select(x, y, z, w, h) %>%
-        mutate(x=x+ceiling(w/2), z=z+ceiling(h/2), ID = NA) %>%
+        mutate(x=x+ceiling(w/2), z=z+ceiling(h/2), ID = -1) %>%
         select(ID, x, y, z)
 
-      G <- rbind(G, roomsINcanvas)
+      G <- rbind(G, fillroomsINcanvas)
 
       postprocObjects$Mapping = G
 
@@ -3877,7 +3877,7 @@ server <- function(input, output,session) {
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
 
-      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = unique(roomsINcanvas$CanvasID)[( y / 10 )+1] ,
+      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = canvasObjects$floors$Name[( y / 10 )+1] ,
                                                     coord = paste0(x,"-", z ,"-",CanvasID),
                                                     Name = rooms_id[coord] )
 
@@ -4651,12 +4651,6 @@ server <- function(input, output,session) {
       shapeAgents = data.frame(Agents = (unique(simulation_log$agent_type)),
                                Shape = 0:(length(unique(simulation_log$agent_type)) -1) ,  stringsAsFactors = F)
 
-      if(floorSelected != "All"){
-        simulation_log = simulation_log %>% filter(CanvasID == floorSelected)
-      }else{
-        simulation_log$CanvasID = factor(simulation_log$CanvasID, levels = floors$Name)
-      }
-
       if(visualAgent != "All"){
         simulation_log = simulation_log %>% filter(agent_type == visualAgent)
         if(visualAgentID != "All"){
@@ -4671,6 +4665,12 @@ server <- function(input, output,session) {
         group_by(id) %>%
         filter(time == max(time)) %>%
         filter(y != 10000)
+
+      if(floorSelected != "All"){
+        simulation_log = simulation_log %>% filter(CanvasID == floorSelected)
+      }else{
+        simulation_log$CanvasID = factor(simulation_log$CanvasID, levels = floors$Name)
+      }
 
       if(colorFeat %in% c("CumulAerosol", "Aerosol") ){
         AEROSOLcsv = postprocObjects$AEROSOLcsv %>%
