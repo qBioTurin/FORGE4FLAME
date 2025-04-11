@@ -245,7 +245,10 @@ F4F developers have no liability for any use of F4F functions, including without
 # How to cite
 
 ```
-Baccega, Daniele and Terrone, Irene and Heywood, Peter and Chisholm, Robert and Richmond, P. and Contaldo, Sandro Gepiro and Bosio, Lorenzo and Pernice, Simone and Beccuti, Marco, Forge4flame: An Intuitive Dashboard for Designing Gpu Agent-Based Models to Simulate Infectious Disease Spread. Available at SSRN: http://dx.doi.org/10.2139/ssrn.5194584
+Baccega, Daniele and Terrone, Irene and Heywood, Peter and Chisholm, Robert and Richmond, P.
+and Contaldo, Sandro Gepiro and Bosio, Lorenzo and Pernice, Simone and Beccuti, Marco,
+Forge4flame: An Intuitive Dashboard for Designing Gpu Agent-Based Models to Simulate
+Infectious Disease Spread. Available at SSRN: http://dx.doi.org/10.2139/ssrn.5194584
 ```
 
 # References
