@@ -1517,8 +1517,9 @@ server <- function(input, output,session) {
       }
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
-                               Label = character(0), FlowID = character(0) ),
-        RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0, Weight =1),
+                               Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
+        RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
+                               Weight =1, SlotTime = "00:00 - 23:59", AgentLinked = ""),
         Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
@@ -1543,6 +1544,9 @@ server <- function(input, output,session) {
 
         updateSelectizeInput(session = session,inputId =  "id_agents_to_copy",
                              choices = agents, selected = "")
+
+        updateSelectizeInput(session = session, "agentLink_rand_flow", selected = "", choices = c("",agents) )
+        updateSelectizeInput(session = session, "agentLink_det_flow", selected = "", choices = c("",agents) )
       }
 
       ##### updating all the agents tabs
@@ -1561,7 +1565,6 @@ server <- function(input, output,session) {
       }
 
       InfoApp$NumTabsFlow = 0
-      input$DetFlow_tabs
 
       #order the remaining flow of the agent and show in the correct order
       FlowTabs = canvasObjects$agents[[Agent]]$DeterFlow$FlowID
@@ -1630,12 +1633,14 @@ server <- function(input, output,session) {
                                           list(className = 'dt-left', targets=1),
                                           list(className = 'dt-left', targets=2),
                                           list(className = 'dt-left', targets=3),
-                                          list(className = 'dt-left', targets=4)),
+                                          list(className = 'dt-left', targets=4),
+                                          list(className = 'dt-left', targets=5),
+                                          list(className = 'dt-left', targets=6)),
                         pageLength = 5
                       ),
                       selection = 'single',
                       rownames = F,
-                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight")
+                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
         )
       )
 
@@ -1855,6 +1860,8 @@ server <- function(input, output,session) {
         return()
       }
 
+      agentlinked = input$agentLink_det_flow
+
       if(new_room != "" && new_time != ""){
         agentsOLD = canvasObjects$agents[[name]]$DeterFlow
         agentsOLD_filter = agentsOLD[agentsOLD$FlowID == FlowID,]
@@ -1864,8 +1871,10 @@ server <- function(input, output,session) {
                            Time = new_time,
                            Flow = length(agentsOLD_filter[,"Flow"])+1,
                            Activity = activity,
-                           Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ",activityLabel),
-                           FlowID = FlowID )
+                           Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked),
+                           FlowID = FlowID,
+                           AgentLinked = agentlinked )
+
         if(agent$Label %in% agentsOLD_filter[,"Label"])
         {
           agent$Label <- paste0("(",length(grep(x= agentsOLD_filter[,"Label"],pattern = agent$Label))+1,") ", agent$Label)
@@ -1884,7 +1893,8 @@ server <- function(input, output,session) {
       return()
     }
 
-    if(!is.null(canvasObjects$agents) && agentID != "" && !is.null(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) && nrow(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) >= 0 && !is.null(IDDetFlow_tabs)){
+    if(!is.null(canvasObjects$agents) && agentID != "" && !is.null(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) &&
+       nrow(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) >= 0 && !is.null(IDDetFlow_tabs)){
       agent <- canvasObjects$agents[[agentID]]$DeterFlow %>% filter( FlowID == IDDetFlow_tabs)
 
       if(length(agent$Room) != 0){
@@ -2035,6 +2045,9 @@ server <- function(input, output,session) {
     name = input$id_new_agent
     agent = canvasObjects$agents[[name]]$RandFlow
 
+    EntryTime <- input[["EntryTimeRate_rand_flow"]]
+    ExitTime <- input[["ExitTimeRate_rand_flow"]]
+
     activity = switch(input$RandActivity,
                       "Very Light - e.g. resting" = 1,
                       "Light - e.g. speak while resting" = 1.7777,
@@ -2079,6 +2092,21 @@ server <- function(input, output,session) {
 
     canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"] = 1 - sumweights #round(1-sumweights,digits = 4)
 
+    listTimes = canvasObjects$agents[[name]]$RandFlow %>%
+      filter(
+        Name == name,
+        Room == input$Rand_select_room_flow
+      ) %>% pull(TimeSlot)
+
+    if(length(listTimes) == 0) listTimes = NULL
+    times = CheckEntryExit(EntryTime,ExitTime,listTimes)
+
+    if(times[1] == "Error"){
+      shinyalert(times[2])
+      return()
+    }
+
+    agentlinked = input$agentLink_rand_flow
 
     if(input$Rand_select_room_flow != "" ){
 
@@ -2088,7 +2116,9 @@ server <- function(input, output,session) {
                             Time = new_time,
                             Activity = activity,
                             ActivityLabel = activityLabel,
-                            Weight = gsub(",", "\\.", as.numeric(input$RandWeight))
+                            Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
+                            TimeSlot = times[1],
+                            AgentLinked = agentlinked
       )
       canvasObjects$agents[[name]]$RandFlow = rbind(canvasObjects$agents[[name]]$RandFlow,newOrder)
     }
@@ -2100,12 +2130,14 @@ server <- function(input, output,session) {
                                         list(className = 'dt-left', targets=1),
                                         list(className = 'dt-left', targets=2),
                                         list(className = 'dt-left', targets=3),
-                                        list(className = 'dt-left', targets=4)),
+                                        list(className = 'dt-left', targets=4),
+                                        list(className = 'dt-left', targets=5),
+                                        list(className = 'dt-left', targets=6)),
                       pageLength = 5
                     ),
                     selection = 'single',
                     rownames = F,
-                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight")
+                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked")
       )
     )
 
@@ -2123,12 +2155,14 @@ server <- function(input, output,session) {
                                             list(className = 'dt-left', targets=1),
                                             list(className = 'dt-left', targets=2),
                                             list(className = 'dt-left', targets=3),
-                                            list(className = 'dt-left', targets=4)),
+                                            list(className = 'dt-left', targets=4),
+                                            list(className = 'dt-left', targets=5),
+                                            list(className = 'dt-left', targets=6)),
                           pageLength = 5
                         ),
                         selection = 'single',
                         rownames = F,
-                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight")
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
           )
         )
       }
@@ -2378,7 +2412,7 @@ server <- function(input, output,session) {
           if(ExitTimeRate != ""){
             if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$",ExitTimeRate) || grepl("^\\d{1,2}$",ExitTimeRate)) )
             {
-              shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20:30)ò")
+              shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20:30).")
               return()
             }
           }
@@ -2387,7 +2421,7 @@ server <- function(input, output,session) {
           }
           #check if the number before : in EntryTime is lower than number before : in ExitTime
           if(as.numeric(strsplit(input[[paste0("EntryTimeRate_", index)]], ":")[[1]][1]) > as.numeric(strsplit(input[[paste0("ExitTimeRate_", index)]], ":")[[1]][1])) {
-            shinyalert("The Entry time should be lower than the Exit timeò")
+            shinyalert("The Entry time should be lower than the Exit time.")
             return()
           }
           if (as.numeric(strsplit(input[[paste0("EntryTimeRate_", index)]], ":")[[1]][1]) == as.numeric(strsplit(input[[paste0("ExitTimeRate_", index)]], ":")[[1]][1]) &&
@@ -2514,7 +2548,7 @@ server <- function(input, output,session) {
                     data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
                   )
                 }else{
-                    data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter")
+                  data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter")
                 }
               }
               else NULL
@@ -4862,8 +4896,8 @@ server <- function(input, output,session) {
 
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is_docker_compose && (is.null(input$dir_results) ||
-       (is.numeric(input$dir_results) && input$dir_results <= 1) ||
-       (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
+                              (is.numeric(input$dir_results) && input$dir_results <= 1) ||
+                              (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
       shinyalert("Missing directories for results. Please, select one.")
       return()
     }

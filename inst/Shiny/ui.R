@@ -19,7 +19,8 @@ library(tidyr)
 library(htmltools)
 library(DT)
 library(shinyFiles)
-
+library(bslib)
+library(lubridate)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -47,11 +48,45 @@ shinyjs.clearCanvas = function() {
 '
 
 ui <- dashboardPage(
+  # theme = bs_theme(
+  #   version = 5,
+  #   bootswatch = "minty",  # or "flatly", "litera", "yeti", etc.
+  #   base_font = font_google("Roboto"),
+  #   heading_font = font_google("Raleway"),
+  #   bg = "#f8f9fa",   # Light gray background
+  #   fg = "#343a40",   # Dark text
+  #   primary = "#0d6efd", # Bootstrap blue
+  #   border_radius = "lg",  # Rounded corners globally
+  #   card_border_color = "#dee2e6",
+  #   card_box_shadow = TRUE
+  # ),
   dashboardHeader(
     title = "Build your ABM",
     tags$li(
       class = "dropdown d-flex align-items-center",
       tags$head(tags$link(rel = "shortcut icon", href = "F4Ficon.png")),
+      tags$style(HTML("
+        .f4f-card {
+          border: 1px solid #dee2e6;
+          border-radius: 20px;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+          overflow: hidden;
+          padding: 20px;
+        }
+        .f4f-card h4 {
+          font-family: 'Raleway', sans-serif;
+          color: #0d6efd;
+          font-weight: 700;
+          margin-bottom: 15px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .f4f-card img {
+          border-radius: 10px;
+          margin-top: 10px;
+        }
+      ")),
       tags$style(HTML(
         ".main-header {max-height: 60px;}
         .box.box-solid.box-primary>.box-header {
@@ -140,73 +175,129 @@ ui <- dashboardPage(
       ## Tab HOME ####
       tabItem(
         tabName = "info",
-        fluidRow(
-          box(
-            class = "info",
-            width = 12,
-            img(src = "F4Ficon.png", height = 100, width = 100),
-            br(),
-            strong(h1("Forge4Flame (F4F)")),
-            br(),
-            div(
-              style="text-align:left;",
-              p(h3("")),
-              HTML("
-                <h2>
-                    F4F is a user-friendly dashboard (developed in R Shiny) designed to simplify the definition of an ABM environment for FLAME GPU 2 [5, 6] agent-based models, automatically generating the necessary code.
-                    It enables users to define the model’s environment, the agents interacting within it, the disease model, and other components relevant to an ABM simulation.
-                    F4F is constituted by the following components (the images refer to the school model defined in [7, 8]):
-                </h2>
-                <h2>
-                  <ul>
-
-                    <li class='home'>
-                      <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
-                      <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Rooms</b>: definenew room types.
-                      <img class='home' src='Rooms.png' alt='Rooms page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Agents</b>: define new agent types and their associated movements within the model.
-                      <img class='home' src='Agents.png' alt='Agents page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Resources</b>: specify the number of agents allowed in each room.
-                      <img class='home' src='Resources.png' alt='Resources page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Infection</b>: define the disease model.
-                      <img class='home' src='Infection.png' alt='Infection page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>What-If</b>: perform what-if analyses.
-                      <img class='home' src='Countermeasures.png' alt='What-If page (countermeasures)', width='100%'>
-                      <img class='home' src='Virus.png' alt='What-If page (virus)', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Configuration</b>: set up initial configurations.
-                      <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Run</b>: run the model.
-                      <img class='home' src='Run.png' alt=Run page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Settings</b>: change canvas dimension, and load and save model.
-                      <img class='home' src='Settings.png' alt=Settings page', width='100%'>
-                    </li>
-                    <li class='home'>
-                      <b>Post Processing</b>: Post Processing of the simulations.
-                      <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
-                    </li>
-                  </ul>
-                </h2>
-                ")
+        fluidPage(
+          fluidRow(
+            column(
+              width = 12,
+              div(style = "text-align:center;",
+                  img(src = "F4Ficon.png", height = 100, width = 100),
+                  h1(strong("Forge4Flame (F4F)")),
+                  p("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
+              )
+            )
+          ),
+          br(),
+          fluidRow(
+            column(
+              width = 12,
+              p("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
+            )
+          ),
+          br(),
+          fluidRow(
+            lapply(
+              list(
+                list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png"),
+                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png"),
+                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png"),
+                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png"),
+                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png"),
+                list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png")),
+                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png"),
+                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png"),
+                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png"),
+                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png")
+              ),
+              function(card) {
+                column(
+                  width = 6,
+                  card(
+                    class = "f4f-card",
+                    full_screen = TRUE,
+                    card_header(h4(card$title)),
+                    card_body(
+                      p(card$desc),
+                      if (is.character(card$img)) {
+                        if (length(card$img) == 1) {
+                          img(src = card$img, width = "100%", style = "border-radius: 10px;")
+                        } else {
+                          tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px; border-radius:10px;")))
+                        }
+                      }
+                    )
+                  )
+                )
+              }
             )
           )
         )
+        # fluidRow(
+        #   box(
+        #     class = "info",
+        #     width = 12,
+        #     img(src = "F4Ficon.png", height = 100, width = 100),
+        #     br(),
+        #     strong(h1("Forge4Flame (F4F)")),
+        #     br(),
+        #     div(
+        #       style="text-align:left;",
+        #       p(h3("")),
+        #       HTML("
+        #         <h2>
+        #             F4F is a user-friendly dashboard (developed in R Shiny) designed to simplify the definition of an ABM environment for FLAME GPU 2 [5, 6] agent-based models, automatically generating the necessary code.
+        #             It enables users to define the model’s environment, the agents interacting within it, the disease model, and other components relevant to an ABM simulation.
+        #             F4F is constituted by the following components (the images refer to the school model defined in [7, 8]):
+        #         </h2>
+        #         <h2>
+        #           <ul>
+        #
+        #             <li class='home'>
+        #               <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
+        #               <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Rooms</b>: definenew room types.
+        #               <img class='home' src='Rooms.png' alt='Rooms page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Agents</b>: define new agent types and their associated movements within the model.
+        #               <img class='home' src='Agents.png' alt='Agents page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Resources</b>: specify the number of agents allowed in each room.
+        #               <img class='home' src='Resources.png' alt='Resources page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Infection</b>: define the disease model.
+        #               <img class='home' src='Infection.png' alt='Infection page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>What-If</b>: perform what-if analyses.
+        #               <img class='home' src='Countermeasures.png' alt='What-If page (countermeasures)', width='100%'>
+        #               <img class='home' src='Virus.png' alt='What-If page (virus)', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Configuration</b>: set up initial configurations.
+        #               <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Run</b>: run the model.
+        #               <img class='home' src='Run.png' alt=Run page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Settings</b>: change canvas dimension, and load and save model.
+        #               <img class='home' src='Settings.png' alt=Settings page', width='100%'>
+        #             </li>
+        #             <li class='home'>
+        #               <b>Post Processing</b>: Post Processing of the simulations.
+        #               <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
+        #             </li>
+        #           </ul>
+        #         </h2>
+        #         ")
+        #     )
+        #   )
+        # )
       ),
       ## Canvas HOME ####
       tabItem(
@@ -502,16 +593,16 @@ ui <- dashboardPage(
             width = 12,
             collapsible = T,
             title = div(class = "icon-container",
-                  h4("Agent definition ", icon("info-circle")),
-                  div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
-              ),
+                        h4("Agent definition ", icon("info-circle")),
+                        div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
+            ),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
                                     options = list(create = TRUE),
                                     choices=c(""))
               ),
-              column(1,
+              column(2,
                      actionButton("button_rm_agent",label = "Remove agent", style = 'margin-top:25px')
               ),
               column(3,
@@ -528,7 +619,7 @@ ui <- dashboardPage(
                                     options = list(create = TRUE),
                                     choices=c(""))
               ),
-              column(3,offset=1,
+              column(3,offset=2,
                      textInput(inputId = "num_agent", label = "Number of agents:",
                                placeholder = "The number must be a positive integer")
               )
@@ -552,6 +643,9 @@ ui <- dashboardPage(
               ),
               column(3,
                      get_distribution_panel("det_flow")
+              ),
+              column(2,
+                selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
               ),
               fluidRow(
                 column(3,
@@ -600,14 +694,26 @@ ui <- dashboardPage(
               column(1,
                      textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
               ),
-              column(3,
+              column(2,
+                     textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
+                    ),
+              column(2,
+                     textInput(inputId = "ExitTimeRate_rand_flow", label = "Ending time:", placeholder = "hh:mm")
+              )
+            ),
+            fluidRow(
+              column(offset = 1, width = 4,
                      get_distribution_panel("rand_flow")
+                     ),
+              column(width = 2,
+                     selectInput("agentLink_rand_flow","Select an agent to link:",choices = "",selected = "")
               ),
-              column(3,
+              column(offset = 1, width = 2,
                      actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
               )
             ),
             fluidRow(
+              h3(""),
               column(10, offset=1,
                      div(id="rand_description", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
               )
@@ -1576,8 +1682,8 @@ ui <- dashboardPage(
                       ),
                       fluidRow(
                         column(2,
-                          offset = 1,
-                          selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
+                               offset = 1,
+                               selectInput("run_type", "Select run type:", choices=c("Local with 3D visualisation", "Local", "Docker"), selected = "Docker")
                         )
                       ),
                       fluidRow(
@@ -1719,15 +1825,15 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                        column(10,
-                               plotOutput("A_C_CountersPlot", width = "100%")
-                        ),
-                        column(2,
-                               checkboxGroupInput("A_C_CountersDisease_radioButt",
-                                                  choices = c("Mean curves", "Area from all simulations"),
-                                                  label = "Show:",selected = character()
-                               )
-                        )
+                      column(10,
+                             plotOutput("A_C_CountersPlot", width = "100%")
+                      ),
+                      column(2,
+                             checkboxGroupInput("A_C_CountersDisease_radioButt",
+                                                choices = c("Mean curves", "Area from all simulations"),
+                                                label = "Show:",selected = character()
+                             )
+                      )
                     )
                 )
               ),

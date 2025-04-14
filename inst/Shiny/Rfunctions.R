@@ -1,3 +1,69 @@
+CheckEntryExit = function(EntryTime, ExitTime, listTimes){
+  if(EntryTime == ""){
+    EntryTime = "00:00"
+  }
+  if(ExitTime == ""){
+    ExitTime = "23:59"
+  }
+
+  if(EntryTime != ""){
+    if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", EntryTime) || grepl("^\\d{1,2}$", EntryTime)) )
+    {
+      return(c("Error", "The format of the time should be: hh:mm (e.g. 06:15, or 20)."))
+    }
+  }
+  if(grepl("^\\d{1,2}$", EntryTime)){
+    EntryTime <- paste0(EntryTime,":00")
+  }
+
+  if(ExitTime != ""){
+    if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$",ExitTime) || grepl("^\\d{1,2}$",ExitTime)) )
+    {
+      return(c("Error","The format of the time should be: hh:mm (e.g. 06:15, or 20:30)"))
+
+    }
+  }
+  if(grepl("^\\d{1,2}$", ExitTime)){
+    ExitTime <- paste0(ExitTime,":00")
+  }
+
+  #check if the number before : in EntryTime is lower than number before : in ExitTime
+  if(as.numeric(strsplit(EntryTime, ":")[[1]][1]) > as.numeric(strsplit(ExitTime, ":")[[1]][1])) {
+    return(c("Error", "The Entry time should be lower than the Exit time."))
+
+  }
+  if (as.numeric(strsplit(EntryTime, ":")[[1]][1]) == as.numeric(strsplit(ExitTime, ":")[[1]][1]) &&
+      as.numeric(strsplit(EntryTime, ":")[[1]][2]) > as.numeric(strsplit(ExitTime, ":")[[1]][2])) {
+    return(c("Error", "The Entry time should be lower than the Exit time."))
+
+  }
+
+  new_slot = paste0(EntryTime," - ", ExitTime)
+  # check if it is overlapping
+  if(!is.null(listTimes)){
+    new_times <- parse_time_slot(new_slot)
+
+    for (slot in listTimes) {
+      existing_times <- parse_time_slot(slot)
+
+      if (new_times$start < existing_times$end &&
+          new_times$end > existing_times$start) {
+        return(c("Error", "The time slot overlaps with the existing slots w.r.t the selected room."))  # Overlap detected
+      }
+    }
+  }
+
+  return(new_slot)
+}
+
+parse_time_slot <- function(slot) {
+  times <- str_split(slot, " - ", simplify = TRUE)
+  list(
+    start = lubridate::hm(times[1]),
+    end   = lubridate::hm(times[2])
+  )
+}
+
 theme_fancy <- function() {
   theme_minimal() +
     theme(
@@ -285,8 +351,25 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
   }
 
+  ### updating the old RDs version with v.2 format ####
+
+  for(a in names(canvasObjects$agents)){
+    if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
+    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "")
+    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
+      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "")
+      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - " )
+      }
+  }
+
+  ####
+
   updateSelectizeInput(inputId = "id_new_agent", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
   updateSelectizeInput(inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
+  updateSelectizeInput(session = session, "agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
+  updateSelectizeInput(session = session, "agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
 
   classes <- c()
   for(i in 1:length(canvasObjects$agents)){
