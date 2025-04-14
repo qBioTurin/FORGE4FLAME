@@ -1544,12 +1544,12 @@ server <- function(input, output,session) {
 
         updateSelectizeInput(session = session,inputId =  "id_agents_to_copy",
                              choices = agents, selected = "")
-
-        updateSelectizeInput(session = session, "agentLink_rand_flow", selected = "", choices = c("",agents) )
-        updateSelectizeInput(session = session, "agentLink_det_flow", selected = "", choices = c("",agents) )
       }
 
       ##### updating all the agents tabs
+      updateSelectizeInput("agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
+      updateSelectizeInput("agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
+
       ## update table of entrance time ##
       # first remove all tabs
       updateCheckboxInput(session, inputId = "ckbox_entranceFlow", value = canvasObjects$agents[[Agent]]$entry_type)
@@ -1601,6 +1601,7 @@ server <- function(input, output,session) {
       # InfoApp$NumTabsTimeSlot <- 0
       # if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime))
       #   InfoApp$NumTabsTimeSlot <- length(unique(canvasObjects$agents[[Agent]]$EntryExitTime$Name))
+
 
       ### END updating
 
@@ -1860,7 +1861,7 @@ server <- function(input, output,session) {
         return()
       }
 
-      agentlinked = input$agentLink_det_flow
+      agentlinked = ifelse(input$agentLink_det_flow == "", ".",input$agentLink_det_flow)
 
       if(new_room != "" && new_time != ""){
         agentsOLD = canvasObjects$agents[[name]]$DeterFlow
@@ -1886,32 +1887,36 @@ server <- function(input, output,session) {
 
   #updating the list of rooms in determined flow
   observe({
-    input$id_new_agent -> agentID
-    input$DetFlow_tabs -> IDDetFlow_tabs
+    req(input$id_new_agent) -> agentID
+    req(input$DetFlow_tabs) -> IDDetFlow_tabs
+    req(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) -> DeterFlow
 
     if(!grepl("^[a-zA-Z0-9_]+$", agentID)){
       return()
     }
 
-    if(!is.null(canvasObjects$agents) && agentID != "" && !is.null(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) &&
-       nrow(canvasObjects$agents[[input$id_new_agent]]$DeterFlow) >= 0 && !is.null(IDDetFlow_tabs)){
-      agent <- canvasObjects$agents[[agentID]]$DeterFlow %>% filter( FlowID == IDDetFlow_tabs)
+    isolate({
+      if(!is.null(canvasObjects$agents) && agentID != "" && !is.null(DeterFlow) &&
+         nrow(DeterFlow) >= 0 && !is.null(IDDetFlow_tabs)){
+        agent <- canvasObjects$agents[[agentID]]$DeterFlow %>% filter( FlowID == IDDetFlow_tabs)
 
-      if(length(agent$Room) != 0){
-        rank_list_drag = rank_list(text = "Drag the rooms in the desired order",
-                                   labels =  agent$Label[agent$Flow],
-                                   input_id = paste("list_detflow",agentID,IDDetFlow_tabs,sep = "_")
-        )
-      }
-      else{
-        rank_list_drag = rank_list(text = "Drag the rooms in the desired order",
-                                   labels =  NULL,
-                                   input_id = paste("list_detflow",agentID,IDDetFlow_tabs,sep = "_")
-        )
-      }
+        if(length(agent$Room) != 0){
+          rank_list_drag = rank_list(text = "Drag the rooms in the desired order",
+                                     labels =  agent$Label[agent$Flow],
+                                     input_id = paste("list_detflow",agentID,IDDetFlow_tabs,sep = "_")
+          )
+        }
+        else{
+          rank_list_drag = rank_list(text = "Drag the rooms in the desired order",
+                                     labels =  NULL,
+                                     input_id = paste("list_detflow",agentID,IDDetFlow_tabs,sep = "_")
+          )
+        }
 
-      output[[paste0("UIDetFlows",agentID,"_",input$DetFlow_tabs)]] <- renderUI({ rank_list_drag })
-    }
+        output[[paste0("UIDetFlows",agentID,"_",input$DetFlow_tabs)]] <- renderUI({ rank_list_drag })
+      }
+    })
+
   })
 
   observeEvent(input$add_det_flow,{
@@ -2004,7 +2009,7 @@ server <- function(input, output,session) {
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow[-nrow,]
         }else{
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Activity = numeric(0),
-                                                                               Label = character(0), FlowID = character(0) )
+                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0))
         }
       }
     }
@@ -2012,7 +2017,7 @@ server <- function(input, output,session) {
 
   observe({
     namesDetFlows = paste("list_detflow", input$id_new_agent,input$DetFlow_tabs,sep = "_")
-    input[[namesDetFlows]]
+    req(input[[namesDetFlows]]) -> list_detflow
 
     if(!grepl("^[a-zA-Z0-9_]+$", input$id_new_agent)){
       return()
@@ -2022,15 +2027,15 @@ server <- function(input, output,session) {
       isolate({
         agent <- canvasObjects$agents[[input$id_new_agent]]$DeterFlow %>% filter(FlowID == input$DetFlow_tabs)
         DeterFlow_tmp = canvasObjects$agents[[input$id_new_agent]]$DeterFlow %>% filter(FlowID != input$DetFlow_tabs)
-        input[[namesDetFlows]] -> list_detflow
+
         if(!is.null(list_detflow) &&
            length(agent$Room) > 0 &&
            length(list_detflow) == length(agent$Label) ){
           newOrder = data.frame(Name = input$id_new_agent,
                                 Label = list_detflow,
                                 Flow = 1:length(list_detflow) )
-          DeterFlow = merge(agent %>% select(-Flow), newOrder) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID) %>% arrange(Flow)
+          DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
+            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })

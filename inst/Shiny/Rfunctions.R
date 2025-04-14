@@ -360,7 +360,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
       canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "")
     if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
       canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "")
-      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - " )
+      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - ." )
       }
   }
 
