@@ -1547,8 +1547,8 @@ server <- function(input, output,session) {
       }
 
       ##### updating all the agents tabs
-      updateSelectizeInput("agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
-      updateSelectizeInput("agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
+      updateSelectizeInput(session = session,inputId ="agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
+      updateSelectizeInput(session = session,inputId ="agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
 
       ## update table of entrance time ##
       # first remove all tabs
