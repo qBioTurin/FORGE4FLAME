@@ -1832,12 +1832,19 @@ server <- function(input, output,session) {
       name = input$id_new_agent
       new_room = input$Det_select_room_flow
 
+      if(new_room == ""){
+        shinyalert("Error", "Please, select a room for the determined flow.", "error", 5000)
+        return()
+      }
+
       det_flow <- check_distribution_parameters(input, "det_flow")
       new_dist <- det_flow[[1]]
       new_time <- det_flow[[2]]
 
-      if(is.null(new_dist) || is.null(new_time))
+      if(is.null(new_dist) || is.null(new_time)){
+        shinyalert("Error", "Please, specify a time for the determined flow.", "error", 5000)
         return()
+      }
 
       activity = switch(input$DetActivity,
                         "Very Light - e.g. resting" = 1,
@@ -2050,6 +2057,11 @@ server <- function(input, output,session) {
     name = input$id_new_agent
     agent = canvasObjects$agents[[name]]$RandFlow
 
+    if(input$Rand_select_room_flow == ""){
+      shinyalert("Error", "Please, select a room for the random flow.", "error", 5000)
+      return()
+    }
+
     EntryTime <- input[["EntryTimeRate_rand_flow"]]
     ExitTime <- input[["ExitTimeRate_rand_flow"]]
 
@@ -2085,8 +2097,10 @@ server <- function(input, output,session) {
     new_dist <- rand_flow[[1]]
     new_time <- rand_flow[[2]]
 
-    if(is.null(new_dist) || is.null(new_time))
+    if(is.null(new_dist) || is.null(new_time)){
+      shinyalert("Error", "Please, specify a time for the random flow.", "error", 5000)
       return()
+    }
 
     sumweights = as.numeric(gsub(",", "\\.", input$RandWeight)) + sum(as.numeric(canvasObjects$agents[[name]]$RandFlow$Weight)) - as.numeric(canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"])
 
@@ -2390,8 +2404,10 @@ server <- function(input, output,session) {
         new_dist <- daily_rate[[1]]
         new_time <- daily_rate[[2]]
 
-        if(is.null(new_dist) || is.null(new_time))
+        if(is.null(new_dist) || is.null(new_time)){
+          shinyalert("Error", "Please, specify a time for the time slot.", "error", 5000)
           return()
+        }
 
 
         EntryTimeRate <- input[[paste0("EntryTimeRate_",index)]]
@@ -2979,8 +2995,10 @@ server <- function(input, output,session) {
     gamma_dist=gamma[[1]]
     gamma_time=gamma[[2]]
 
-    if(is.null(gamma_dist) || is.null(gamma_time))
+    if(is.null(gamma_dist) || is.null(gamma_time)){
+      shinyalert("Error", "Please, specify a value for gamma.", "error", 5000)
       return()
+    }
 
     if(grepl("E", Name)){
       alpha <- check_distribution_parameters(input, "alpha")
@@ -2988,8 +3006,10 @@ server <- function(input, output,session) {
       alpha_dist=alpha[[1]]
       alpha_time=alpha[[2]]
 
-      if(is.null(alpha_dist) || is.null(alpha_time))
+      if(is.null(alpha_dist) || is.null(alpha_time)){
+        shinyalert("Error", "Please, specify a value for alpha.", "error", 5000)
         return()
+      }
     }
 
     if(grepl("D", Name)){
@@ -2998,8 +3018,10 @@ server <- function(input, output,session) {
       lambda_dist=lambda[[1]]
       lambda_time=lambda[[2]]
 
-      if(is.null(lambda_dist) || is.null(lambda_time))
+      if(is.null(lambda_dist) || is.null(lambda_time)){
+        shinyalert("Error", "Please, specify a value for lambda.", "error", 5000)
         return()
+      }
     }
 
     if(grepl("^([^S]*S[^S]*S[^S]*)$", Name)){
@@ -3008,8 +3030,10 @@ server <- function(input, output,session) {
       nu_dist=nu[[1]]
       nu_time=nu[[2]]
 
-      if(is.null(nu_dist) || is.null(nu_time))
+      if(is.null(nu_dist) || is.null(nu_time)){
+        shinyalert("Error", "Please, specify a value for nu.", "error", 5000)
         return()
+      }
     }
 
     canvasObjects$disease = list(Name=Name,beta_contact=beta_contact,beta_aerosol=beta_aerosol,gamma_time=gamma_time,gamma_dist=gamma_dist,alpha_time=alpha_time, alpha_dist=alpha_dist,lambda_time=lambda_time,lambda_dist=lambda_dist,nu_time=nu_time,nu_dist=nu_dist)
@@ -3145,8 +3169,10 @@ server <- function(input, output,session) {
     new_dist <- vaccination_coverage[[1]]
     new_time <- vaccination_coverage[[2]]
 
-    if(is.null(new_time) && is.null(new_dist))
+    if(is.null(new_time) && is.null(new_dist)){
+      shinyalert("Error", "Please, specify a value for the vaccination coverage.", "error", 5000)
       return()
+    }
 
     if(new_dist == "Deterministic"){
       if(as.numeric(new_time) < 1){
@@ -3201,8 +3227,10 @@ server <- function(input, output,session) {
       new_time <- swab_global[[2]]
     }
 
-    if(is.null(new_time) && is.null(new_dist))
+    if(is.null(new_time) && is.null(new_dist)){
+      shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
       return()
+    }
 
     if(new_dist == "Deterministic" || new_dist == "No swab"){
       paramstext = paste0(paramstext, "; Dist: ", new_dist,", ",new_time,", 0")
@@ -3244,8 +3272,10 @@ server <- function(input, output,session) {
       new_dist <- quarantine_global[[1]]
       new_time <- quarantine_global[[2]]
 
-      if(is.null(new_time) && is.null(new_dist))
+      if(is.null(new_time) && is.null(new_dist)){
+        shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
         return()
+      }
 
       if(new_dist == "Deterministic"){
         if(as.numeric(new_time) < 1){
@@ -3281,8 +3311,10 @@ server <- function(input, output,session) {
         new_dist <- quarantine_swab_global[[1]]
         new_time <- quarantine_swab_global[[2]]
 
-        if(is.null(new_time) && is.null(new_dist))
+        if(is.null(new_time) && is.null(new_dist)){
+          shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
           return()
+        }
       }
 
       if(new_dist == "Deterministic" || new_dist == "No swab"){

@@ -168,24 +168,24 @@ class Room {
 
             context.restore()
         }
-        
+
         // Codice JavaScript
         //console.log('Valore di x:', this.x);
         //console.log('Valore di y:', this.y);
         context.fillRect(this.x, this.y, this.length, this.width);
-            
+
         //Imposta lo stile del bordo
         context.lineWidth = 2;
         context.strokeStyle = this.colorStroke; //  il colore desiderato per il bordo
         //Disegna il rettangolo con il bordo colorato
         context.strokeRect(this.x, this.y, this.length, this.width);
-        
+
         if (this.selected) {
             context.lineWidth = 2;
             context.strokeStyle = this.activeColor2;
             context.strokeRect(this.x, this.y, this.length, this.width);
         }
-        
+
         // Disegna il testo al centro del rettangolo
         context.fillStyle = "white";
         context.textAlign = "center";
@@ -193,14 +193,14 @@ class Room {
         context.font = "12px sans-serif";
         context.fillText(this.text + "\n #" + this.id, this.x + this.length / 2, this.y + this.width / 2);
 
-        
+
         if (this.side !== '') {
           context.fillStyle = 'yellow';
           context.strokeStyle = 'yellow';
 
           const centerX = this.x + this.length / 2;
           const centerY = this.y + this.width / 2;
-    
+
           if (this.side === 'top') {
             context.fillRect(centerX - 5, this.y - 5, 10, 10);
           } else if (this.side === 'bottom') {
@@ -211,13 +211,13 @@ class Room {
             context.fillRect(this.x + this.length - 5, centerY - 2.5, 10, 10);
           }
         }
-    
+
     }
-        
+
     update() {
         this.x += 0.1
     }
-    
+
     select() {
         this.selected = !this.selected
     }
@@ -274,7 +274,7 @@ class Circle {
     update() {
         this.x += 0.1;
     }
-    
+
     select() {
         this.selected = !this.selected;
     }
@@ -312,7 +312,7 @@ class FloorManager {
         this.w = w_base;
         this.h = h_base;
         this.arrayObject = [];
-        
+
         this.init();
     }
 
@@ -334,7 +334,7 @@ class FloorManager {
                       }
                       return false;
                   });
-        
+
                   if (!arr.every(e => e === false)) {
                       this.canvas.classList.add('pointer');
                   } else {
@@ -345,7 +345,7 @@ class FloorManager {
                         if(this.isOut(e))
                           return;
                       }
-                    
+
                       if (e.selected) {
                           Shiny.onInputChange("type", e.type);
                           Shiny.onInputChange("id", e.id);
@@ -354,9 +354,9 @@ class FloorManager {
                           Shiny.onInputChange("x", e.x);
                           Shiny.onInputChange("y", e.y);
                       }
-                      
+
                       Shiny.onInputChange("selected", e.selected);
-                      
+
                       if (e.type === 'rectangle') {
                           if (this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width)) {
                               e.active != true ? e.activate() : false;
@@ -376,7 +376,7 @@ class FloorManager {
         mainCanvas.addEventListener('mousedown', e => {
           if(this.id === selectedCanvas){
             let mouse = this.getMouseCoords(e);
-        
+
             this.arrayObject.forEach(e => {
                 if (e.type === 'rectangle' && this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width)) {
                     e.selected = true;
@@ -400,10 +400,10 @@ class FloorManager {
             this.arrayObject.forEach(e => {
               e.x = Math.round(e.x/10)*10
               e.y = Math.round(e.y/10)*10
-        
+
               // Rifletti i cambiamenti grafici
               e.draw(this.ctx);
-              
+
               if(e.selected && (e.type === 'rectangle' || e.type === 'circle')){
                 if(this.isOverlap(e)){
                   if(!overlap){
@@ -411,33 +411,33 @@ class FloorManager {
                     overlap = true;
                   }
                 }
-                
+
                 if(e.selected && overlap){
                   e.x = e.oldx
                   e.y = e.oldy
                   Shiny.onInputChange("x", e.x);
                   Shiny.onInputChange("y", e.y);
-                  
+
                   Shiny.onInputChange("selected", e.selected);
-                  
+
                 }
-                  
+
                 if(this.isOut(e))
                   return;
               }
-              
+
               e.selected = false;
             });
-            
+
             if(!overlap){
               let newArrayObject = [];
-              
+
               this.arrayObject.forEach((e, index) => {
                   if(e.type !== 'segment'){
                     newArrayObject.push(e);
                   }
               });
-              
+
               this.arrayObject = newArrayObject;
             }
           }
@@ -454,7 +454,7 @@ class FloorManager {
             y: event.clientY - canvasCoords.top
         };
     }
-    
+
     getOffsetCoords = (mouse, rect) => {
     return {
         x: mouse.x - rect.x,
@@ -465,14 +465,14 @@ class FloorManager {
     cursorInRect = (mouseX, mouseY, rectX, rectY, rectW, rectH) => {
         let xLine = mouseX > rectX && mouseX < rectX + rectW
         let yLine = mouseY > rectY && mouseY < rectY + rectH
-    
+
         return xLine && yLine
     }
 
     cursorInCircle = (mouseX, mouseY, circX, circY,circR) => {
         // Calcola la distanza tra il centro del cerchio e le coordinate del mouse
         const distance = Math.sqrt((mouseX - circX) ** 2 + (mouseY - circY) ** 2);
-    
+
         // Verifica se la distanza è inferiore al raggio del cerchio
         return distance <= circR;
     }
@@ -491,7 +491,7 @@ class FloorManager {
                 }
               }
             }
-            
+
             if(this.arrayObject[i].type === 'circle')
             {
               const circle = this.arrayObject[i];
@@ -510,7 +510,7 @@ class FloorManager {
                 overlap = true;  // C'è sovrapposizione
               }
             }
-            
+
             if(this.arrayObject[i].type === 'circle')
             {
               const circle = this.arrayObject[i];
@@ -522,10 +522,10 @@ class FloorManager {
             }
           }
         }
-        
+
         return overlap;  // Nessuna sovrapposizione
     }
-    
+
     isOut(event){
         let out = false;
         if (event.x + event.length > this.canvas.length - 10){
@@ -546,7 +546,7 @@ class FloorManager {
         }
         return out;
     }
-    
+
     animate() {
         this.ctx.clearRect(0, 0, w, h);
         this.arrayObject.forEach(obj => obj.draw(this.ctx));
@@ -560,19 +560,19 @@ class FloorManager {
 function addFloor(floorId) {
     FloorArray[floorId] = new FloorManager(floorId);
 }
-      
+
 let arr = new Array(40).fill('empty').map(() => Math.floor(Math.random() * 100))
 
 // =============================================================
 //                          MAIN LOOP
 // =============================================================
 
- 
+
 // Handle canvas selection change
 $('#canvas_selector').on('change', function () {
- 
+
   selectedCanvas = $(this).val();
-  
+
   if( selectedCanvas != ""){
     console.log('Selected canvas:', selectedCanvas);
 
@@ -583,7 +583,7 @@ $('#canvas_selector').on('change', function () {
       addFloor(selectedCanvas);
       selectedFloor = FloorArray[selectedCanvas]
     }
-    
+
     // the first time a floor is added the BG is drawn
     console.log('length:', Object.keys(FloorArray).length);
     if(Object.keys(FloorArray).length == 1){
