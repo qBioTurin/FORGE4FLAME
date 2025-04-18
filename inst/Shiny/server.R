@@ -521,7 +521,7 @@ server <- function(input, output,session) {
       # the room we want the ID of the room
       matrix = CanvasToMatrix(canvasObjects,FullRoom = T,canvas = input$canvas_selector)
       # Check if there is still space for the new room
-      result <- find_ones_submatrix_coordinates(matrix, target_rows = width, target_cols = length)
+      result <- find_ones_submatrix_coordinates(matrix, target_rows = ceiling(width), target_cols = ceiling(length))
       xnew = result[2]
       ynew = result[1]
 
@@ -1310,7 +1310,8 @@ server <- function(input, output,session) {
     if(!is.null(output) && (!is_docker || is_docker_compose))
       enable("flamegpu_connection")
 
-    enable("rds_generation")
+    if(!is.null(output))
+      enable("rds_generation")
   })
 
   output$rds_generation <- downloadHandler(

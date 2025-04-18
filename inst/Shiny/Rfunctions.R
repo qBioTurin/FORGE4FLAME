@@ -196,6 +196,9 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       x = r$x
       y = r$y
 
+      r$l <- ceiling(r$l)
+      r$w <- ceiling(r$w)
+
       # matrixCanvas[y, x + 0:(r$l+1)] = 0
       # matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
       # matrixCanvas[y + 0:(r$w+1), x] = 0
