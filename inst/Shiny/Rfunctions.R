@@ -162,18 +162,17 @@ generate_obj <- function(temp_directory){
 }
 
 find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
-  # plus two since we have to consider the borders
-  target_rows= 2 + target_rows
-  target_cols= 2 + target_cols
+  # target_rows= 1 + target_rows
+  # target_cols= 1 + target_cols
 
-  for (start_row in 1:(nrow(mat)-target_rows+1)) {
-    for (start_col in 1:(ncol(mat)-target_cols+1)) {
+  for (start_row in 2:(nrow(mat)-target_rows-1)) {
+    for (start_col in 2:(ncol(mat)-target_cols-1)) {
       end_row <- start_row + target_rows - 1
       end_col <- start_col + target_cols - 1
 
-      submatrix <- mat[start_row:end_row, start_col:end_col]
+      submatrix <- mat[(start_row-1):end_row, (start_col-1):end_col]
 
-      if (all(submatrix == 1)) {
+      if (all(submatrix == 0)) {
         return(c(start_row-1, start_col-1))
       }
     }
@@ -182,11 +181,13 @@ find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
 }
 
 CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
-  matrixCanvas = canvasObjects$matrixCanvas
+  matrixCanvas = matrix(0,
+                        nrow = canvasObjects$canvasDimension$canvasHeight/10,
+                        ncol = canvasObjects$canvasDimension$canvasWidth/10)
+  # matrixCanvas = canvasObjects$matrixCanvas
   roomNames = canvasObjects$rooms
 
 
-  ## wall and room id defnition
   if(!is.null(canvasObjects$roomsINcanvas)){
     rooms = canvasObjects$roomsINcanvas %>% filter(CanvasID == canvas)
     for(i in rooms$ID){
@@ -195,13 +196,11 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       x = r$x
       y = r$y
 
-      ## wall definition as 0
-      matrixCanvas[y, x + 0:(r$l+1)] = 0
-      matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
-      matrixCanvas[y + 0:(r$w+1), x] = 0
-      matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
+      # matrixCanvas[y, x + 0:(r$l+1)] = 0
+      # matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
+      # matrixCanvas[y + 0:(r$w+1), x] = 0
+      # matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
 
-      ## inside the walls the matrix with 1
       if(FullRoom)
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = i
       else
@@ -209,27 +208,27 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
 
       ## door position definition as 2
       if(r$door == "top"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l+1)/2)
+        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
         r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y
         r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + ceiling((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l+1)/2)
+        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
       }
       else if(r$door == "bottom"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + ceiling((r$l+1)/2)
+        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
         r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + r$w + 1
         r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + round((r$l+1)/2)
+        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
       }
       else if(r$door == "left"){
         r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round((r$w+1)/2)
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round((r$w+1)/2)
+        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
+        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
         r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + ceiling((r$l + 1) / 2)
       }
       else if(r$door == "right"){
         r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x+ r$l + 1
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w+1)/2)
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w+1)/2)
+        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
+        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
         r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l + 1) / 2)
       }
 
@@ -239,12 +238,11 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
     }
   }
 
-  ## movement node definition as 3
   if(!is.null(canvasObjects$nodesINcanvas)){
     nodes = canvasObjects$nodesINcanvas %>% filter(CanvasID == canvas)
     for(i in nodes$ID){
       r = nodes %>% filter(ID == i)
-      matrixCanvas[r$y, r$x] = 3
+      matrixCanvas[r$y + 1, r$x + 1] = 3
     }
   }
 
@@ -345,7 +343,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     for(r_id in canvasObjects$nodesINcanvas$ID){
       newpoint = canvasObjects$nodesINcanvas %>% filter(ID == r_id)
       runjs(paste0("// Crea un nuovo oggetto Square con le proprietà desiderate
-                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10," , ", newpoint$y*10,", 5, rgba(0, 127, 255, 1));
+                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10+5," , ", newpoint$y*10+5,", 5, rgba(0, 127, 255, 1));
                 // Aggiungi il nuovo oggetto Square all'array arrayObject
                 FloorArray[\"",newpoint$CanvasID,"\"].arrayObject.push(newPoint);"))
     }

@@ -396,49 +396,60 @@ class FloorManager {
       });
         mainCanvas.addEventListener('mouseup', e => {
           let overlap = false;
-          if(this.id === selectedCanvas){
-            this.arrayObject.forEach(e => {
-              e.x = Math.round(e.x/10)*10
-              e.y = Math.round(e.y/10)*10
 
-              // Rifletti i cambiamenti grafici
-              e.draw(this.ctx);
+          if (this.id === selectedCanvas) {
+            // Loop through each object in the array
+            this.arrayObject.forEach(obj => {
+              // Snap to grid for all objects
+              if(obj.selected){
+                if(obj.type === 'circle'){
+                  obj.x = Math.floor(obj.x / 10) * 10;
+                  obj.y = Math.floor(obj.y / 10) * 10;
+                }
+                else{
+                  obj.x = Math.round(obj.x / 10) * 10;
+                  obj.y = Math.round(obj.y / 10) * 10;
+                }
+              }
 
-              if(e.selected && (e.type === 'rectangle' || e.type === 'circle')){
-                if(this.isOverlap(e)){
-                  if(!overlap){
+              // If the object is a circle, apply the 5 offset after rounding
+                if (obj.selected && obj.type === 'circle' && obj.x % 10 == 0 && obj.y % 10 == 0) {
+                  obj.x += 5;
+                  obj.y += 5;
+                }
+
+              // Draw object
+              obj.draw(this.ctx);
+
+              if (obj.selected && (obj.type === 'rectangle' || obj.type === 'circle')) {
+                // Check for overlap
+                if (this.isOverlap(obj)) {
+                  if (!overlap) {
                     alert("Two objects overlap!");
                     overlap = true;
                   }
                 }
 
-                if(e.selected && overlap){
-                  e.x = e.oldx
-                  e.y = e.oldy
-                  Shiny.onInputChange("x", e.x);
-                  Shiny.onInputChange("y", e.y);
-
-                  Shiny.onInputChange("selected", e.selected);
-
+                // Revert if overlap found
+                if (obj.selected && overlap) {
+                  obj.x = obj.oldx;
+                  obj.y = obj.oldy;
+                  Shiny.onInputChange("x", obj.x);
+                  Shiny.onInputChange("y", obj.y);
+                  Shiny.onInputChange("selected", obj.selected);
                 }
 
-                if(this.isOut(e))
-                  return;
+                // Check if object is out of bounds
+                if (this.isOut(obj)) return;
               }
 
-              e.selected = false;
+              // Deselect after processing
+              obj.selected = false;
             });
 
-            if(!overlap){
-              let newArrayObject = [];
-
-              this.arrayObject.forEach((e, index) => {
-                  if(e.type !== 'segment'){
-                    newArrayObject.push(e);
-                  }
-              });
-
-              this.arrayObject = newArrayObject;
+            // If no overlap, filter out 'segment' objects
+            if (!overlap) {
+              this.arrayObject = this.arrayObject.filter(obj => obj.type !== 'segment');
             }
           }
         });
@@ -528,12 +539,12 @@ class FloorManager {
 
     isOut(event){
         let out = false;
-        if (event.x + event.length > this.canvas.length - 10){
-          event.x = this.canvas.length - event.length - 10;
+        if (event.x + event.length > this.canvas.width - 10){
+          event.x = this.canvas.width - event.length - 10;
           out = true;   // E' fuori dal rettangolo
         }
-        if(event.y + event.width > this.canvas.width - 10){
-          event.y = this.canvas.width - event.width - 10;
+        if(event.y + event.width > this.canvas.height - 10){
+          event.y = this.canvas.height - event.width - 10;
           out = true;   // E' fuori dal rettangolo
         }
         if(event.x < 10){

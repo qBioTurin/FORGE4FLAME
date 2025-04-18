@@ -21,7 +21,7 @@ server <- function(input, output,session) {
                                  ),
                                  canvasDimension = data.frame(canvasWidth = 1000,
                                                               canvasHeight = 800),
-                                 matrixCanvas = matrix(1, nrow = 80,ncol = 100),
+                                 matrixCanvas = matrix(0, nrow = 80,ncol = 100),
                                  selectedId = 1,
                                  floors = NULL,
                                  areas = data.frame(Name=c("None"),
@@ -113,9 +113,9 @@ server <- function(input, output,session) {
     js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
 
     # we add two rows and columns to ensure that the walls are inside the canvas
-    canvasObjects$matrixCanvas = matrix(1,
-                                        nrow = canvasObjects$canvasDimension$canvasHeight/10+2 ,
-                                        ncol = canvasObjects$canvasDimension$canvasWidth/10+2)
+    canvasObjects$matrixCanvas = matrix(0,
+                                        nrow = canvasObjects$canvasDimension$canvasHeight/10,
+                                        ncol = canvasObjects$canvasDimension$canvasWidth/10)
 
   })
 
@@ -526,22 +526,13 @@ server <- function(input, output,session) {
       ynew = result[1]
 
       if(is.null(xnew) || is.null(ynew)){
-        # There no space available!
-        output$Text_SpaceAvailable <- renderUI({
-          # Generate the message based on your logic or input values
-          message <-  paste0("No space available in the floor for a new ",input$select_room , " room.")
-
-          # Apply custom styling using HTML tags
-          styled_message <- paste0("<div style='color: red; background-color: white;'>", message, "</div>")
-
-          # Return the HTML content
-          return(HTML(styled_message))
-        })
+        shinyalert("Error",paste0("No space available in the floor for a new ",input$select_room , " room."), "error", 5000)
+        return()
       }else{
         newroom = data.frame(ID = 1,
                              typeID = roomSelected$ID,
                              type=roomSelected$type,
-                             x = round(xnew)+1, y = round(ynew)+1,
+                             x = xnew, y = ynew,
                              center_x = 0, center_y = 0,
                              door_x = 0, door_y = 0,
                              w = width, l = length, h = height,
@@ -1022,17 +1013,19 @@ server <- function(input, output,session) {
 
       matrix = CanvasToMatrix(canvasObjects,canvas = input$canvas_selector)
       #check if there is still space for the new room
-      result <-  which(matrix == 1, arr.ind = TRUE)
+      result <-  which(matrix == 0, arr.ind = TRUE)
+      result <- result[which(!result[,1] %in% c(1, nrow(matrix))),]
+      result <- result[which(!result[,2] %in% c(1, nrow(matrix))),]
       if(dim(result)[1] == 0) result = NULL
       else result = result[1,]
-      xnew = result[2]
-      ynew = result[1]
+      xnew = result[2] - 1
+      ynew = result[1] - 1
     }else{
       xnew =runif(1,min = 1,max = canvasObjects$canvasDimension$canvasWidth/10-1)
       ynew =runif(1,min = 1,max = canvasObjects$canvasDimension$canvasHeight/10-1)
     }
 
-    newpoint = data.frame(ID = 1 , x = round(xnew), y = round(ynew), CanvasID = input$canvas_selector )
+    newpoint = data.frame(ID = 1 , x = xnew, y = ynew, CanvasID = input$canvas_selector )
 
     if(is.null(canvasObjects$nodesINcanvas))
       canvasObjects$nodesINcanvas = newpoint
@@ -1042,7 +1035,7 @@ server <- function(input, output,session) {
     }
 
     runjs(paste0("// Crea un nuovo oggetto Circle con le proprietà desiderate
-                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10," , ", newpoint$y*10,", 5, rgba(0, 127, 255, 1));
+                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10+5," , ", newpoint$y*10+5,", 5, rgba(0, 127, 255, 1));
                 // Aggiungi il nuovo oggetto Circle all'array arrayObject
                 FloorArray[\"",newpoint$CanvasID,"\"].arrayObject.push(newPoint);") )
 
@@ -1089,6 +1082,9 @@ server <- function(input, output,session) {
 
       canvasObjects$nodesINcanvas <- canvasObjects$nodesINcanvas %>%
         filter(ID != deletedPoint$ID)
+
+      if(nrow(canvasObjects$nodesINcanvas) == 0)
+        canvasObjects$nodesINcanvas <- NULL
     }
 
 
@@ -1281,8 +1277,14 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if(!is.null(input$id)){
-      x = round(input$x/10)
-      y = round(input$y/10)
+      if(input$type == "circle"){
+        x = floor(input$x/10)
+        y = floor(input$y/10)
+      }
+      else{
+        x = round(input$x/10)
+        y = round(input$y/10)
+      }
 
       length = canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"]
       width = canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"]
@@ -1307,6 +1309,8 @@ server <- function(input, output,session) {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(!is.null(output) && (!is_docker || is_docker_compose))
       enable("flamegpu_connection")
+
+    enable("rds_generation")
   })
 
   output$rds_generation <- downloadHandler(
