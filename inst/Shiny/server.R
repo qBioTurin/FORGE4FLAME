@@ -1524,7 +1524,7 @@ server <- function(input, output,session) {
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
                                Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
         RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, SlotTime = "00:00 - 23:59", AgentLinked = ""),
+                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = ""),
         Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
