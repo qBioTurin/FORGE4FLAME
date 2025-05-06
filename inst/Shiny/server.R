@@ -2631,7 +2631,15 @@ server <- function(input, output,session) {
           canvasObjects$resources[[i]]$waitingRoomsDeter <- rbind(canvasObjects$resources[[i]]$waitingRoomsDeter, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
           canvasObjects$resources[[i]]$waitingRoomsRand <- rbind(canvasObjects$resources[[i]]$waitingRoomsRand, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
 
-          canvasObjects$resources[[i]]$roomResource[, Agent] <- input$textInput_resources_global
+          if (!is.null(input$textInput_resources_global) &&
+              nzchar(input$textInput_resources_global) &&
+              nrow(canvasObjects$resources[[i]]$roomResource) > 0) {
+
+            canvasObjects$resources[[i]]$roomResource[[Agent]] <- rep(
+              input$textInput_resources_global,
+              nrow(canvasObjects$resources[[i]]$roomResource)
+            )
+          }
         }
       }
     }
