@@ -546,7 +546,7 @@ server <- function(input, output,session) {
                              w = width, l = length, h = height,
                              Name = roomSelected$Name,
                              door = input$door_new_room,
-                             colorFill = roomSelected$colorFill,
+                             colorFill = room_color,
                              colorBorder = "rgba(0, 0, 0, 1)",
                              area = input$select_area,
                              CanvasID = input$canvas_selector
