@@ -529,6 +529,14 @@ server <- function(input, output,session) {
         shinyalert("Error",paste0("No space available in the floor for a new ",input$select_room , " room."), "error", 5000)
         return()
       }else{
+        color_type <- canvasObjects$color
+        room_color <- roomSelected$colorFill
+        if(color_type == "Type")
+          room_color <- (canvasObjects$types %>% filter(Name == roomSelected$type))$Color
+
+        if(color_type == "Area")
+          room_color <- (canvasObjects$areas %>% filter(Name == input$select_area))$Color
+
         newroom = data.frame(ID = 1,
                              typeID = roomSelected$ID,
                              type=roomSelected$type,
@@ -1428,6 +1436,7 @@ server <- function(input, output,session) {
         postprocObjects$Mapping = NULL
         postprocObjects$FLAGmodelLoaded = FALSE
         postprocObjects$MappingID_room = FALSE
+        postprocObjects$Model = NULL
         if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
           shinyalert("Error","Please select one RDs file.", "error", 5000)
           return()
@@ -1493,6 +1502,7 @@ server <- function(input, output,session) {
       postprocObjects$Mapping = NULL
       postprocObjects$FLAGmodelLoaded = FALSE
       postprocObjects$MappingID_room = FALSE
+      postprocObjects$Model = NULL
     })
     # )
     removeModal()
@@ -1524,7 +1534,7 @@ server <- function(input, output,session) {
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
                                Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
         RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, SlotTime = "00:00 - 23:59", AgentLinked = ""),
+                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = ""),
         Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
@@ -2631,7 +2641,15 @@ server <- function(input, output,session) {
           canvasObjects$resources[[i]]$waitingRoomsDeter <- rbind(canvasObjects$resources[[i]]$waitingRoomsDeter, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
           canvasObjects$resources[[i]]$waitingRoomsRand <- rbind(canvasObjects$resources[[i]]$waitingRoomsRand, data.frame(Agent=Agent, Room=input$selectInput_alternative_resources_global))
 
-          canvasObjects$resources[[i]]$roomResource[, Agent] <- input$textInput_resources_global
+          if (!is.null(input$textInput_resources_global) &&
+              nzchar(input$textInput_resources_global) &&
+              nrow(canvasObjects$resources[[i]]$roomResource) > 0) {
+
+            canvasObjects$resources[[i]]$roomResource[[Agent]] <- rep(
+              input$textInput_resources_global,
+              nrow(canvasObjects$resources[[i]]$roomResource)
+            )
+          }
         }
       }
     }
@@ -3779,6 +3797,7 @@ server <- function(input, output,session) {
                                    Mapping = NULL,
                                    FLAGmodelLoaded = FALSE,
                                    MappingID_room = FALSE,
+                                   Model = NULL
   )
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
@@ -3862,6 +3881,16 @@ server <- function(input, output,session) {
     }
 
     isolate({
+      model_file <- list.files(path = dir, pattern = "\\.RDs$", full.names = TRUE)
+      if (length(model_files) > 0) {
+        model_file <- model_files[1]
+      } else {
+        shinyalert("Error", "The RDs file of the model doesn't exists in the directory", "error")
+        remove_modal_progress()
+        return()
+      }
+      postprocObjects$Model <- readRDS(model_file)
+
       G <- read_table(rooms_file,col_names = FALSE)
       colnames(G) = c("ID","x","y","z")
 
@@ -3939,19 +3968,19 @@ server <- function(input, output,session) {
       subfolders <- list.dirs(dir, recursive = FALSE)
       MinTime = min( postprocObjects$evolutionCSV$Day)
       MaxTime = max( postprocObjects$evolutionCSV$Day)
-      step = as.numeric(canvasObjects$starting$step)
+      step = as.numeric(postprocObjects$Model$starting$step)
 
       AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
 
       if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
         remove_modal_spinner()
-        shinyalert("The time step of the simulation does not correspond to the one defined in the Configuration page. Load the correct model. ", type = "error")
+        shinyalert("The time step of the simulation does not correspond to the one defined in the model. Load the correct model. ", type = "error")
         return()
       }
 
-      if(MaxTime !=  canvasObjects$starting$simulation_days) {
+      if(MaxTime !=  postprocObjects$Model$starting$simulation_days) {
         remove_modal_spinner()
-        shinyalert("The number of days of the simulation does not correspond to the one defined in the Configuration page. Load the correct model. ", type = "error")
+        shinyalert("The number of days of the simulation does not correspond to the one defined in the model. Load the correct model. ", type = "error")
         return()
       }
 
@@ -4236,7 +4265,7 @@ server <- function(input, output,session) {
   observe( {
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
-    days <- req(canvasObjects$starting$simulation_days)
+    days <- req(postprocObjects$Model$starting$simulation_days)
 
     CountersDisease_radioButt = input$A_C_CountersDisease_radioButt
     req(input$Room_Counters_A_C_selectize != "")
@@ -4428,7 +4457,7 @@ server <- function(input, output,session) {
       remove_modal_spinner()
 
       ## updating slider and selectize
-      step = as.numeric(canvasObjects$starting$step)
+      step = as.numeric(postprocObjects$Model$starting$step)
       updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
       updateSliderInput("animation", session = session,
                         max = max(simulation_log$time)*step, min = min(simulation_log$time)*step,
@@ -4458,7 +4487,7 @@ server <- function(input, output,session) {
       return()
     }
 
-    if( input$animationStep > max(canvasObjects$TwoDVisual$time)* as.numeric(canvasObjects$starting$step) ) {
+    if( input$animationStep > max(canvasObjects$TwoDVisual$time)* as.numeric(postprocObjects$Model$starting$step) ) {
       shinyalert("The time step cannot be greater than the maximum time of the simulation",type = "error")
       return()
     }
@@ -4469,7 +4498,7 @@ server <- function(input, output,session) {
     req(canvasObjects$TwoDVisual)
 
     new_val <- min(input$animation +  input$animationStep,
-                   max(canvasObjects$TwoDVisual$time)* as.numeric(canvasObjects$starting$step) )
+                   max(canvasObjects$TwoDVisual$time)* as.numeric(postprocObjects$Model$starting$step) )
 
     updateSliderInput(session, "animation", value = new_val)
   })
@@ -4504,7 +4533,7 @@ server <- function(input, output,session) {
     Label = input$visualLabel_select
 
     isolate({
-      step = as.numeric(canvasObjects$starting$step)
+      step = as.numeric(postprocObjects$Model$starting$step)
       timeIn <- input$animation/step
       timeGrid = seq(0,timeIn,1) # number of steps to reach the seconds selected
 
@@ -4719,7 +4748,7 @@ server <- function(input, output,session) {
 
     isolate({
       roomsINcanvas = postprocObjects$MappingID_room
-      step = as.numeric(canvasObjects$starting$step)
+      step = as.numeric(postprocObjects$Model$starting$step)
       timeIn <- input$animation/step
 
       Label = input$visualLabel_select
