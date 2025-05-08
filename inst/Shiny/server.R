@@ -1650,7 +1650,7 @@ server <- function(input, output,session) {
         )
       )
 
-      canvasObjects$agents <- canvasObjects$agents[-which(names(canvasObjects$agents) ==Agent)]
+      canvasObjects$agents <- canvasObjects$agents[-which(names(canvasObjects$agents) == Agent)]
       canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>%
         filter(Type != Agent)
 
@@ -3945,7 +3945,13 @@ server <- function(input, output,session) {
 
       if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
         remove_modal_spinner()
-        shinyalert("The time step of the simulation does not correspond to the step defined in settings.",type = "error")
+        shinyalert("The time step of the simulation does not correspond to the one defined in the Configuration page. Load the correct model. ", type = "error")
+        return()
+      }
+
+      if(MaxTime !=  canvasObjects$starting$simulation_days) {
+        remove_modal_spinner()
+        shinyalert("The number of days of the simulation does not correspond to the one defined in the Configuration page. Load the correct model. ", type = "error")
         return()
       }
 

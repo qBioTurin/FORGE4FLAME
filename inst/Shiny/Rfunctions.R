@@ -710,7 +710,7 @@ check_distribution_parameters <- function(input, suffix){
 
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
-      shinyalert("You must specify a time > 0 (in minutessssss).")
+      shinyalert("You must specify a time > 0 (in minutes).")
       return(list(NULL, NULL))
     }
     new_time = input[[paste0("DetTime_", suffix)]]
