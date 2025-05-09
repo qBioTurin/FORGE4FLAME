@@ -3882,8 +3882,8 @@ server <- function(input, output,session) {
 
     isolate({
       model_file <- list.files(path = dir, pattern = "\\.RDs$", full.names = TRUE)
-      if (length(model_files) > 0) {
-        model_file <- model_files[1]
+      if (length(model_file) > 0) {
+        model_file <- model_file[1]
       } else {
         shinyalert("Error", "The RDs file of the model doesn't exists in the directory", "error")
         remove_modal_progress()
