@@ -3972,18 +3972,6 @@ server <- function(input, output,session) {
 
       AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
 
-      if(!(step %in% names(table(diff(AEROSOLcsv$time)))) ) {
-        remove_modal_spinner()
-        shinyalert("The time step of the simulation does not correspond to the one defined in the model. Load the correct model. ", type = "error")
-        return()
-      }
-
-      if(MaxTime !=  postprocObjects$Model$starting$simulation_days) {
-        remove_modal_spinner()
-        shinyalert("The number of days of the simulation does not correspond to the one defined in the model. Load the correct model. ", type = "error")
-        return()
-      }
-
       roomsINcanvas = roomsINcanvas %>% mutate( coord = ifelse(type == "Fillingroom", paste0(x+ceiling(w/2),"-", y+ceiling(h/2),"-", CanvasID), paste0(center_x,"-", center_y,"-", CanvasID)))
       rooms_id = roomsINcanvas$Name
       names(rooms_id) = roomsINcanvas$coord
