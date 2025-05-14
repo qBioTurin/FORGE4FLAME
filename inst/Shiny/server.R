@@ -3876,21 +3876,23 @@ server <- function(input, output,session) {
     rooms_file = paste0(dir,"/rooms_mapping.txt")
     if(!file.exists(rooms_file)){
       shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
+      postprocObjects$dirPath <- NULL
       remove_modal_progress()
       return()
     }
 
-    isolate({
-      model_file <- list.files(path = dir, pattern = "\\.RDs$", full.names = TRUE)
-      if (length(model_file) > 0) {
-        model_file <- model_file[1]
-      } else {
-        shinyalert("Error", "The RDs file of the model doesn't exists in the directory", "error")
-        remove_modal_progress()
-        return()
-      }
-      postprocObjects$Model <- readRDS(model_file)
+    model_file <- list.files(path = dir, pattern = "\\.RDs$", full.names = TRUE)
+    if (length(model_file) > 0) {
+      model_file <- model_file[1]
+    } else {
+      shinyalert("Error", "The RDs file of the model doesn't exists in the directory", "error")
+      postprocObjects$dirPath <- NULL
+      remove_modal_progress()
+      return()
+    }
+    postprocObjects$Model <- readRDS(model_file)
 
+    isolate({
       G <- read_table(rooms_file,col_names = FALSE)
       colnames(G) = c("ID","x","y","z")
 
