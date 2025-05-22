@@ -1216,3 +1216,42 @@ check <- function(canvasObjects, input, output){
   remove_modal_spinner()
   return("OK")
 }
+
+can_reach_greater_than_1 <- function(mat, start_r, start_c) {
+  nrows <- nrow(mat)
+  ncols <- ncol(mat)
+
+  # Check if the starting position is a valid 2 or 3
+  if (!(mat[start_r, start_c] %in% c(2, 3))) return(FALSE)
+
+  # Direction vectors for up, down, left, right
+  dirs <- matrix(c(-1,0, 1,0, 0,-1, 0,1), ncol=2, byrow=TRUE)
+
+  # BFS function to explore the matrix
+  bfs <- function(start_r, start_c) {
+    visited <- matrix(FALSE, nrow=nrows, ncol=ncols)
+    queue <- list(c(start_r, start_c))
+    visited[start_r, start_c] <- TRUE
+
+    while (length(queue) > 0) {
+      current <- queue[[1]]
+      queue <- queue[-1]
+      for (d in 1:nrow(dirs)) {
+        nr <- current[1] + dirs[d, 1]
+        nc <- current[2] + dirs[d, 2]
+        if (nr >= 1 && nr <= nrows && nc >= 1 && nc <= ncols &&
+            !visited[nr, nc] && mat[nr, nc] != 0) {
+          visited[nr, nc] <- TRUE
+          if (mat[nr, nc] > 1) {
+            return(TRUE)  # Found a value greater than 1!
+          }
+          queue <- append(queue, list(c(nr, nc)))
+        }
+      }
+    }
+    return(FALSE)
+  }
+
+  # Perform BFS from the start position
+  return(bfs(start_r, start_c))
+}

@@ -1264,7 +1264,7 @@ server <- function(input, output,session) {
       matrixCanvas = CanvasToMatrix(canvasObjects,canvas = input$canvas_selector)
       sum = 0
       for(j in 1:length(path$x)){
-        if(matrixCanvas[path$y[j], path$x[j]] == 0)
+        if(matrixCanvas[path$y[j], path$x[j]] == 1)
           sum = sum + 1
       }
       if(sum == 0){
