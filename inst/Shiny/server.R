@@ -414,7 +414,7 @@ server <- function(input, output,session) {
           return()
         }
 
-        if(grepl("^[-]+$", Name)){
+        if(grepl("-", Name)){
           shinyalert("The type cannot contain special charachters.")
           return()
         }
