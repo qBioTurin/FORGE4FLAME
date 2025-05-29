@@ -461,7 +461,8 @@ ui <- dashboardPage(
                          inputId = "select_type",
                          label = "Type:",
                          options = list(create = TRUE),
-                         choices = c("Normal", "Stair", "Spawnroom", "Fillingroom","Waitingroom")
+                         selected = "",
+                         choices = c("", "Normal", "Stair", "Spawnroom", "Fillingroom","Waitingroom")
                        )
                      )),
             fluidRow(column(1),

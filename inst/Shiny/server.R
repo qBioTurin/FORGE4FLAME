@@ -232,7 +232,7 @@ server <- function(input, output,session) {
   observeEvent(input$save_room,{
     disable("rds_generation")
     disable("flamegpu_connection")
-    Name = gsub(" ", "", tolower(input$id_new_room))
+    Name = gsub(" ", "", input$id_new_room)
 
     length_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$length_new_room)))
     width_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$width_new_room)))
@@ -246,13 +246,18 @@ server <- function(input, output,session) {
 
     if(Name != "" && width_new_room != "" && length_new_room != "" && height_new_room != ""){
 
-      if(Name %in% canvasObjects$rooms$Name){
-        shinyalert(paste0("There already exist a room with name: ", Name, "."))
+      if(tolower(Name) %in% tolower(canvasObjects$rooms$Name)){
+        shinyalert(paste0("There already exist a room with name: ", Name, ". Room's names are case insensitive."))
         return()
       }
 
       if(input$select_type == ""){
         shinyalert("You must select a type.")
+        return()
+      }
+
+      if(input$select_type %in% names(canvasObjects$agents)){
+        shinyalert("You can not define a room type using the same name assigned to an agent.")
         return()
       }
 
@@ -310,7 +315,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    if(! input$select_area %in%canvasObjects$areas$Name  ){
+    if(!tolower(input$select_area) %in% tolower(canvasObjects$areas$Name)){
       Name = gsub(" ", "", input$select_area)
       if(Name != ""){
         if(!grepl("^[a-zA-Z0-9_]+$", Name)){
@@ -330,6 +335,12 @@ server <- function(input, output,session) {
           canvasObjects$areas = rbind(canvasObjects$areas, newarea)
         }
       }
+    }
+    else{
+      updateSelectizeInput(inputId = "select_area",
+                           selected = canvasObjects$areas$Name[which(tolower(input$select_area) == tolower(canvasObjects$areas$Name))],
+                           choices = c("None", unique(canvasObjects$areas$Name)))
+      return()
     }
 
     if(input$select_area != "" && !is.null(canvasObjects$areas)){
@@ -399,23 +410,20 @@ server <- function(input, output,session) {
   observeEvent(input$select_type, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(input$select_type != "" && !is.null(canvasObjects$types)){
-      # update the color type list
-      updateSelectInput(inputId = "selectInput_color_type",
-                        choices = unique(canvasObjects$types$Name))
-    }
 
-    if(! input$select_type %in%canvasObjects$types$Name  ){
-      Name = gsub(" ", "", input$select_type)
-
-      if(Name != ""){
+    Name = gsub(" ", "", input$select_type)
+    if(Name != ""){
+      if(!tolower(Name) %in% tolower(canvasObjects$types$Name)){
         if(!grepl("(^[A-Za-z]+).*", Name)){
           shinyalert("Room name must start with a letter (a-z).")
           return()
         }
 
-        if(grepl("^[-]+$", Name)){
+        if(grepl("-", Name)){
           shinyalert("The type cannot contain special charachters.")
+          updateSelectizeInput(inputId = "select_type",
+                               selected = "",
+                               choices = c("", canvasObjects$types$Name))
           return()
         }
 
@@ -429,7 +437,19 @@ server <- function(input, output,session) {
           canvasObjects$types = rbind(canvasObjects$types, newtype)
         }
       }
+      else{
+        updateSelectizeInput(inputId = "select_type",
+                             selected = canvasObjects$types$Name[which(tolower(Name) == tolower(canvasObjects$types$Name))],
+                             choices = unique(canvasObjects$types$Name))
+        return()
+      }
 
+    }
+
+    if(input$select_type != "" && !is.null(canvasObjects$types)){
+      # update the color type list
+      updateSelectInput(inputId = "selectInput_color_type",
+                        choices = unique(canvasObjects$types$Name))
     }
 
     if(input$select_type == "Fillingroom"){
@@ -1515,6 +1535,18 @@ server <- function(input, output,session) {
     Agent = input$id_new_agent
 
     if(Agent != ""){
+      if(tolower(Agent) %in% tolower(names(canvasObjects$agents))){
+        updateSelectizeInput(inputId = "id_new_agent",
+                             selected = canvasObjects$agents$Name[which(tolower(Agent) %in% tolower(names(canvasObjects$agents)))],
+                             choices = unique(names(canvasObjects$agents)))
+        return()
+      }
+
+      if(Agent %in% canvasObjects$types$Name){
+        shinyalert("You can not define an agent using the same name assigned to a room type.")
+        return()
+      }
+
       if(!grepl("^[a-zA-Z0-9_]+$", Agent)){
         shinyalert("Agent name cannot contain special charachters.")
         updateSelectizeInput(inputId = "id_new_agent",
