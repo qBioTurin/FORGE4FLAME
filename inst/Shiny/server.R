@@ -1535,17 +1535,17 @@ server <- function(input, output,session) {
     Agent = input$id_new_agent
 
     if(Agent != ""){
-      if(tolower(Agent) %in% tolower(names(canvasObjects$agents))){
-        updateSelectizeInput(inputId = "id_new_agent",
-                             selected = canvasObjects$agents$Name[which(tolower(Agent) %in% tolower(names(canvasObjects$agents)))],
-                             choices = unique(names(canvasObjects$agents)))
-        return()
-      }
+      # if(tolower(Agent) %in% tolower(names(canvasObjects$agents))){
+      #   updateSelectizeInput(inputId = "id_new_agent",
+      #                        selected = canvasObjects$agents$Name[which(tolower(Agent) %in% tolower(names(canvasObjects$agents)))],
+      #                        choices = unique(names(canvasObjects$agents)))
+      #   return()
+      # }
 
-      if(Agent %in% canvasObjects$types$Name){
-        shinyalert("You can not define an agent using the same name assigned to a room type.")
-        return()
-      }
+      # if(Agent %in% canvasObjects$types$Name){
+      #   shinyalert("You can not define an agent using the same name assigned to a room type.")
+      #   return()
+      # }
 
       if(!grepl("^[a-zA-Z0-9_]+$", Agent)){
         shinyalert("Agent name cannot contain special charachters.")
