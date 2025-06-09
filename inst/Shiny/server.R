@@ -232,7 +232,7 @@ server <- function(input, output,session) {
   observeEvent(input$save_room,{
     disable("rds_generation")
     disable("flamegpu_connection")
-    Name = gsub(" ", "", input$id_new_room)
+    Name = gsub(" ", "", tolower(input$id_new_room))
 
     length_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$length_new_room)))
     width_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$width_new_room)))
@@ -246,8 +246,8 @@ server <- function(input, output,session) {
 
     if(Name != "" && width_new_room != "" && length_new_room != "" && height_new_room != ""){
 
-      if(tolower(Name) %in% tolower(canvasObjects$rooms$Name)){
-        shinyalert(paste0("There already exist a room with name: ", Name, ". Room's names are case insensitive."))
+      if(Name %in% canvasObjects$rooms$Name){
+        shinyalert(paste0("There already exist a room with name: ", Name, "."))
         return()
       }
 
@@ -315,7 +315,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    if(!tolower(input$select_area) %in% tolower(canvasObjects$areas$Name)){
+    if(! input$select_area %in%canvasObjects$areas$Name  ){
       Name = gsub(" ", "", input$select_area)
       if(Name != ""){
         if(!grepl("^[a-zA-Z0-9_]+$", Name)){
@@ -335,12 +335,6 @@ server <- function(input, output,session) {
           canvasObjects$areas = rbind(canvasObjects$areas, newarea)
         }
       }
-    }
-    else{
-      updateSelectizeInput(inputId = "select_area",
-                           selected = canvasObjects$areas$Name[which(tolower(input$select_area) == tolower(canvasObjects$areas$Name))],
-                           choices = c("None", unique(canvasObjects$areas$Name)))
-      return()
     }
 
     if(input$select_area != "" && !is.null(canvasObjects$areas)){
@@ -440,7 +434,7 @@ server <- function(input, output,session) {
       else{
         updateSelectizeInput(inputId = "select_type",
                              selected = canvasObjects$types$Name[which(tolower(Name) == tolower(canvasObjects$types$Name))],
-                             choices = unique(canvasObjects$types$Name))
+                             choices = canvasObjects$types$Name)
         return()
       }
 
@@ -1454,7 +1448,6 @@ server <- function(input, output,session) {
         postprocObjects$COUNTERScsv = NULL
         postprocObjects$A_C_COUNTERS = NULL
         postprocObjects$Mapping = NULL
-        postprocObjects$FLAGmodelLoaded = FALSE
         postprocObjects$MappingID_room = FALSE
         postprocObjects$Model = NULL
         if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
@@ -1520,7 +1513,6 @@ server <- function(input, output,session) {
       postprocObjects$COUNTERScsv = NULL
       postprocObjects$A_C_COUNTERS = NULL
       postprocObjects$Mapping = NULL
-      postprocObjects$FLAGmodelLoaded = FALSE
       postprocObjects$MappingID_room = FALSE
       postprocObjects$Model = NULL
     })
@@ -1535,13 +1527,6 @@ server <- function(input, output,session) {
     Agent = input$id_new_agent
 
     if(Agent != ""){
-      if(tolower(Agent) %in% tolower(names(canvasObjects$agents))){
-        updateSelectizeInput(inputId = "id_new_agent",
-                             selected = canvasObjects$agents$Name[which(tolower(Agent) %in% tolower(names(canvasObjects$agents)))],
-                             choices = unique(names(canvasObjects$agents)))
-        return()
-      }
-
       if(Agent %in% canvasObjects$types$Name){
         shinyalert("You can not define an agent using the same name assigned to a room type.")
         return()
@@ -2773,6 +2758,7 @@ server <- function(input, output,session) {
 
     return(ListSel)
   })
+
   observe({
     selectW = grep(x = names(input),pattern = "selectInput_WaitingRoomDeterSelect_",value = T)
 
@@ -3873,7 +3859,7 @@ server <- function(input, output,session) {
 
     if(!is.null(postprocObjects$dirPath)){
       # to fix
-      postprocObjects$FLAGmodelLoaded = F
+      postprocObjects$FLAGmodelLoaded = FALSE
       postprocObjects$evolutionCSV = NULL
     }
 
@@ -3974,13 +3960,15 @@ server <- function(input, output,session) {
         data_list <- lapply(csv_files, read_and_process_csv, col_names = file_info[[i]]$cols)
         data_list <-Filter(Negate(is.null), data_list) # Remove NULLs
 
-        if (length(data_list) == 0) next  # Skip empty results
+        if (length(data_list) == 0){
+          postprocObjects[[file_info[[i]]$name]] <- data.frame()
+          update_modal_progress(i / length(file_info))
+          next
+        }
 
         postprocObjects[[file_info[[i]]$name]] <- bind_rows(data_list) %>% distinct()
         update_modal_progress(i / length(file_info))
       }
-
-
     })
     remove_modal_progress()
     shinyalert("Everything is loaded!")
@@ -3991,7 +3979,7 @@ server <- function(input, output,session) {
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
-    req(postprocObjects$FLAGmodelLoaded )
+    req(postprocObjects$FLAGmodelLoaded)
 
     show_modal_spinner(text = "We are preparing everything.")
 
@@ -4089,10 +4077,8 @@ server <- function(input, output,session) {
       canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
       agents = names(canvasObjects$agents)
 
-      # Ensure type1 and type2 factors include all agents
       c$type1 <- factor(c$type1, levels = agents)
       c$type2 <- factor(c$type2, levels = agents)
-
 
       pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
         geom_tile() +

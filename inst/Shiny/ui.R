@@ -21,6 +21,7 @@ library(DT)
 library(shinyFiles)
 library(bslib)
 library(lubridate)
+library(purrr)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 

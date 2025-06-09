@@ -332,7 +332,9 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
 
     # update types
-    updateSelectizeInput(inputId = "select_type",choices = unique(canvasObjects$types$Name) )
+    updateSelectizeInput(inputId = "select_type",
+                         selected = "",
+                         choices = c("", unique(canvasObjects$types$Name)))
     updateSelectInput(inputId = "selectInput_color_type",
                       choices = unique(canvasObjects$types$Name))
     # update areas
