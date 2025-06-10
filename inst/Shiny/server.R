@@ -2609,7 +2609,7 @@ server <- function(input, output,session) {
           roomSelected = choicesRoom[1]
 
         selectizeInput(
-          inputId = paste0("selectInput_WaitingRoomDeteSelect_", agent),
+          inputId = paste0("selectInput_WaitingRoomDeterSelect_", agent),
           label = paste0("Select second choice room in Determined Flow for ", agent, ":"),
           choices = choicesRoom,
           selected = roomSelected
