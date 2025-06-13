@@ -4926,7 +4926,7 @@ server <- function(input, output,session) {
     log_active(TRUE)
 
     if(is_docker_compose){
-      cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container-', Sys.info()["user"], ' /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
+      cmd <- paste0('docker exec -u $UID:$UID flamegpu2-container-', Sys.getenv("DOCKER_COMPOSE_USER"), ' /usr/bin/bash -c "./abm_ensemble.sh -expdir ', input$popup_text, '" > FLAMEGPU-FORGE4FLAME/', input$popup_text, '_output.log 2>&1')
       system(cmd, wait = FALSE, intern = FALSE, ignore.stdout = FALSE,
              ignore.stderr = FALSE, show.output.on.console = TRUE)
     }
@@ -4954,8 +4954,8 @@ server <- function(input, output,session) {
   observeEvent(input$stop_run, {
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
-      system("docker exec flamegpu2-container-", Sys.info()["user"], " pkill -f abm.sh")
-      system("docker exec flamegpu2-container-", Sys.info()["user"], " pkill -f abm_ensemble.sh")
+      system("docker exec flamegpu2-container-", Sys.getenv("DOCKER_COMPOSE_USER"), " pkill -f abm.sh")
+      system("docker exec flamegpu2-container-", Sys.getenv("DOCKER_COMPOSE_USER"), " pkill -f abm_ensemble.sh")
     }
     else{
       if(input$run_type == "Docker"){
