@@ -19,7 +19,7 @@ RUN R -e "install.packages(c('devtools', 'pkgbuild', 'pkgload', 'rcmdcheck'), re
 
 # Install GitHub packages
 RUN R -e "remotes::install_github('ornelles/EBImageExtra', dependencies = TRUE, force = TRUE)"
-RUN R -e "remotes::install_github('qBioTurin/FORGE4FLAME', force=TRUE)"
+RUN R -e "remotes::install_github('qBioTurin/FORGE4FLAME@IEEEICHI25', force=TRUE)"
 
 # Set working directory
 WORKDIR /usr/local/lib/R/site-library/FORGE4FLAME/
