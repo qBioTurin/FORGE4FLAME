@@ -34,7 +34,7 @@ server <- function(input, output,session) {
                                  resources = NULL,
                                  color = "Room",
                                  matricesCanvas = NULL,
-                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=10, nrun=100, prun=10),
+                                 starting = data.frame(seed=NA, simulation_days=10, day="Monday", time="00:00", step=60, nrun=100, prun=10),
                                  rooms_whatif = data.frame(
                                    Measure = character(),
                                    Type = character(),
@@ -410,6 +410,14 @@ server <- function(input, output,session) {
       if(!tolower(Name) %in% tolower(canvasObjects$types$Name)){
         if(!grepl("(^[A-Za-z]+).*", Name)){
           shinyalert("Room name must start with a letter (a-z).")
+          return()
+        }
+
+        if(Name %in% names(canvasObjects$agents)){
+          shinyalert("You can not define a room type using the same name assigned to an agent.")
+          updateSelectizeInput(inputId = "select_type",
+                               selected = "",
+                               choices = c("", canvasObjects$types$Name))
           return()
         }
 
@@ -1365,7 +1373,7 @@ server <- function(input, output,session) {
       model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
       write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
 
-      generate_obj(paste0(temp_directory, "/obj"))
+      # generate_obj(paste0(temp_directory, "/obj"))
 
       zip::zip(
         zipfile = file,
@@ -1528,10 +1536,10 @@ server <- function(input, output,session) {
 
     if(Agent != ""){
       if(tolower(Agent) %in% tolower(names(canvasObjects$agents))){
+        Agent <- names(canvasObjects$agents)[which(tolower(Agent) == tolower(names(canvasObjects$agents)))]
         updateSelectizeInput(inputId = "id_new_agent",
-                             selected = canvasObjects$agents$Name[which(tolower(Agent) %in% tolower(names(canvasObjects$agents)))],
+                             selected = Agent,
                              choices = unique(names(canvasObjects$agents)))
-        return()
       }
 
       if(Agent %in% canvasObjects$types$Name){

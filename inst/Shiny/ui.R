@@ -1655,7 +1655,7 @@ ui <- dashboardPage(
                                                      div(class = "icon-text", "Duration of a FLAME GPU 2 step in seconds.")
                              ),
                              choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
-                             selected = 10)
+                             selected = 60)
                       )
                     )
                 ))
