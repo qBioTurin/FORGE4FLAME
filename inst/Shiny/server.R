@@ -1564,9 +1564,9 @@ server <- function(input, output,session) {
       }
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
-                               Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
+                               Label = character(0), FlowID = character(0)),
         RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = ""),
+                               Weight =1, TimeSlot = "00:00 - 23:59"),
         Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
@@ -1592,10 +1592,6 @@ server <- function(input, output,session) {
         updateSelectizeInput(session = session,inputId =  "id_agents_to_copy",
                              choices = agents, selected = "")
       }
-
-      ##### updating all the agents tabs
-      updateSelectizeInput(session = session,inputId ="agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
-      updateSelectizeInput(session = session,inputId ="agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
 
       ## update table of entrance time ##
       # first remove all tabs
@@ -1915,7 +1911,6 @@ server <- function(input, output,session) {
         return()
       }
 
-      agentlinked = ifelse(input$agentLink_det_flow == "", ".",input$agentLink_det_flow)
 
       if(new_room != "" && new_time != ""){
         agentsOLD = canvasObjects$agents[[name]]$DeterFlow
@@ -1926,9 +1921,8 @@ server <- function(input, output,session) {
                            Time = new_time,
                            Flow = length(agentsOLD_filter[,"Flow"])+1,
                            Activity = activity,
-                           Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked),
-                           FlowID = FlowID,
-                           AgentLinked = agentlinked )
+                           Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ", activityLabel),
+                           FlowID = FlowID)
 
         if(agent$Label %in% agentsOLD_filter[,"Label"])
         {
@@ -2063,7 +2057,7 @@ server <- function(input, output,session) {
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow[-nrow,]
         }else{
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Activity = numeric(0),
-                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0))
+                                                                               Label = character(0), FlowID = character(0))
         }
       }
     }
@@ -2089,7 +2083,7 @@ server <- function(input, output,session) {
                                 Label = list_detflow,
                                 Flow = 1:length(list_detflow) )
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked) %>% arrange(Flow)
+            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })
@@ -2172,7 +2166,6 @@ server <- function(input, output,session) {
       return()
     }
 
-    agentlinked = input$agentLink_rand_flow
 
     if(input$Rand_select_room_flow != "" ){
 
@@ -2183,8 +2176,7 @@ server <- function(input, output,session) {
                             Activity = activity,
                             ActivityLabel = activityLabel,
                             Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
-                            TimeSlot = times[1],
-                            AgentLinked = agentlinked
+                            TimeSlot = times[1]
       )
       canvasObjects$agents[[name]]$RandFlow = rbind(canvasObjects$agents[[name]]$RandFlow,newOrder)
     }

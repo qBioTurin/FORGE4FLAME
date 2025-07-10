@@ -359,20 +359,12 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   for(a in names(canvasObjects$agents)){
     if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
       canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "")
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "")
-      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - ." )
-      }
   }
 
   ####
 
   updateSelectizeInput(session = session, inputId = "id_new_agent", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
   updateSelectizeInput(session = session, inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
-  updateSelectizeInput(session = session, inputId ="agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
-  updateSelectizeInput(session = session, inputId ="agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
 
   classes <- c()
   for(i in 1:length(canvasObjects$agents)){
