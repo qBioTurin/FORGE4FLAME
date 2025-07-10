@@ -646,9 +646,7 @@ ui <- dashboardPage(
               column(3,
                      get_distribution_panel("det_flow")
               ),
-              column(2,
-                selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
-              ),
+
               fluidRow(
                 column(3,
                        actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
@@ -707,9 +705,6 @@ ui <- dashboardPage(
               column(offset = 1, width = 4,
                      get_distribution_panel("rand_flow")
                      ),
-              column(width = 2,
-                     selectInput("agentLink_rand_flow","Select an agent to link:",choices = "",selected = "")
-              ),
               column(offset = 1, width = 2,
                      actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
               )
