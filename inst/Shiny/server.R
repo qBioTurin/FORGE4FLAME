@@ -4211,7 +4211,7 @@ server <- function(input, output,session) {
     }
     pl = pl +
       geom_line(data = df, aes(x = Day, y = Number,col = Compartments, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="Cumulative number of individuals",col="Compartments", linetype="Type")+
+      labs(y="Number of individuals",col="Compartments", linetype="Type")+
       scale_color_manual(values = fixed_colors,
                          limits = names(fixed_colors),
                          labels = names(fixed_colors),
