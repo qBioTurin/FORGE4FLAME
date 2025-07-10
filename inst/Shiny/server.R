@@ -1567,7 +1567,6 @@ server <- function(input, output,session) {
                                Label = character(0), FlowID = character(0)),
         RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
                                Weight =1, TimeSlot = "00:00 - 23:59"),
-        Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
       )
@@ -1583,7 +1582,6 @@ server <- function(input, output,session) {
         canvasObjects$agents[[Agent]]$entry_type <- "Time window"
       }
 
-      updateSelectizeInput(session = session,"id_class_agent",selected = canvasObjects$agents[[Agent]]$Class )
       updateTextInput(session, "num_agent", value = canvasObjects$agents[[Agent]]$NumAgent)
 
       if(length(names(canvasObjects$agents)) > 1){
@@ -1678,13 +1676,12 @@ server <- function(input, output,session) {
                                           list(className = 'dt-left', targets=2),
                                           list(className = 'dt-left', targets=3),
                                           list(className = 'dt-left', targets=4),
-                                          list(className = 'dt-left', targets=5),
-                                          list(className = 'dt-left', targets=6)),
+                                          list(className = 'dt-left', targets=5)),
                         pageLength = 5
                       ),
                       selection = 'single',
                       rownames = F,
-                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot")
         )
       )
 
@@ -1784,10 +1781,7 @@ server <- function(input, output,session) {
       shinyalert("You must select an agent to copy.")
       return()
     }
-    if(canvasObjects$agents[[input$id_agents_to_copy]]$Class== ""){
-      shinyalert("You must select a valid class for the new agent.")
-      return()
-    }
+
     Agent <- input$id_new_agent
     canvasObjects$agents[[Agent]] = canvasObjects$agents[[input$id_agents_to_copy]]
     if(nrow(canvasObjects$agents[[Agent]]$DeterFlow) > 0)
@@ -1806,8 +1800,6 @@ server <- function(input, output,session) {
       canvasObjects$agents_whatif <- rbind(canvasObjects$agents_whatif, new_agent_whatif)
     }
 
-    updateSelectizeInput(session = session,inputId ="id_class_agent",
-                         selected = canvasObjects$agents[[Agent]]$Class)
     updateTextInput(session, "num_agent", value = canvasObjects$agents[[Agent]]$NumAgent )
 
     ##### updating all the agents tabs
@@ -1858,13 +1850,6 @@ server <- function(input, output,session) {
     InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
 
     ### END updating
-  })
-
-  observeEvent(input$id_class_agent,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$id_new_agent != "")
-      canvasObjects$agents[[input$id_new_agent]]$Class = input$id_class_agent
   })
 
   #### Determined flow ####
@@ -2195,7 +2180,7 @@ server <- function(input, output,session) {
                     ),
                     selection = 'single',
                     rownames = F,
-                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked")
+                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot")
       )
     )
 
@@ -2214,13 +2199,12 @@ server <- function(input, output,session) {
                                             list(className = 'dt-left', targets=2),
                                             list(className = 'dt-left', targets=3),
                                             list(className = 'dt-left', targets=4),
-                                            list(className = 'dt-left', targets=5),
-                                            list(className = 'dt-left', targets=6)),
+                                            list(className = 'dt-left', targets=5)),
                           pageLength = 5
                         ),
                         selection = 'single',
                         rownames = F,
-                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot")
           )
         )
       }

@@ -594,10 +594,7 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            title = div(class = "icon-container",
-                        h4("Agent definition ", icon("info-circle")),
-                        div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
-            ),
+            title = h4("Agent definition "),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
@@ -616,12 +613,7 @@ ui <- dashboardPage(
               )
             ),
             fluidRow(
-              column(3,offset = 1,
-                     selectizeInput(inputId = "id_class_agent", label = "Agent class:",
-                                    options = list(create = TRUE),
-                                    choices=c(""))
-              ),
-              column(3,offset=2,
+              column(3,offset=6,
                      textInput(inputId = "num_agent", label = "Number of agents:",
                                placeholder = "The number must be a positive integer")
               )

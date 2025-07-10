@@ -366,13 +366,6 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(session = session, inputId = "id_new_agent", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
   updateSelectizeInput(session = session, inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
 
-  classes <- c()
-  for(i in 1:length(canvasObjects$agents)){
-    classes <- c(canvasObjects$agents[[i]]$Class, classes)
-  }
-
-  updateSelectizeInput(inputId = "id_class_agent", choices = if(length(classes) > 0) unique(classes) else "")
-
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
     selected = canvasObjects$disease$Name
