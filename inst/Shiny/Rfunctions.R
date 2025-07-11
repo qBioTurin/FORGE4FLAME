@@ -507,7 +507,6 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
   }
 
   InfoApp$NumTabsTimeSlot = numeric(0)
-  browser()
 
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",

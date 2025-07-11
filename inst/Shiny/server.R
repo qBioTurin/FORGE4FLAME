@@ -1353,7 +1353,6 @@ server <- function(input, output,session) {
       canvasObjects$plot_2D <- NULL
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
-      dir.create(paste0(temp_directory, "/obj"))
 
       matricesCanvas <- list()
       for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){

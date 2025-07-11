@@ -176,129 +176,129 @@ ui <- dashboardPage(
       ## Tab HOME ####
       tabItem(
         tabName = "info",
-        fluidPage(
-          fluidRow(
-            column(
-              width = 12,
-              div(style = "text-align:center;",
-                  img(src = "F4Ficon.png", height = 100, width = 100),
-                  h1(strong("Forge4Flame (F4F)")),
-                  p("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
-              )
-            )
-          ),
-          br(),
-          fluidRow(
-            column(
-              width = 12,
-              p("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
-            )
-          ),
-          br(),
-          fluidRow(
-            lapply(
-              list(
-                list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png"),
-                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png"),
-                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png"),
-                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png"),
-                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png"),
-                list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png")),
-                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png"),
-                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png"),
-                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png"),
-                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png")
-              ),
-              function(card) {
-                column(
-                  width = 6,
-                  card(
-                    class = "f4f-card",
-                    full_screen = TRUE,
-                    card_header(h4(card$title)),
-                    card_body(
-                      p(card$desc),
-                      if (is.character(card$img)) {
-                        if (length(card$img) == 1) {
-                          img(src = card$img, width = "100%", style = "border-radius: 10px;")
-                        } else {
-                          tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px; border-radius:10px;")))
-                        }
-                      }
-                    )
-                  )
-                )
-              }
-            )
-          )
-        )
-        # fluidRow(
-        #   box(
-        #     class = "info",
-        #     width = 12,
-        #     img(src = "F4Ficon.png", height = 100, width = 100),
-        #     br(),
-        #     strong(h1("Forge4Flame (F4F)")),
-        #     br(),
-        #     div(
-        #       style="text-align:left;",
-        #       p(h3("")),
-        #       HTML("
-        #         <h2>
-        #             F4F is a user-friendly dashboard (developed in R Shiny) designed to simplify the definition of an ABM environment for FLAME GPU 2 [5, 6] agent-based models, automatically generating the necessary code.
-        #             It enables users to define the model’s environment, the agents interacting within it, the disease model, and other components relevant to an ABM simulation.
-        #             F4F is constituted by the following components (the images refer to the school model defined in [7, 8]):
-        #         </h2>
-        #         <h2>
-        #           <ul>
-        #
-        #             <li class='home'>
-        #               <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
-        #               <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Rooms</b>: definenew room types.
-        #               <img class='home' src='Rooms.png' alt='Rooms page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Agents</b>: define new agent types and their associated movements within the model.
-        #               <img class='home' src='Agents.png' alt='Agents page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Resources</b>: specify the number of agents allowed in each room.
-        #               <img class='home' src='Resources.png' alt='Resources page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Infection</b>: define the disease model.
-        #               <img class='home' src='Infection.png' alt='Infection page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>What-If</b>: perform what-if analyses.
-        #               <img class='home' src='Countermeasures.png' alt='What-If page (countermeasures)', width='100%'>
-        #               <img class='home' src='Virus.png' alt='What-If page (virus)', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Configuration</b>: set up initial configurations.
-        #               <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Run</b>: run the model.
-        #               <img class='home' src='Run.png' alt=Run page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Settings</b>: change canvas dimension, and load and save model.
-        #               <img class='home' src='Settings.png' alt=Settings page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Post Processing</b>: Post Processing of the simulations.
-        #               <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
-        #             </li>
-        #           </ul>
-        #         </h2>
-        #         ")
+        # fluidPage(
+        #   fluidRow(
+        #     column(
+        #       width = 12,
+        #       div(style = "text-align:center;",
+        #           img(src = "F4Ficon.png", height = 100, width = 100),
+        #           h1(strong("Forge4Flame (F4F)")),
+        #           p("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
+        #       )
+        #     )
+        #   ),
+        #   br(),
+        #   fluidRow(
+        #     column(
+        #       width = 12,
+        #       p("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
+        #     )
+        #   ),
+        #   br(),
+        #   fluidRow(
+        #     lapply(
+        #       list(
+        #         list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png"),
+        #         list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png"),
+        #         list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png"),
+        #         list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png"),
+        #         list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png"),
+        #         list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png")),
+        #         list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png"),
+        #         list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png"),
+        #         list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png"),
+        #         list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png")
+        #       ),
+        #       function(card) {
+        #         column(
+        #           width = 6,
+        #           card(
+        #             class = "f4f-card",
+        #             full_screen = TRUE,
+        #             card_header(h4(card$title)),
+        #             card_body(
+        #               p(card$desc),
+        #               if (is.character(card$img)) {
+        #                 if (length(card$img) == 1) {
+        #                   img(src = card$img, width = "100%", style = "border-radius: 10px;")
+        #                 } else {
+        #                   tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px; border-radius:10px;")))
+        #                 }
+        #               }
+        #             )
+        #           )
+        #         )
+        #       }
         #     )
         #   )
         # )
+        fluidRow(
+          box(
+            class = "info",
+            width = 12,
+            img(src = "F4Ficon.png", height = 100, width = 100),
+            br(),
+            strong(h1("Forge4Flame (F4F)")),
+            br(),
+            div(
+              style="text-align:left;",
+              p(h3("")),
+              HTML("
+                <h2>
+                    F4F is a user-friendly dashboard (developed in R Shiny) designed to simplify the definition of an ABM environment for FLAME GPU 2 [5, 6] agent-based models, automatically generating the necessary code.
+                    It enables users to define the model’s environment, the agents interacting within it, the disease model, and other components relevant to an ABM simulation.
+                    F4F is constituted by the following components (the images refer to the school model defined in [7, 8]):
+                </h2>
+                <h2>
+                  <ul>
+
+                    <li class='home'>
+                      <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
+                      <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Rooms</b>: definenew room types.
+                      <img class='home' src='Rooms.png' alt='Rooms page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Agents</b>: define new agent types and their associated movements within the model.
+                      <img class='home' src='Agents.png' alt='Agents page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Resources</b>: specify the number of agents allowed in each room.
+                      <img class='home' src='Resources.png' alt='Resources page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Infection</b>: define the disease model.
+                      <img class='home' src='Infection.png' alt='Infection page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>What-If</b>: perform what-if analyses.
+                      <img class='home' src='Countermeasures.png' alt='What-If page (countermeasures)', width='100%'>
+                      <img class='home' src='Virus.png' alt='What-If page (virus)', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Configuration</b>: set up initial configurations.
+                      <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Run</b>: run the model.
+                      <img class='home' src='Run.png' alt=Run page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Settings</b>: change canvas dimension, and load and save model.
+                      <img class='home' src='Settings.png' alt=Settings page', width='100%'>
+                    </li>
+                    <li class='home'>
+                      <b>Post Processing</b>: Post Processing of the simulations.
+                      <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
+                    </li>
+                  </ul>
+                </h2>
+                ")
+            )
+          )
+        )
       ),
       ## Canvas HOME ####
       tabItem(
