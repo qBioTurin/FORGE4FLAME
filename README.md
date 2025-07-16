@@ -233,12 +233,6 @@ cd FLAMEGPU-FORGE4FLAME
 ./reproduce_alert.sh
 ```
 
-<p align="center">
-  <a href="https://qbio.di.unito.it/">
-    <img src="./inst/Shiny/www/Logo_QBio.png" alt="QBio Logo" width="200">
-  </a>
-</p>
-
 # Diclaimer:
 F4F developers have no liability for any use of F4F functions, including without limitation, any loss of data, incorrect results, or any costs, liabilities, or damages that result from the use of F4F. 
 
@@ -259,3 +253,16 @@ Infectious Disease Spread. Available at SSRN: http://dx.doi.org/10.2139/ssrn.519
 - [3] Hadley Wickham et al. devtools: Tools to Make Developing R Packages Easier. https://devtools.r-lib.org/, https://github.com/r-lib/devtools. 2022.
 
 - [4] Gábor Csárdi et al. remotes: R Package Installation from Remote Repositories, Including ’GitHub’. R package version 2.5.0, https://github.com/r-lib/remotes#readme. 2024. url: https://remotes.r-lib.org.
+
+<p align="center">
+  <a href="https://qbio.di.unito.it/">
+    <img src="./inst/Shiny/www/Logo_QBio.png" alt="QBio Logo" width="200">
+  </a>
+</p>
+
+## COPYRIGHT AND LICENSE
+Copyright _Daniele Baccega, Irene Terrone, Peter Heywood, Robert Chisholm, Paul Richmond, Sandro Gepiro Contaldo, Lorenzo Bosio, Simone Pernice, Marco Beccuti_
+
+![CC BY-NC-SA 3.0](http://ccl.northwestern.edu/images/creativecommons/byncsa.png)
+
+This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
