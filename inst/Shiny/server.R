@@ -115,7 +115,7 @@ server <- function(input, output,session) {
         return()
       }
       plan_raw <- tryCatch(
-        st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
+        sf::st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
         error = function(e) {
           showNotification(paste("Error reading DXF:", e$message), type = "error", duration = 5)
           return(NULL)
@@ -136,10 +136,10 @@ server <- function(input, output,session) {
 
       # 2. Scale geometries to meters
       plan <- plan_raw
-      st_geometry(plan) <- st_geometry(plan) * as.numeric(units_info["factor"])
+      sf::st_geometry(plan) <- sf::st_geometry(plan) * as.numeric(units_info["factor"])
 
       # 3. Compute bounding box & canvas dimensions
-      bbox <- st_bbox(plan)
+      bbox <- sf::st_bbox(plan)
       canvas_w <- as.numeric(ceiling(bbox["xmax"] - bbox["xmin"]) )
       canvas_h <- as.numeric(ceiling(bbox["ymax"] - bbox["ymin"]) )
 

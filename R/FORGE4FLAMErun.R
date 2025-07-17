@@ -23,6 +23,11 @@
 #' @import shiny
 #' @import shinyWidgets
 #' @import htmltools
+#' @import shinyFiles
+#' @import bslib
+#' @import lubridate
+#' @import sf
+#' @import purrr
 # @import future.apply
 #'
 #' @importFrom utils read.table write.table
