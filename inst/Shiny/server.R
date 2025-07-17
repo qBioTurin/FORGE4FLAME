@@ -24,6 +24,7 @@ server <- function(input, output,session) {
                                  matrixCanvas = matrix(1, nrow = 80,ncol = 100),
                                  selectedId = 1,
                                  floors = NULL,
+                                 floorsBG = list(),
                                  areas = data.frame(Name=c("None"),
                                                     ID=c(0),
                                                     Color=c(
@@ -71,6 +72,107 @@ server <- function(input, output,session) {
   canvasObjectsSTART = canvasObjects
 
   hideElement("outside_contagion_plot")
+
+
+  observeEvent(input$LoadBG_image, {
+
+    # 1. Ensure a file is present
+    req(input$BGfile)
+
+    if(is.null(canvasObjects$floors))
+    {
+      shinyalert("To set the background it is necessary to define a floor.")
+      return()
+    }
+
+      # 2. Validate extension
+      ext <- tools::file_ext(input$BGfile$name)
+      if (tolower(ext) != "dxf") {
+        showNotification("Please upload a .dxf file.", type = "error", duration = 5)
+        return()
+      }
+      # 3. Inspect available layers
+      layers_info <- tryCatch(
+        st_layers(input$BGfile$datapath),
+        error = function(e) {
+          showNotification(paste("Cannot read layers:", e$message), type = "error", duration = 5)
+          return(NULL)
+        }
+      )
+      if (is.null(layers_info)) return()
+
+      # 4. Read the DXF, catch errors
+      # Require a specific layer (e.g. "entities")
+      needed_layer <- "entities"
+      if (!(needed_layer %in% layers_info$name)) {
+        showModal(modalDialog(
+          title = "Required Layer Not Found",
+          paste("Your DXF file contains these layers:", paste(layers_info$name, collapse = ", ")),
+          "Expected layer:", needed_layer,
+          easyClose = TRUE,
+          footer   = modalButton("OK")
+        ))
+        return()
+      }
+      plan_raw <- tryCatch(
+        st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
+        error = function(e) {
+          showNotification(paste("Error reading DXF:", e$message), type = "error", duration = 5)
+          return(NULL)
+        }
+      )
+      if (is.null(plan_raw)) return()
+
+      # 5. Check for empty geometry
+      if (nrow(plan_raw) == 0 || all(is.na(st_geometry(plan_raw)))) {
+        showNotification("No geometries found in the uploaded DXF.", type = "warning", duration = 5)
+        return()
+      }
+
+      units_info <- read_dxf_units(input$BGfile$datapath)
+      if(units_info["unit"] ==  "unitless" ){
+        units_info <- detect_units_by_bbox(plan_raw)
+      }
+
+      # 2. Scale geometries to meters
+      plan <- plan_raw
+      st_geometry(plan) <- st_geometry(plan) * as.numeric(units_info["factor"])
+
+      # 3. Compute bounding box & canvas dimensions
+      bbox <- st_bbox(plan)
+      canvas_w <- as.numeric(ceiling(bbox["xmax"] - bbox["xmin"]) )
+      canvas_h <- as.numeric(ceiling(bbox["ymax"] - bbox["ymin"]) )
+
+      # 4. Store dimensions and notify front-end
+      ## Check also the other dimensions of the other floors, and use the max
+      if(length(canvasObjects$floors) > 0 ){
+        canvas_w = max(canvas_w, max(canvasObjects$floors$canvasWidth, na.rm = TRUE))
+        canvas_h = max(canvas_h, max(canvasObjects$floors$canvasHeight, na.rm = TRUE))
+      }
+
+      canvasObjects$canvasDimension$canvasWidth  <- max(canvasObjects$canvasDimension$canvasWidth, canvas_w*10)
+      canvasObjects$canvasDimension$canvasHeight <-  max(canvasObjects$canvasDimension$canvasHeight,canvas_h*10)
+      js$canvasDimension(canvasObjects$canvasDimension$canvasWidth,  canvasObjects$canvasDimension$canvasHeight)
+
+      canvasObjects$matrixCanvas <- matrix(
+        data = 1,
+        nrow = canvas_h + 2,
+        ncol = canvas_w + 2
+      )
+
+      # 6. Create ggplot of your floorplan
+      gg <- ggplot(plan) +
+        geom_sf(color = "black", size = 0.2) +
+        theme_void() +
+        coord_sf(expand = FALSE)
+      gg -> canvasObjects$floorsBG[[input$canvas_selector]]$plot
+
+      canvasObjects$floorsBG[[input$canvas_selector]]$imWidth <- canvas_w*10
+      canvasObjects$floorsBG[[input$canvas_selector]]$imHeight <- canvas_h*10
+
+    sendBG(gg,canvas_w*10,canvas_h*10,session, input$canvas_selector)
+
+  })
 
   observeEvent(input$set_canvas,{
     disable("rds_generation")
@@ -150,6 +252,11 @@ server <- function(input, output,session) {
       updateSelectizeInput(inputId = "canvas_selector",
                            selected = selected,
                            choices = c("", canvasObjects$floors$Name) )
+
+      if(!is.null(canvasObjects$floorsBG[[input$canvas_selector]]) )
+         canvasObjects$floorsBG <- canvasObjects$floorsBG[- which(input$canvas_selector == names(canvasObjects$floorsBG)) ]
+
+
     }
   })
 
@@ -183,6 +290,7 @@ server <- function(input, output,session) {
       }
     }
 
+
     if(!is.null(canvasObjects$roomsINcanvas)){
       roomsINcanvasFloor <- canvasObjects$roomsINcanvas %>%
         filter(CanvasID == input$canvas_selector)
@@ -198,8 +306,47 @@ server <- function(input, output,session) {
                              choices = "" )
       }
     }
+
+    if(length(canvasObjects$floors)>0){
+      # removing BG image when change floor
+      sendBG( ggplot() +
+                theme_void() +
+                coord_sf(expand = FALSE),
+              canvas_w= canvasObjects$canvasDimension$canvasWidth,
+              canvas_h= canvasObjects$canvasDimension$canvasHeight,
+              session, "empty")
+    }
+
+    if(!canvasObjects$floorsBG[[input$canvas_selector]] %>% is.null()){
+      sendBG(canvasObjects$floorsBG[[input$canvas_selector]]$plot,
+             canvas_w = canvasObjects$floorsBG[[input$canvas_selector]]$imWidth,
+             canvas_h= canvasObjects$floorsBG[[input$canvas_selector]]$imHeight,
+             session , input$canvas_selector)
+    }
+
   })
 
+  observeEvent(input$HideBG_image,{
+    disable("rds_generation")
+    disable("flamegpu_connection")
+    canvas_selector = req(input$canvas_selector)
+    req(canvasObjects$floorsBG[[canvas_selector]])
+
+    if(input$HideBG_image){
+      sendBG( ggplot() +
+                theme_void() +
+                coord_sf(expand = FALSE),
+              canvas_w= canvasObjects$canvasDimension$canvasWidth,
+              canvas_h= canvasObjects$canvasDimension$canvasHeight,
+              session, "empty")
+    }else{
+      sendBG(canvasObjects$floorsBG[[input$canvas_selector]]$plot,
+             canvas_w = canvasObjects$floorsBG[[input$canvas_selector]]$imWidth,
+             canvas_h= canvasObjects$floorsBG[[input$canvas_selector]]$imHeight,
+             session , input$canvas_selector)
+      }
+
+  })
   #### ordering floors
   observeEvent(input$canvas_selector,{
     disable("rds_generation")

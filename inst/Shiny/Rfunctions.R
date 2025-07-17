@@ -181,6 +181,77 @@ find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
   return(NULL)
 }
 
+read_dxf_units <- function(dxf_path) {
+  # Read only first few hundred lines (HEADER usually near top)
+  hdr <- readLines(dxf_path, n = 500, warn = FALSE)
+
+  # Find the line containing "$INSUNITS"
+  idx <- which(hdr == "$INSUNITS")
+  if (length(idx) == 0) {
+    warning("No $INSUNITS found; assuming unitless (treat as mm).")
+    return(list(code = NA, unit = "unknown", factor = 0.001))
+  }
+
+  # Next lines: group code 70 then the integer value
+  # hdr[idx+1] should be "70", hdr[idx+2] the numeric code
+  code <- as.integer(hdr[idx + 2])
+
+  # Map DXF unit codes → unit names & conversion to meters
+  map <- list(
+    `0` = list(unit = "unitless", factor = 1),
+    `1` = list(unit = "inches",   factor = 0.0254),
+    `2` = list(unit = "feet",     factor = 0.3048),
+    `3` = list(unit = "miles",    factor = 1609.344),
+    `4` = list(unit = "millimeters", factor = 0.001),
+    `5` = list(unit = "centimeters", factor = 0.01),
+    `6` = list(unit = "meters",      factor = 1),
+    `7` = list(unit = "kilometers",  factor = 1000)
+    # add more codes if needed
+  )
+
+  if (!as.character(code) %in% names(map)) {
+    warning("Unrecognized INSUNITS code: ", code,
+            "; defaulting to millimeters.")
+    return(list(code = code, unit = "millimeters", factor = 0.001))
+  }
+
+  unit_info <- map[[as.character(code)]]
+  c(code = code, unit = unit_info$unit, factor = unit_info$factor)
+}
+
+detect_units_by_bbox <- function(plan_raw) {
+  bb <- st_bbox(plan_raw)
+  w  <- bb["xmax"] - bb["xmin"]
+  h  <- bb["ymax"] - bb["ymin"]
+  d  <- sqrt(w^2 + h^2)
+
+  if (d > 5000) {
+    c(unit = "millimeters", factor = 0.001)
+  } else if (d > 500) {
+    c(unit = "centimeters", factor = 0.01)
+  } else if (d > 50) {
+    c(unit = "meters", factor = 1)
+  } else {
+    c(unit = "unknown", factor = NA_real_)
+  }
+}
+
+sendBG <- function(gg,canvas_w,canvas_h,session, canvasSelect){
+  # 7. Save the plot in www folder so that Shiny can serve it
+  tmpfile <- tempfile(pattern = paste0("floorBG", canvasSelect), fileext = ".png")
+
+  ggsave(tmpfile, gg, width = canvas_w, height = canvas_h, units = "px")
+
+  # Create a public URL that Shiny can serve dynamically
+  file_url <- session$fileUrl(basename(tmpfile), tmpfile)
+
+  session$sendCustomMessage("bgImageChanged", list(
+    imgFile = file_url,
+    wBG = canvas_w,
+    hBG = canvas_h
+  ))
+}
+
 CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   matrixCanvas = canvasObjects$matrixCanvas
   roomNames = canvasObjects$rooms
@@ -361,7 +432,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
       canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "")
       canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - ." )
-      }
+    }
   }
 
   ####
@@ -466,15 +537,15 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   # Resources
   if(!is.null(canvasObjects$agents)){
     allResRooms <- do.call(rbind,
-              lapply(names(canvasObjects$agents), function(agent) {
-                rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
-                                 canvasObjects$agents[[agent]]$RandFlow$Room))
-                rooms <- rooms[rooms != "Do nothing"]
-                if(length(rooms)>0)
-                  data.frame(Agent = agent , Room =  rooms)
-                else NULL
-              })
-      )
+                           lapply(names(canvasObjects$agents), function(agent) {
+                             rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
+                                              canvasObjects$agents[[agent]]$RandFlow$Room))
+                             rooms <- rooms[rooms != "Do nothing"]
+                             if(length(rooms)>0)
+                               data.frame(Agent = agent , Room =  rooms)
+                             else NULL
+                           })
+    )
 
     updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms$Room else "")
 
@@ -574,131 +645,131 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 
     enable("num_agent")
   }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){
-      updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
+    updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
 
-      slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
-      for(i in (slots) ){
-        InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
-        df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
+    slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
+    for(i in (slots) ){
+      InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
+      df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
 
-        appendTab(inputId = "Time_tabs",
-                  tabPanel(paste0(i," slot"),
-                           value = paste0(i," slot"),
-                           column(7,
-                                  textInput(inputId = paste0("EntryTime_",i), label = "Entry time:", value = unique(df$EntryTime), placeholder = "hh:mm"),
-                                  selectInput(inputId = paste0("Select_TimeDetFlow_",i),
-                                              label = "Associate with a determined flow:",
-                                              selected = unique(df$FlowID),
-                                              choices = sort(unique(FlowID)))
-                           ),
-                           column(5,
-                                  checkboxGroupInput(paste0("selectedDays_",i), "Select Days of the Week",
-                                                     choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                     selected = df$Days
-                                  )
-                           )
-                  )
-        )
-      }
-      showTab(inputId = "Time_tabs", target = paste0(slots[1], " slot"), select = T)
-      enable("num_agent")
-    } else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Daily Rate"){
-      updateRadioButtons(session, "ckbox_entranceFlow", selected = "Daily Rate")
-
-      slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
-      tab <- "DetTime_tab"
-      for(i in (slots) ){
-        InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
-        df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
-
-
-        params <- parse_distribution(unique(df$RateTime), unique(df$RateDist))
-        rate_dist <- unique(df$RateDist)
-        rate_a <- params[[1]]
-        rate_b <- params[[2]]
-        if(i == min(slots))
-          tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-
-        appendTab(inputId = "Rate_tabs",
-                  tabPanel(paste0(i," slot"),
-                           value = paste0(i," slot"),
-                           tags$b("Entrance rate:"),
-                           get_distribution_panel(paste0("daily_rate_", i), a=rate_a, b=rate_b, selected_dist = rate_dist),
-                           column(7,
-                                  textInput(inputId = paste0("EntryTimeRate_",i), label = "Initial generation time:", value = unique(df$EntryTime), placeholder = "hh:mm"),
-                                  textInput(inputId = paste0("ExitTimeRate_",i), label = "Final generation time:", value = unique(df$ExitTime), placeholder = "hh:mm"),
-                           ),
-                           column(5,
-                                  checkboxGroupInput(paste0("selectedDaysRate_",i), "Select Days of the Week",
-                                                     choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                     selected = df$Days
-                                  )
-                           )
-                  )
-        )
-
-        # update_distribution(paste0("daily_rate_", i), rate_dist, rate_a, rate_b, tab)
-      }
-      showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
-      showTab(inputId = paste0("DistTime_tabs_daily_rate_", slots[1]), target = tab, select = T)
-      # if(tab == "StocTime_tab")
-      #   updateSelectInput(inputId = paste0("DistStoc_id_daily_rate_", slots[1]), selected = rate_dist)
-
-      updateTextInput(inputId = "num_agent", value = 0)
-      disable("num_agent")
+      appendTab(inputId = "Time_tabs",
+                tabPanel(paste0(i," slot"),
+                         value = paste0(i," slot"),
+                         column(7,
+                                textInput(inputId = paste0("EntryTime_",i), label = "Entry time:", value = unique(df$EntryTime), placeholder = "hh:mm"),
+                                selectInput(inputId = paste0("Select_TimeDetFlow_",i),
+                                            label = "Associate with a determined flow:",
+                                            selected = unique(df$FlowID),
+                                            choices = sort(unique(FlowID)))
+                         ),
+                         column(5,
+                                checkboxGroupInput(paste0("selectedDays_",i), "Select Days of the Week",
+                                                   choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                   selected = df$Days
+                                )
+                         )
+                )
+      )
     }
+    showTab(inputId = "Time_tabs", target = paste0(slots[1], " slot"), select = T)
+    enable("num_agent")
+  } else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Daily Rate"){
+    updateRadioButtons(session, "ckbox_entranceFlow", selected = "Daily Rate")
+
+    slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
+    tab <- "DetTime_tab"
+    for(i in (slots) ){
+      InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
+      df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
+
+
+      params <- parse_distribution(unique(df$RateTime), unique(df$RateDist))
+      rate_dist <- unique(df$RateDist)
+      rate_a <- params[[1]]
+      rate_b <- params[[2]]
+      if(i == min(slots))
+        tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+
+      appendTab(inputId = "Rate_tabs",
+                tabPanel(paste0(i," slot"),
+                         value = paste0(i," slot"),
+                         tags$b("Entrance rate:"),
+                         get_distribution_panel(paste0("daily_rate_", i), a=rate_a, b=rate_b, selected_dist = rate_dist),
+                         column(7,
+                                textInput(inputId = paste0("EntryTimeRate_",i), label = "Initial generation time:", value = unique(df$EntryTime), placeholder = "hh:mm"),
+                                textInput(inputId = paste0("ExitTimeRate_",i), label = "Final generation time:", value = unique(df$ExitTime), placeholder = "hh:mm"),
+                         ),
+                         column(5,
+                                checkboxGroupInput(paste0("selectedDaysRate_",i), "Select Days of the Week",
+                                                   choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                   selected = df$Days
+                                )
+                         )
+                )
+      )
+
+      # update_distribution(paste0("daily_rate_", i), rate_dist, rate_a, rate_b, tab)
+    }
+    showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
+    showTab(inputId = paste0("DistTime_tabs_daily_rate_", slots[1]), target = tab, select = T)
+    # if(tab == "StocTime_tab")
+    #   updateSelectInput(inputId = paste0("DistStoc_id_daily_rate_", slots[1]), selected = rate_dist)
+
+    updateTextInput(inputId = "num_agent", value = 0)
+    disable("num_agent")
+  }
 }
 
 get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
   dist_panel <-  tagList(
     div(style = "height:20px"),
     tabsetPanel(id = paste0("DistTime_tabs_", id),
-                             tabPanel("Deterministic",
-                                      value = "DetTime_tab",
-                                      textInput(inputId = paste0("DetTime_", id), label = HTML("<i>Fixed deterministic value:</i>"),placeholder = "Value", value = a)
+                tabPanel("Deterministic",
+                         value = "DetTime_tab",
+                         textInput(inputId = paste0("DetTime_", id), label = HTML("<i>Fixed deterministic value:</i>"),placeholder = "Value", value = a)
+                ),
+                tabPanel("Stochastic",
+                         value = "StocTime_tab",
+                         selectizeInput(inputId = paste0("DistStoc_id_", id),
+                                        label = HTML("<i>Distribution:</i>"),
+                                        choices = c("Exponential","Uniform","Truncated Positive Normal"),
+                                        selected = selected_dist),
+                         conditionalPanel(
+                           condition = paste0("input.DistStoc_id_", id, " == 'Exponential'"),
+                           textInput(inputId = paste0("DistStoc_ExpRate_", id),
+                                     label = HTML("<i>Value:</i>"),
+                                     placeholder = "Value",
+                                     value = a)
+
+                         ),
+                         conditionalPanel(
+                           condition = paste0("input.DistStoc_id_", id, " == 'Uniform'"),
+                           fluidRow(
+                             column(width = 4,
+                                    textInput(inputId = paste0("DistStoc_UnifRate_a_", id), label = "a:", placeholder = "Value", value = a)
                              ),
-                             tabPanel("Stochastic",
-                                      value = "StocTime_tab",
-                                      selectizeInput(inputId = paste0("DistStoc_id_", id),
-                                                     label = HTML("<i>Distribution:</i>"),
-                                                     choices = c("Exponential","Uniform","Truncated Positive Normal"),
-                                                     selected = selected_dist),
-                                      conditionalPanel(
-                                        condition = paste0("input.DistStoc_id_", id, " == 'Exponential'"),
-                                        textInput(inputId = paste0("DistStoc_ExpRate_", id),
-                                                 label = HTML("<i>Value:</i>"),
-                                                 placeholder = "Value",
-                                                 value = a)
+                             column(width = 4,
+                                    textInput(inputId = paste0("DistStoc_UnifRate_b_", id), label = "b:", placeholder = "Value", value = b)
 
-                                      ),
-                                      conditionalPanel(
-                                        condition = paste0("input.DistStoc_id_", id, " == 'Uniform'"),
-                                        fluidRow(
-                                          column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_UnifRate_a_", id), label = "a:", placeholder = "Value", value = a)
-                                          ),
-                                          column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_UnifRate_b_", id), label = "b:", placeholder = "Value", value = b)
-
-                                          )
-                                        )
-                                      ),
-                                      conditionalPanel(
-                                        condition = paste0("input.DistStoc_id_", id, " == 'Truncated Positive Normal'"),
-                                        fluidRow(
-                                          column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_NormRate_m_", id), label = "Mean:", placeholder = "Value", value = a)
-                                          ),
-                                          column(width = 4,
-                                                 textInput(inputId = paste0("DistStoc_NormRate_sd_", id), label = "Sd:", placeholder = "Value", value = b)
-
-                                          )
-                                         )
-                                       )
                              )
-                 ),
+                           )
+                         ),
+                         conditionalPanel(
+                           condition = paste0("input.DistStoc_id_", id, " == 'Truncated Positive Normal'"),
+                           fluidRow(
+                             column(width = 4,
+                                    textInput(inputId = paste0("DistStoc_NormRate_m_", id), label = "Mean:", placeholder = "Value", value = a)
+                             ),
+                             column(width = 4,
+                                    textInput(inputId = paste0("DistStoc_NormRate_sd_", id), label = "Sd:", placeholder = "Value", value = b)
+
+                             )
+                           )
+                         )
+                )
+    ),
     div(style = "height:10px")
-)
+  )
   return(dist_panel)
 }
 

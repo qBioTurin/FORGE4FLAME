@@ -21,6 +21,7 @@ library(DT)
 library(shinyFiles)
 library(bslib)
 library(lubridate)
+library(sf)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -322,6 +323,40 @@ ui <- dashboardPage(
               column(5,
                      uiOutput("FloorRank")
               )
+            ),
+            fluidRow(
+              box(width = 10, title = h3("Floor background image"),
+                  collapsible = T, collapsed = T,
+                column(
+                  8,
+                  offset = 1,
+                  fileInput(
+                    inputId = "BGfile",
+                    label = "Background Image",
+                    placeholder = "Select an dxf file.",
+                    width = "100%",
+                    accept = "dxf",
+                    multiple = F
+                  )
+                ),
+                column(
+                  1,
+                  style = "margin-top: 20px;",
+                  actionButton(
+                    label = "Load",
+                    icon = shiny::icon("upload"),
+                    inputId = "LoadBG_image"
+                  )
+                ),
+                column(
+                  1,
+                  style = "margin-top: 20px;",
+                  checkboxInput(
+                    label = "Hide",
+                    inputId = "HideBG_image"
+                  )
+                )
+              )
             )
           )
         ),
@@ -329,7 +364,7 @@ ui <- dashboardPage(
           box(
             title = h3("Add elements"),
             width = 12,
-            collapsible = T,
+            collapsible = T,collapsed = T,
             fluidRow(
               column(5, offset = 1,
                      box(
@@ -645,7 +680,7 @@ ui <- dashboardPage(
                      get_distribution_panel("det_flow")
               ),
               column(2,
-                selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
+                     selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
               ),
               fluidRow(
                 column(3,
@@ -696,7 +731,7 @@ ui <- dashboardPage(
               ),
               column(2,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
-                    ),
+              ),
               column(2,
                      textInput(inputId = "ExitTimeRate_rand_flow", label = "Ending time:", placeholder = "hh:mm")
               )
@@ -704,7 +739,7 @@ ui <- dashboardPage(
             fluidRow(
               column(offset = 1, width = 4,
                      get_distribution_panel("rand_flow")
-                     ),
+              ),
               column(width = 2,
                      selectInput("agentLink_rand_flow","Select an agent to link:",choices = "",selected = "")
               ),
