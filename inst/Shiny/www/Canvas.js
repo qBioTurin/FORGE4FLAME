@@ -19,16 +19,45 @@ mainCanvas.height = h_base;
 // =============================================================
 // set the background with the grid, which is unique and it is not deleted every canvas changes
 // function to draw the grid
+// react to Shiny input changes
+// It takes in input the image dimensions and put it in the center of the canvas
+
+Shiny.addCustomMessageHandler("bgImageChanged", msg => {
+  const { imgFile, wBG, hBG } = msg;
+
+  if (!imgFile) {
+    ctx.clearRect(0, 0, w, h);
+    drawBG(ctx);
+    return;
+  }
+
+  console.log('Image selected:', imgFile);
+  const img = new Image();
+  img.src = imgFile;            // Shiny will serve www/img.png as "/img.png"
+  img.onload = () => {
+    // clear and paint the image
+
+    ctx.clearRect(0, 0, w, h);
+    const scaledW = wBG;  // your background image width
+    const scaledH = hBG;  // your background image height
+    const offsetX = (w - scaledW) / 2;
+    const offsetY = (h - scaledH) / 2;
+
+    ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
+    // now draw the grid on top
+    drawBG(ctx);
+  };
+});
 
 function drawBG(context) {
 
     context.save()
 
-    context.fillStyle = 'white'
-    context.fillRect(0, 0, w, h)
+    //context.fillStyle = 'trasparent'
+    //context.fillRect(0, 0, w, h)
     context.lineWidth = 0.3;
     context.strokeStyle = 'lightgray'
-    context.fillStyle = 'black'
+    //context.fillStyle = 'black'
 
     for (let i = 1; i < w; i++) {
         context.beginPath()
@@ -598,10 +627,9 @@ $('#canvas_selector').on('change', function () {
     // the first time a floor is added the BG is drawn
     console.log('length:', Object.keys(FloorArray).length);
     if(Object.keys(FloorArray).length == 1){
-      background.style.backgroundColor = "white"
-      drawBG(ctx)
+      background.style.backgroundColor = "white";
+      drawBG(ctx);
     }
-
     selectedFloor.animate()
   }
   else{

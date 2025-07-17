@@ -21,6 +21,7 @@ library(DT)
 library(shinyFiles)
 library(bslib)
 library(lubridate)
+library(sf)
 library(purrr)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
@@ -323,6 +324,40 @@ ui <- dashboardPage(
               column(5,
                      uiOutput("FloorRank")
               )
+            ),
+            fluidRow(
+              box(width = 10, title = h3("Floor background image"),
+                  collapsible = T, collapsed = T,
+                column(
+                  8,
+                  offset = 1,
+                  fileInput(
+                    inputId = "BGfile",
+                    label = "Background Image",
+                    placeholder = "Select an dxf file.",
+                    width = "100%",
+                    accept = "dxf",
+                    multiple = F
+                  )
+                ),
+                column(
+                  1,
+                  style = "margin-top: 20px;",
+                  actionButton(
+                    label = "Load",
+                    icon = shiny::icon("upload"),
+                    inputId = "LoadBG_image"
+                  )
+                ),
+                column(
+                  1,
+                  style = "margin-top: 20px;",
+                  checkboxInput(
+                    label = "Hide",
+                    inputId = "HideBG_image"
+                  )
+                )
+              )
             )
           )
         ),
@@ -330,7 +365,7 @@ ui <- dashboardPage(
           box(
             title = h3("Add elements"),
             width = 12,
-            collapsible = T,
+            collapsible = T,collapsed = T,
             fluidRow(
               column(5, offset = 1,
                      box(
@@ -638,7 +673,6 @@ ui <- dashboardPage(
               column(3,
                      get_distribution_panel("det_flow")
               ),
-
               fluidRow(
                 column(3,
                        actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
@@ -688,7 +722,7 @@ ui <- dashboardPage(
               ),
               column(2,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
-                    ),
+              ),
               column(2,
                      textInput(inputId = "ExitTimeRate_rand_flow", label = "Ending time:", placeholder = "hh:mm")
               )
