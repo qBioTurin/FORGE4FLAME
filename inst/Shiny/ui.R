@@ -22,6 +22,7 @@ library(shinyFiles)
 library(bslib)
 library(lubridate)
 library(sf)
+library(purrr)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -496,7 +497,8 @@ ui <- dashboardPage(
                          inputId = "select_type",
                          label = "Type:",
                          options = list(create = TRUE),
-                         choices = c("Normal", "Stair", "Spawnroom", "Fillingroom","Waitingroom")
+                         selected = "",
+                         choices = c("", "Normal", "Stair", "Spawnroom", "Fillingroom","Waitingroom")
                        )
                      )),
             fluidRow(column(1),
@@ -1688,7 +1690,7 @@ ui <- dashboardPage(
                                                      div(class = "icon-text", "Duration of a FLAME GPU 2 step in seconds.")
                              ),
                              choices = c(1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
-                             selected = 10)
+                             selected = 60)
                       )
                     )
                 ))

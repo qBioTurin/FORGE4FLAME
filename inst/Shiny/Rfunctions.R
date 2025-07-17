@@ -85,95 +85,94 @@ theme_fancy <- function() {
     )
 }
 
-generate_obj <- function(temp_directory){
-  fileConn = file(file.path(temp_directory, 'room.obj'), 'w+')
-
-  length = 1
-  width = 1
-  height = 1
-
-  # Generate vertices
-  vertices = list(
-    c(0, 0, 0),
-    c(length, 0, 0),
-    c(0, height, 0),
-    c(0, 0, width),
-    c(0, height, width),
-    c(length, 0, width),
-    c(length, height, 0),
-    c(length, height, width)
-  )
-
-  # Generate triangles
-  faces = list(
-    c(1, 2, 3),
-    c(2, 7, 3),
-    c(1, 4, 6),
-    c(6, 2, 1),
-    c(1, 3, 4),
-    c(3, 5, 4),
-    c(2, 7, 6),
-    c(7, 8, 6)
-  )
-
-  for (vertex in vertices)
-    writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-
-  for (face in faces)
-    writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-
-  close(fileConn)
-
-  fileConn = file(file.path(temp_directory, 'fillingroom.obj'), 'w+')
-
-  # Generate vertices
-  vertices = list(
-    c(0, 0, 0),
-    c(length, 0, 0),
-    c(0, height, 0),
-    c(0, 0, width),
-    c(0, height, width),
-    c(length, 0, width),
-    c(length, height, 0),
-    c(length, height, width)
-  )
-
-  # Generate triangles
-  faces = list(
-    c(1, 2, 3),
-    c(2, 7, 3),
-    c(1, 4, 6),
-    c(6, 2, 1),
-    c(1, 3, 4),
-    c(3, 5, 4),
-    c(2, 7, 6),
-    c(7, 8, 6),
-    c(4, 6, 5),
-    c(6, 8, 5)
-  )
-
-  for (vertex in vertices)
-    writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-
-  for (face in faces)
-    writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-
-  close(fileConn)
-}
+# generate_obj <- function(temp_directory){
+#   fileConn = file(file.path(temp_directory, 'room.obj'), 'w+')
+#
+#   length = 1
+#   width = 1
+#   height = 1
+#
+#   # Generate vertices
+#   vertices = list(
+#     c(0, 0, 0),
+#     c(length, 0, 0),
+#     c(0, height, 0),
+#     c(0, 0, width),
+#     c(0, height, width),
+#     c(length, 0, width),
+#     c(length, height, 0),
+#     c(length, height, width)
+#   )
+#
+#   # Generate triangles
+#   faces = list(
+#     c(1, 2, 3),
+#     c(2, 7, 3),
+#     c(1, 4, 6),
+#     c(6, 2, 1),
+#     c(1, 3, 4),
+#     c(3, 5, 4),
+#     c(2, 7, 6),
+#     c(7, 8, 6)
+#   )
+#
+#   for (vertex in vertices)
+#     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
+#
+#   for (face in faces)
+#     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
+#
+#   close(fileConn)
+#
+#   fileConn = file(file.path(temp_directory, 'fillingroom.obj'), 'w+')
+#
+#   # Generate vertices
+#   vertices = list(
+#     c(0, 0, 0),
+#     c(length, 0, 0),
+#     c(0, height, 0),
+#     c(0, 0, width),
+#     c(0, height, width),
+#     c(length, 0, width),
+#     c(length, height, 0),
+#     c(length, height, width)
+#   )
+#
+#   # Generate triangles
+#   faces = list(
+#     c(1, 2, 3),
+#     c(2, 7, 3),
+#     c(1, 4, 6),
+#     c(6, 2, 1),
+#     c(1, 3, 4),
+#     c(3, 5, 4),
+#     c(2, 7, 6),
+#     c(7, 8, 6),
+#     c(4, 6, 5),
+#     c(6, 8, 5)
+#   )
+#
+#   for (vertex in vertices)
+#     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
+#
+#   for (face in faces)
+#     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
+#
+#   close(fileConn)
+# }
 
 find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
-  # plus two since we have to consider the borders
-  target_rows= 2 + target_rows
-  target_cols= 2 + target_cols
+  # target_rows= 1 + target_rows
+  # target_cols= 1 + target_cols
 
-  for (start_row in 1:(nrow(mat)-target_rows+1)) {
-    for (start_col in 1:(ncol(mat)-target_cols+1)) {
+  for (start_row in 2:(nrow(mat)-target_rows-1)) {
+    for (start_col in 2:(ncol(mat)-target_cols-1)) {
       end_row <- start_row + target_rows - 1
       end_col <- start_col + target_cols - 1
 
-      submatrix <- mat[start_row:end_row, start_col:end_col]
+      submatrix <- mat[(start_row-1):end_row, (start_col-1):end_col]
 
-      if (all(submatrix == 1)) {
+      if (all(submatrix == 0)) {
         return(c(start_row-1, start_col-1))
       }
     }
@@ -253,11 +252,13 @@ sendBG <- function(gg,canvas_w,canvas_h,session, canvasSelect){
 }
 
 CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
-  matrixCanvas = canvasObjects$matrixCanvas
+  matrixCanvas = matrix(0,
+                        nrow = canvasObjects$canvasDimension$canvasHeight/10,
+                        ncol = canvasObjects$canvasDimension$canvasWidth/10)
+  # matrixCanvas = canvasObjects$matrixCanvas
   roomNames = canvasObjects$rooms
 
 
-  ## wall and room id defnition
   if(!is.null(canvasObjects$roomsINcanvas)){
     rooms = canvasObjects$roomsINcanvas %>% filter(CanvasID == canvas)
     for(i in rooms$ID){
@@ -266,13 +267,14 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       x = r$x
       y = r$y
 
-      ## wall definition as 0
-      matrixCanvas[y, x + 0:(r$l+1)] = 0
-      matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
-      matrixCanvas[y + 0:(r$w+1), x] = 0
-      matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
+      r$l <- ceiling(r$l)
+      r$w <- ceiling(r$w)
 
-      ## inside the walls the matrix with 1
+      # matrixCanvas[y, x + 0:(r$l+1)] = 0
+      # matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
+      # matrixCanvas[y + 0:(r$w+1), x] = 0
+      # matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
+
       if(FullRoom)
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = i
       else
@@ -280,27 +282,27 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
 
       ## door position definition as 2
       if(r$door == "top"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l+1)/2)
+        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
         r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y
         r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + ceiling((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l+1)/2)
+        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
       }
       else if(r$door == "bottom"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + ceiling((r$l+1)/2)
+        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
         r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + r$w + 1
         r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + round((r$l+1)/2)
+        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
       }
       else if(r$door == "left"){
         r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round((r$w+1)/2)
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round((r$w+1)/2)
+        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
+        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
         r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + ceiling((r$l + 1) / 2)
       }
       else if(r$door == "right"){
         r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x+ r$l + 1
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w+1)/2)
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w+1)/2)
+        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
+        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
         r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l + 1) / 2)
       }
 
@@ -310,12 +312,11 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
     }
   }
 
-  ## movement node definition as 3
   if(!is.null(canvasObjects$nodesINcanvas)){
     nodes = canvasObjects$nodesINcanvas %>% filter(CanvasID == canvas)
     for(i in nodes$ID){
       r = nodes %>% filter(ID == i)
-      matrixCanvas[r$y, r$x] = 3
+      matrixCanvas[r$y + 1, r$x + 1] = 3
     }
   }
 
@@ -402,7 +403,9 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
 
     # update types
-    updateSelectizeInput(inputId = "select_type",choices = unique(canvasObjects$types$Name) )
+    updateSelectizeInput(inputId = "select_type",
+                         selected = "",
+                         choices = c("", unique(canvasObjects$types$Name)))
     updateSelectInput(inputId = "selectInput_color_type",
                       choices = unique(canvasObjects$types$Name))
     # update areas
@@ -416,7 +419,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     for(r_id in canvasObjects$nodesINcanvas$ID){
       newpoint = canvasObjects$nodesINcanvas %>% filter(ID == r_id)
       runjs(paste0("// Crea un nuovo oggetto Square con le proprietà desiderate
-                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10," , ", newpoint$y*10,", 5, rgba(0, 127, 255, 1));
+                const newPoint = new Circle(", newpoint$ID,",", newpoint$x*10+5," , ", newpoint$y*10+5,", 5, rgba(0, 127, 255, 1));
                 // Aggiungi il nuovo oggetto Square all'array arrayObject
                 FloorArray[\"",newpoint$CanvasID,"\"].arrayObject.push(newPoint);"))
     }
@@ -590,6 +593,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
   }
 
   InfoApp$NumTabsTimeSlot = numeric(0)
+  browser()
 
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",
@@ -780,7 +784,7 @@ check_distribution_parameters <- function(input, suffix){
 
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
-      shinyalert("You must specify a time > 0 (in minutessssss).")
+      shinyalert("You must specify a time > 0 (in minutes).")
       return(list(NULL, NULL))
     }
     new_time = input[[paste0("DetTime_", suffix)]]
@@ -1284,4 +1288,43 @@ check <- function(canvasObjects, input, output){
 
   remove_modal_spinner()
   return("OK")
+}
+
+can_reach_greater_than_1 <- function(mat, start_r, start_c) {
+  nrows <- nrow(mat)
+  ncols <- ncol(mat)
+
+  # Check if the starting position is a valid 2 or 3
+  if (!(mat[start_r, start_c] %in% c(2, 3))) return(FALSE)
+
+  # Direction vectors for up, down, left, right
+  dirs <- matrix(c(-1,0, 1,0, 0,-1, 0,1), ncol=2, byrow=TRUE)
+
+  # BFS function to explore the matrix
+  bfs <- function(start_r, start_c) {
+    visited <- matrix(FALSE, nrow=nrows, ncol=ncols)
+    queue <- list(c(start_r, start_c))
+    visited[start_r, start_c] <- TRUE
+
+    while (length(queue) > 0) {
+      current <- queue[[1]]
+      queue <- queue[-1]
+      for (d in 1:nrow(dirs)) {
+        nr <- current[1] + dirs[d, 1]
+        nc <- current[2] + dirs[d, 2]
+        if (nr >= 1 && nr <= nrows && nc >= 1 && nc <= ncols &&
+            !visited[nr, nc] && mat[nr, nc] != 0) {
+          visited[nr, nc] <- TRUE
+          if (mat[nr, nc] > 1) {
+            return(TRUE)  # Found a value greater than 1!
+          }
+          queue <- append(queue, list(c(nr, nc)))
+        }
+      }
+    }
+    return(FALSE)
+  }
+
+  # Perform BFS from the start position
+  return(bfs(start_r, start_c))
 }
