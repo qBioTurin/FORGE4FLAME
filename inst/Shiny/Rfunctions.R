@@ -85,82 +85,6 @@ theme_fancy <- function() {
     )
 }
 
-# generate_obj <- function(temp_directory){
-#   fileConn = file(file.path(temp_directory, 'room.obj'), 'w+')
-#
-#   length = 1
-#   width = 1
-#   height = 1
-#
-#   # Generate vertices
-#   vertices = list(
-#     c(0, 0, 0),
-#     c(length, 0, 0),
-#     c(0, height, 0),
-#     c(0, 0, width),
-#     c(0, height, width),
-#     c(length, 0, width),
-#     c(length, height, 0),
-#     c(length, height, width)
-#   )
-#
-#   # Generate triangles
-#   faces = list(
-#     c(1, 2, 3),
-#     c(2, 7, 3),
-#     c(1, 4, 6),
-#     c(6, 2, 1),
-#     c(1, 3, 4),
-#     c(3, 5, 4),
-#     c(2, 7, 6),
-#     c(7, 8, 6)
-#   )
-#
-#   for (vertex in vertices)
-#     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-#
-#   for (face in faces)
-#     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-#
-#   close(fileConn)
-#
-#   fileConn = file(file.path(temp_directory, 'fillingroom.obj'), 'w+')
-#
-#   # Generate vertices
-#   vertices = list(
-#     c(0, 0, 0),
-#     c(length, 0, 0),
-#     c(0, height, 0),
-#     c(0, 0, width),
-#     c(0, height, width),
-#     c(length, 0, width),
-#     c(length, height, 0),
-#     c(length, height, width)
-#   )
-#
-#   # Generate triangles
-#   faces = list(
-#     c(1, 2, 3),
-#     c(2, 7, 3),
-#     c(1, 4, 6),
-#     c(6, 2, 1),
-#     c(1, 3, 4),
-#     c(3, 5, 4),
-#     c(2, 7, 6),
-#     c(7, 8, 6),
-#     c(4, 6, 5),
-#     c(6, 8, 5)
-#   )
-#
-#   for (vertex in vertices)
-#     writeLines(paste0("v ", vertex[1], " ", vertex[2], " ", vertex[3]), fileConn)
-#
-#   for (face in faces)
-#     writeLines(paste0("f ", face[1], " ", face[2], " ", face[3]), fileConn)
-#
-#   close(fileConn)
-# }
-
 find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
   # target_rows= 1 + target_rows
   # target_cols= 1 + target_cols
@@ -255,7 +179,6 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   matrixCanvas = matrix(0,
                         nrow = canvasObjects$canvasDimension$canvasHeight/10,
                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
-  # matrixCanvas = canvasObjects$matrixCanvas
   roomNames = canvasObjects$rooms
 
 
@@ -269,11 +192,6 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
 
       r$l <- ceiling(r$l)
       r$w <- ceiling(r$w)
-
-      # matrixCanvas[y, x + 0:(r$l+1)] = 0
-      # matrixCanvas[y + r$w + 1, x + 0:(r$l+1)] = 0
-      # matrixCanvas[y + 0:(r$w+1), x] = 0
-      # matrixCanvas[y + 0:(r$w+1), x+ r$l + 1] = 0
 
       if(FullRoom)
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = i
@@ -426,16 +344,23 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   }
 
   ### updating the old RDs version with v.2 format ####
-
   for(a in names(canvasObjects$agents)){
     if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
       canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
+
     if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "")
+      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "None")
+
+    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedType = "None")
+
     if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "")
-      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - ." )
+      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
+      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - None" )
     }
+
+    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
   }
 
   ####
@@ -593,7 +518,6 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
   }
 
   InfoApp$NumTabsTimeSlot = numeric(0)
-  browser()
 
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",

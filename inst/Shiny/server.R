@@ -1711,9 +1711,9 @@ server <- function(input, output,session) {
       }
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
-                               Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
+                               Label = character(0), FlowID = character(0), AgentLinked = character(0), AgentLinkedType = character(0)),
         RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = ""),
+                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = "None", AgentLinkedType = "None"),
         Class = "",
         EntryExitTime = NULL,
         NumAgent = "1"
@@ -1822,7 +1822,7 @@ server <- function(input, output,session) {
       UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
 
       output$RandomEvents_table = DT::renderDataTable(
-        DT::datatable(data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0, Weight =1) %>% select(-c(Name, Activity)),
+        DT::datatable(data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0, Weight =1, AgentLinked = "None", AgentLinkedType = "None") %>% select(-c(Name, Activity)),
                       options = list(
                         columnDefs = list(list(className = 'dt-left', targets=0),
                                           list(className = 'dt-left', targets=1),
@@ -1830,12 +1830,13 @@ server <- function(input, output,session) {
                                           list(className = 'dt-left', targets=3),
                                           list(className = 'dt-left', targets=4),
                                           list(className = 'dt-left', targets=5),
-                                          list(className = 'dt-left', targets=6)),
+                                          list(className = 'dt-left', targets=6),
+                                          list(className = 'dt-left', targets=7)),
                         pageLength = 5
                       ),
                       selection = 'single',
                       rownames = F,
-                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
         )
       )
 
@@ -2062,7 +2063,8 @@ server <- function(input, output,session) {
         return()
       }
 
-      agentlinked = ifelse(input$agentLink_det_flow == "", ".",input$agentLink_det_flow)
+      agentlinked = ifelse(input$agentLink_det_flow == "", "None",input$agentLink_det_flow)
+      agentlinkedtype = ifelse(input$agentLink_det_flow == "", "None",input$ckbox_agentLink_det_flow)
 
       if(new_room != "" && new_time != ""){
         agentsOLD = canvasObjects$agents[[name]]$DeterFlow
@@ -2075,7 +2077,8 @@ server <- function(input, output,session) {
                            Activity = activity,
                            Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked),
                            FlowID = FlowID,
-                           AgentLinked = agentlinked )
+                           AgentLinked = agentlinked,
+                           AgentLinkedType = agentlinkedtype)
 
         if(agent$Label %in% agentsOLD_filter[,"Label"])
         {
@@ -2210,7 +2213,7 @@ server <- function(input, output,session) {
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow[-nrow,]
         }else{
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Activity = numeric(0),
-                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0))
+                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0), AgentLinkedType =  character(0))
         }
       }
     }
@@ -2236,7 +2239,7 @@ server <- function(input, output,session) {
                                 Label = list_detflow,
                                 Flow = 1:length(list_detflow) )
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked) %>% arrange(Flow)
+            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })
@@ -2319,7 +2322,8 @@ server <- function(input, output,session) {
       return()
     }
 
-    agentlinked = input$agentLink_rand_flow
+    agentlinked = agentlinkedtype = ifelse(input$agentLink_rand_flow == "", "None",input$agentLink_rand_flow)
+    agentlinkedtype = ifelse(input$agentLink_rand_flow == "", "None",input$ckbox_agentLink_rand_flow)
 
     if(input$Rand_select_room_flow != "" ){
 
@@ -2331,7 +2335,8 @@ server <- function(input, output,session) {
                             ActivityLabel = activityLabel,
                             Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
                             TimeSlot = times[1],
-                            AgentLinked = agentlinked
+                            AgentLinked = agentlinked,
+                            AgentLinkedType = agentlinkedtype
       )
       canvasObjects$agents[[name]]$RandFlow = rbind(canvasObjects$agents[[name]]$RandFlow,newOrder)
     }
@@ -2345,12 +2350,13 @@ server <- function(input, output,session) {
                                         list(className = 'dt-left', targets=3),
                                         list(className = 'dt-left', targets=4),
                                         list(className = 'dt-left', targets=5),
-                                        list(className = 'dt-left', targets=6)),
+                                        list(className = 'dt-left', targets=6),
+                                        list(className = 'dt-left', targets=7)),
                       pageLength = 5
                     ),
                     selection = 'single',
                     rownames = F,
-                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked")
+                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked", "Agent Linked Type")
       )
     )
 
@@ -2370,12 +2376,13 @@ server <- function(input, output,session) {
                                             list(className = 'dt-left', targets=3),
                                             list(className = 'dt-left', targets=4),
                                             list(className = 'dt-left', targets=5),
-                                            list(className = 'dt-left', targets=6)),
+                                            list(className = 'dt-left', targets=6),
+                                            list(className = 'dt-left', targets=7)),
                           pageLength = 5
                         ),
                         selection = 'single',
                         rownames = F,
-                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
           )
         )
       }

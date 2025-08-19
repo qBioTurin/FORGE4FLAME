@@ -670,26 +670,42 @@ ui <- dashboardPage(
             ),
             collapsible = T,
             fluidRow(
-              column(2,offset = 1,
+              column(3,offset = 1,
                      selectizeInput(inputId= "Det_select_room_flow",
                                     label="Type:",
                                     choices = ""
                      )
               ),
-              column(2, selectizeInput(inputId = "DetActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
+              column(3,offset=2, selectizeInput(inputId = "DetActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
-              column(3,
-                     get_distribution_panel("det_flow")
+              column(1,
+                     actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
               ),
-              column(2,
+              column(1,offset=9,
+                    actionButton("remove_room_to_det_flow", "Remove last room")
+             )
+            ),
+            fluidRow(
+              column(3,offset=1,
                      selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
               ),
+              column(3,offset=2,
+                     tags$h5(strong("Duration:")),
+                     get_distribution_panel("det_flow")
+              )
+            ),
+            conditionalPanel(
+              condition="input.agentLink_det_flow != ''",
               fluidRow(
-                column(3,
-                       actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
-                ),
-                column(3,
-                       actionButton("remove_room_to_det_flow", "Remove last room", style = 'margin-top:10px')
+                column(2, offset = 1,
+                       radioButtons(inputId = "ckbox_agentLink_det_flow",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Select type of link:"),
+                                                div(class = "icon-text", "Two options are available: accompaniment only means that the linked agent will .")
+                                    ),
+                                    choices = c("Accompaniment only", "Accompaniment and stay"),
+                                    selected = "Accompaniment only"
+                       )
                 )
               )
             ),
@@ -697,10 +713,10 @@ ui <- dashboardPage(
               condition="input.ckbox_entranceFlow != 'Daily Rate'",
               fluidRow(
                 column(1, offset = 1,
-                       actionButton("add_det_flow", "Add flow"),
+                       actionButton("add_det_flow", "Add flow", style="margin-top:20px;"),
                 ),
                 column(1,
-                       actionButton("rm_det_flow", "Remove flow")
+                       actionButton("rm_det_flow", "Remove flow", style="margin-top:20px;")
                 ),
               )
             ),
@@ -720,39 +736,57 @@ ui <- dashboardPage(
                         div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
             ),
             fluidRow(
-              column(2,offset = 1,
+              column(3,offset = 1,
                      selectizeInput(inputId= "Rand_select_room_flow",
                                     label="Type:",
                                     choices = ""
                      )
               ),
-              column(2, selectizeInput(inputId = "RandActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
+              column(3, offset=2, selectizeInput(inputId = "RandActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
-              column(1,
+              column(width = 2,
+                     actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
+              )
+            ),
+            fluidRow(
+              column(3,offset=1,
                      textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
               ),
-              column(2,
+              column(3,offset=2,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
               ),
-              column(2,
+              column(3,offset=6,
                      textInput(inputId = "ExitTimeRate_rand_flow", label = "Ending time:", placeholder = "hh:mm")
               )
             ),
             fluidRow(
-              column(offset = 1, width = 4,
-                     get_distribution_panel("rand_flow")
-              ),
-              column(width = 2,
+              column(width = 3,offset=1,
                      selectInput("agentLink_rand_flow","Select an agent to link:",choices = "",selected = "")
               ),
-              column(offset = 1, width = 2,
-                     actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
+              column(offset = 2, width = 3,
+                     tags$h5(strong("Duration:")),
+                     get_distribution_panel("rand_flow")
+              )
+            ),
+            conditionalPanel(
+              condition="input.agentLink_rand_flow != ''",
+              fluidRow(
+                column(2, offset = 1,
+                       radioButtons(inputId = "ckbox_agentLink_rand_flow",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Select type of link:"),
+                                                div(class = "icon-text", "Two options are available: accompaniment only means that the linked agent will .")
+                                    ),
+                                    choices = c("Accompaniment only", "Accompaniment and stay"),
+                                    selected = "Accompaniment only"
+                       )
+                )
               )
             ),
             fluidRow(
               h3(""),
               column(10, offset=1,
-                     div(id="rand_description", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
+                     div(id="rand_description", style="margin-top:20px;", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
               )
             ),
             fluidRow(
@@ -779,7 +813,7 @@ ui <- dashboardPage(
                        )
                      )
               ),
-              column(6,
+              column(6,offset=1,
                      conditionalPanel(
                        condition="input.ckbox_entranceFlow== 'Daily Rate'",
 
