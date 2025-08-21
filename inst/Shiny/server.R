@@ -3838,10 +3838,22 @@ server <- function(input, output,session) {
         return()
       }
 
-      if(any(dataframe$day <= 0) || dataframe$day[nrow(dataframe)] < as.numeric(canvasObjects$starting$simulation_days)){
-        shinyalert("Error", "The number of days to simulate is bigger then the number of days in the file", "error", 5000)
-        return()
-      }
+      # Create a full sequence of days
+      all_days <- data.frame(day = 1:canvasObjects$starting$simulation_days)
+
+      dataframe_full <- merge(all_days, dataframe, by = "day", all.x = TRUE)
+      dataframe_full$percentage_infected[is.na(dataframe_full$percentage_infected)] <- 0
+
+      dataframe <- dataframe_full %>%
+        group_by(day) %>%
+        filter(percentage_infected == max(percentage_infected)) %>%
+        ungroup() %>%
+        filter(day >= 1)
+
+      # if(dataframe$day[nrow(dataframe)] < as.numeric(canvasObjects$starting$simulation_days)){
+      #   shinyalert("Error", "The number of days to simulate is bigger then the number of days in the file", "error", 5000)
+      #   return()
+      # }
 
       canvasObjects$outside_contagion <- dataframe %>%
         select(day, percentage_infected)
@@ -3914,6 +3926,23 @@ server <- function(input, output,session) {
     updateNumericInput(session = session, inputId = "swab_time_to", value = simulation_days)
     updateNumericInput(session = session, inputId = "quarantine_time_to", value = simulation_days)
     updateNumericInput(session = session, inputId = "external_screening_time_to", value = simulation_days)
+
+
+    all_days <- data.frame(day = 1:canvasObjects$starting$simulation_days)
+
+    if(!is.null(canvasObjects$outside_contagion)){
+      canvasObjects$outside_contagion <- merge(all_days, canvasObjects$outside_contagion, by = "day", all.x = TRUE)
+      canvasObjects$outside_contagion$percentage_infected[is.na(canvasObjects$outside_contagion$percentage_infected)] <- 0
+
+      output$outside_contagion_plot <- renderPlot({
+        ggplot(canvasObjects$outside_contagion) +
+          geom_line(aes(x=day, y=percentage_infected), color="green", linewidth=1.5) +
+          ylim(0, NA) +
+          labs(title = "Outside contagion", x = "Day", y = "Percentage") +
+          theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22)) +
+          theme_fancy()
+      })
+    }
   })
 
   seed <- debounce(reactive({input$seed}), 1000L)
