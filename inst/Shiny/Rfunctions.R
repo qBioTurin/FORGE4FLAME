@@ -550,11 +550,11 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                        column(7,
                               textInput(inputId = "EntryTime_1", label = "Entry time:", placeholder = "hh:mm"),
                               if(length(FlowID)>0){
-                                selectInput(inputId = paste0("Select_TimeDetFlow_",length(FlowID)),
+                                selectInput(inputId = "Select_TimeDetFlow_1",
                                             label = "Associate with a determined flow:",
                                             choices = sort(unique(FlowID)) )
                               }else{
-                                selectInput(inputId = paste0("Select_TimeDetFlow_",1),
+                                selectInput(inputId = "Select_TimeDetFlow_1",
                                             label = "Associate with a determined flow:",
                                             choices = "1 flow")
                               }

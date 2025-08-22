@@ -3033,7 +3033,7 @@ server <- function(input, output,session) {
       data_waiting = data.frame()
 
       data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRoomsDeter
-      if(is.null(data_waitingOLD)){
+      if(is.null(data_waitingOLD) || nrow(data_waitingOLD) == 0){
         agents = unique(ResRoomsDF[ResRoomsDF$Flow == "Deter", "Agent"])
         if(length(agents) > 0 ){
           data_waiting = do.call(rbind,
