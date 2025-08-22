@@ -765,15 +765,6 @@ server <- function(input, output,session) {
     if(nrow(canvasObjects$roomsINcanvas %>% filter(type == objectDelete$type, area == objectDelete$area)) == 0)
       canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != paste0( objectDelete$type,"-", objectDelete$area) )
 
-    ## if the room is present in Agents Flow then we have to remove them
-    ## when there are this type of room anymore
-    if(!is.null(canvasObjects$agents)){
-      for(a in 1:length(canvasObjects$agents))
-        if(!is.null(canvasObjects$agents[[a]]$DeterFlow))
-          canvasObjects$agents[[a]]$DeterFlow = canvasObjects$agents[[a]]$DeterFlow %>%
-            filter(Room  %in% c("Spawnroom-None", paste0(canvasObjects$roomsINcanvas$type, "-", canvasObjects$roomsINcanvas$area)))
-    }
-
     if(!is.null(canvasObjects$pathINcanvas)){
       pathsINcanvasFloor <- canvasObjects$pathINcanvas %>%
         filter(CanvasID == input$canvas_selector)
@@ -808,8 +799,8 @@ server <- function(input, output,session) {
   observeEvent(input$remove_room,{
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(input$select_RemoveRoom != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
 
+    if(input$select_RemoveRoom != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
       objectDelete = canvasObjects$roomsINcanvas %>%
         mutate(NewID = paste0( Name," #", ID ) ) %>%
         filter(NewID == input$select_RemoveRoom)
@@ -830,20 +821,20 @@ server <- function(input, output,session) {
             filter(Room == paste0(objectDelete$type, "-", objectDelete$area)) %>%
             pull(Name)
 
-          agents_with_room_type2 <- do.call(rbind, lapply(canvasObjects$agents,"[[","DeterFlow") ) %>%
+          agents_with_room_type2 <- do.call(rbind, lapply(canvasObjects$agents,"[[","RandFlow") ) %>%
             select(Name,Room) %>%
             distinct() %>%
             filter(Room == paste0(objectDelete$type, "-", objectDelete$area)) %>%
             pull(Name)
 
-          agents_with_room_type = unique(agents_with_room_type1,agents_with_room_type2)
+          agents_with_room_type = c(agents_with_room_type1,agents_with_room_type2)
 
           if(length(agents_with_room_type) > 0){
 
             shinyalert(
               title = "Confirmation",
-              text = paste0("Impossible to delete the room: ", objectDelete$Name,
-                            " as it is the last room available for the flow of the following agents: ",
+              text = paste0("Pay attention to delete the room '", objectDelete$Name,
+                            "' as it is the last room available for the flow of the following agents: ",
                             paste(unique(agents_with_room_type), collapse = ", "), "."),
               type = "warning",
               showCancelButton = TRUE,
@@ -851,7 +842,7 @@ server <- function(input, output,session) {
               cancelButtonText = "Cancel",
               callbackR = function(x) {
                 if (x) {
-                  for(a in  agents_with_room_type){
+                  for(a in agents_with_room_type){
                     if(!is.null(canvasObjects$agents[[a]]$DeterFlow)){
                       canvasObjects$agents[[a]]$DeterFlow = canvasObjects$agents[[a]]$DeterFlow %>% filter(Room != paste0(objectDelete$type, "-", objectDelete$area) )
                     }
@@ -868,14 +859,13 @@ server <- function(input, output,session) {
           }
         }
 
-        ### Feleting rooms from whatif tables
+        ### Deleting rooms from what-if tables
         RoomToDelete =  paste0(objectDelete$type, "-", objectDelete$area)
         if(nrow(canvasObjects$rooms_whatif) > 0)
           canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != RoomToDelete)
       }
 
       deletingRoomFromCanvas(session,objectDelete,canvasObjects)
-
     }})
 
   #### Color legend: ####
@@ -2236,8 +2226,8 @@ server <- function(input, output,session) {
            length(agent$Room) > 0 &&
            length(list_detflow) == length(agent$Label) ){
           newOrder = data.frame(Name = input$id_new_agent,
-                                Label = list_detflow,
-                                Flow = 1:length(list_detflow) )
+                                Label = agent$Label,
+                                Flow = 1:length(agent$Label) )
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
             select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
