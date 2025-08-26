@@ -718,8 +718,32 @@ server <- function(input, output,session) {
                              colorFill = room_color,
                              colorBorder = "rgba(0, 0, 0, 1)",
                              area = input$select_area,
-                             CanvasID = input$canvas_selector
-        )
+                             CanvasID = input$canvas_selector)
+
+        if(input$door_new_room == "top"){
+          newroom$door_x = newroom$x + floor(newroom$l/2) + 1
+          newroom$door_y = newroom$y
+          newroom$center_y = newroom$y + ceiling((newroom$w + 1) / 2)
+          newroom$center_x = newroom$x + floor(newroom$l/2) + 1
+        }
+        else if(input$door_new_room == "bottom"){
+          newroom$door_x = newroom$x + floor(newroom$l/2) + 1
+          newroom$door_y = newroom$y + newroom$w + 1
+          newroom$center_y = newroom$y + floor((newroom$w + 1) / 2)
+          newroom$center_x = newroom$x + floor(newroom$l/2) + 1
+        }
+        else if(input$door_new_room == "left"){
+          newroom$door_x = newroom$x
+          newroom$door_y = newroom$y + round(newroom$w/2) + 1
+          newroom$center_y = newroom$y + round(newroom$w/2) + 1
+          newroom$center_x = newroom$x + ceiling((newroom$l + 1) / 2)
+        }
+        else if(input$door_new_room == "right"){
+          newroom$door_x =newroom$x+ newroom$l + 1
+          newroom$door_y = newroom$y + floor(newroom$w/2) + 1
+          newroom$center_y = newroom$y + floor(newroom$w/2) + 1
+          newroom$center_x = newroom$x + floor((newroom$l + 1) / 2)
+        }
 
         if(is.null(canvasObjects$roomsINcanvas)){
           canvasObjects$roomsINcanvas = newroom
@@ -1460,9 +1484,127 @@ server <- function(input, output,session) {
         canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
       else{
         canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
+
+        if(input$door_new_room == "top"){
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + ceiling((width + 1) / 2)
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+        }
+        else if(input$door_new_room == "bottom"){
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + width + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor((width + 1) / 2)
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+        }
+        else if(input$door_new_room == "left"){
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + round(width/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + round(width/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + ceiling((length + 1) / 2)
+        }
+        else if(input$door_new_room == "right"){
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + length + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + floor(width/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor(width/2) + 1
+          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor((length + 1) / 2)
+        }
       }
 
       canvasObjects$selectedId = input$id
+    }
+  })
+
+  observeEvent(input$movement_completed, {
+    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
+    room <- input$movement_completed
+
+    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
+
+    room$x <- room$x / 10
+    room$y <- room$y / 10
+    room$length <- room$length / 10
+    room$width <- room$width / 10
+
+    if(room$side == "top"){
+      room$door_x = room$x + floor(room$length/2) + 1
+      room$door_y = room$y
+      room$center_y = room$y + ceiling((room$width + 1) / 2)
+      room$center_x = room$x + floor(room$length/2) + 1
+    }
+    else if(room$side == "bottom"){
+      room$door_x = room$x + floor(room$length/2) + 1
+      room$door_y = room$y + room$width + 1
+      room$center_y = room$y + floor((room$width + 1) / 2)
+      room$center_x = room$x + floor(room$length/2) + 1
+    }
+    else if(room$side == "left"){
+      room$door_x = room$x
+      room$door_y = room$y + round(room$width/2) + 1
+      room$center_y = room$y + round(room$width/2) + 1
+      room$center_x = room$x + ceiling((room$length + 1) / 2)
+    }
+    else if(room$side == "right"){
+      room$door_x = room$x + room$length + 1
+      room$door_y = room$y + floor(room$width/2) + 1
+      room$center_y = room$y + floor(room$width/2) + 1
+      room$center_x = room$x + floor((room$length + 1) / 2)
+    }
+
+    is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
+      x <- room$door_x
+      y <- room$door_y
+
+      # Check if all matrix values along Bresenham path are in allowed set (0, 2, 3)
+      check_path_values <- function(matrix, x_points, y_points) {
+        allowed_values <- c(0, 2, 3)
+
+        for (i in seq_along(x_points)) {
+          x <- x_points[i]
+          y <- y_points[i]
+
+          if (!(matrix[y, x] %in% allowed_values))
+            return(FALSE)
+        }
+
+        return(TRUE)
+      }
+
+      for (i in 1:nrow(roomsINcanvas)) {
+        if (x == roomsINcanvas[i,]$door_x && y == roomsINcanvas[i,]$door_y) next
+
+        ox <- roomsINcanvas[i,]$door_x
+        oy <- roomsINcanvas[i,]$door_y
+
+        line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
+        x_points <- line_pts$x
+        y_points <- line_pts$y
+
+        valid_path <- check_path_values(matrix, x_points, y_points)
+      }
+
+      if(valid_path) return(TRUE)
+
+      if(!is.null(nodesINcanvas) && nrow(nodesINcanvas) > 0){
+        for (i in 1:nrow(nodesINcanvas)) {
+          ox <- nodesINcanvas[i,]$x
+          oy <- nodesINcanvas[i,]$y
+
+          line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
+          x_points <- line_pts$x
+          y_points <- line_pts$y
+
+          valid_path <- check_path_values(matrix, x_points, y_points)
+        }
+      }
+
+      return(valid_path)
+    }
+
+    valid_rooms <- !is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas)
+
+    if (valid_rooms) {
+      showNotification("Warning: the room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")
     }
   })
 

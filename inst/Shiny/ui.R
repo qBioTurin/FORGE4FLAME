@@ -135,7 +135,15 @@ ui <- dashboardPage(
                  .home {
                     margin-top: 0.5cm;
                     margin-bottom: 0.5cm;
-                 }"
+                 }
+                .shiny-notification {
+                   font-size: 25px !important;
+                   position: fixed;
+                   bottom: 20px;
+                   right: 20px;
+                   top: auto !important;
+                   left: auto !important;
+                }"
       )
       ),
       tags$a(

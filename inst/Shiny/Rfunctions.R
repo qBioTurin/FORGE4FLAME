@@ -198,32 +198,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       else
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = 1
 
-      ## door position definition as 2
-      if(r$door == "top"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + ceiling((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
-      }
-      else if(r$door == "bottom"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + r$w + 1
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor((r$w + 1) / 2)
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor(r$l/2) + 1
-      }
-      else if(r$door == "left"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + round(r$w/2) + 1
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + ceiling((r$l + 1) / 2)
-      }
-      else if(r$door == "right"){
-        r$door_x = canvasObjects$roomsINcanvas$door_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x+ r$l + 1
-        r$door_y = canvasObjects$roomsINcanvas$door_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
-        r$center_y = canvasObjects$roomsINcanvas$center_y[which(canvasObjects$roomsINcanvas$ID == i)] = r$y + floor(r$w/2) + 1
-        r$center_x = canvasObjects$roomsINcanvas$center_x[which(canvasObjects$roomsINcanvas$ID == i)] = r$x + floor((r$l + 1) / 2)
-      }
-
+      ## Door position definition as 2
       matrixCanvas[r$door_y, r$door_x] = if(r$door != "none") 2 else 0
       if(r$type != "Fillingroom")
         matrixCanvas[r$center_y, r$center_x] = roomNames$ID[roomNames$Name == r$Name]
