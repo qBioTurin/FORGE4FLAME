@@ -73,6 +73,17 @@ server <- function(input, output,session) {
 
   hideElement("outside_contagion_plot")
 
+  observeEvent(input$link_canvas_tab, { updateTabItems(session, "SideTabs", "canvas_tab") })
+  observeEvent(input$link_rooms, { updateTabItems(session, "SideTabs", "rooms") })
+  observeEvent(input$link_agents, { updateTabItems(session, "SideTabs", "agents") })
+  observeEvent(input$link_resources, { updateTabItems(session, "SideTabs", "resources") })
+  observeEvent(input$link_infection, { updateTabItems(session, "SideTabs", "infection") })
+  observeEvent(input$link_whatif, { updateTabItems(session, "SideTabs", "whatif") })
+  observeEvent(input$link_settings, { updateTabItems(session, "SideTabs", "settings") })
+  observeEvent(input$link_configuration, { updateTabItems(session, "SideTabs", "configuration") })
+  observeEvent(input$link_run, { updateTabItems(session, "SideTabs", "run") })
+  observeEvent(input$link_post_process, { updateTabItems(session, "SideTabs", "post_process") })
+
 
   observeEvent(input$LoadBG_image, {
 
@@ -695,7 +706,7 @@ server <- function(input, output,session) {
       ynew = result[1]
 
       if(is.null(xnew) || is.null(ynew)){
-        shinyalert("Error",paste0("No space available in the floor for a new ",input$select_room , " room."), "error", 5000)
+        shinyalert("Error",paste0("No space available in the floor '", input$canvas_selector, "' for a new ", input$select_room , " room."), "error", 5000)
         return()
       }else{
         color_type <- canvasObjects$color
@@ -763,10 +774,45 @@ server <- function(input, output,session) {
                              choices = roomsAvailable)
         updateSelectizeInput(session = session, "room_quarantine",
                              choices = roomsAvailable)
+
+        # If the new room is of type Stair, add it also in the other floors, if any and if there space
+        if(roomSelected$type == "Stair"){
+          floor_without_space <- c()
+          for(floor in canvasObjects$floors$Name){
+            if(floor == input$canvas_selector) next
+
+            matrix = CanvasToMatrix(canvasObjects,FullRoom = T,canvas = floor)
+
+            # Check if there is still space for the new room
+            result <- find_ones_submatrix_coordinates(matrix, target_rows = ceiling(width), target_cols = ceiling(length))
+            xnew = result[2]
+            ynew = result[1]
+
+            if(is.null(xnew) || is.null(ynew)){
+              floor_without_space <- c(floor_without_space, floor)
+              #showNotification("We tried to add the Stair also in the other floors, but there is no space available in the floor '", input$canvas_selector, "' for a new ", input$select_room , " room.", duration = 5, type = "warning")
+            }else{
+              # Add the room
+              newroom$ID = max(canvasObjects$roomsINcanvas$ID, 1) + 1
+              newroom$CanvasID <- floor
+
+              canvasObjects$roomsINcanvas = rbind(canvasObjects$roomsINcanvas, newroom)
+
+              runjs( command_addRoomObject( newroom) )
+
+              rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
+              roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
+              updateSelectizeInput(session = session, "room_ventilation",
+                                   choices = roomsAvailable)
+              updateSelectizeInput(session = session, "room_quarantine",
+                                   choices = roomsAvailable)
+            }
+          }
+
+          showNotification(paste0("We added a Stair in each floor, except in ",  paste(floor_without_space, collapse = ", "), " because there is no space available. Consider adding them if you need them."), duration = 5, type = "success")
+        }
       }
-
     }
-
   })
 
   deletingRoomFromCanvas = function(session,objectDelete,canvasObjects){
@@ -1604,7 +1650,7 @@ server <- function(input, output,session) {
     valid_rooms <- !is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas)
 
     if (valid_rooms) {
-      showNotification("Warning: the room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")
+      showNotification("The room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")
     }
   })
 
