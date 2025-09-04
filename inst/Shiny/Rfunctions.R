@@ -80,7 +80,7 @@ theme_fancy <- function() {
       legend.key = element_rect(fill = "white"),
       legend.title = element_text(color = "white", face = "bold", size = 18),
       legend.position = "bottom",
-      strip.background = element_rect(fill = "white",color = "black"),
+      strip.background = element_rect(fill = "white",color = "white"),
       strip.text = element_text(color = "black", size = 18, face = "bold")
     )
 }
@@ -336,6 +336,17 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
     if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
       canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
+
+    if(! "Shift" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){
+      canvasObjects$agents[[a]]$EntryExitTime$Shift <- "1 shift"
+    }
+
+    if(! "NumAgent" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){
+      if("NumAgent" %in% names(canvasObjects$agents[[a]]))
+        canvasObjects$agents[[a]]$EntryExitTime$NumAgent <- canvasObjects$agents[[a]]$NumAgent
+      else
+        canvasObjects$agents[[a]]$EntryExitTime$NumAgent <- "0"
+    }
   }
 
   ####
@@ -344,13 +355,6 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(session = session, inputId = "id_agents_to_copy", choices = if(!is.null(canvasObjects$agents)) unique(names(canvasObjects$agents)) else "", selected = "")
   updateSelectizeInput(session = session, inputId ="agentLink_rand_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
   updateSelectizeInput(session = session, inputId ="agentLink_det_flow", choices = c("", unique(names(canvasObjects$agents))), selected = "" )
-
-  classes <- c()
-  for(i in 1:length(canvasObjects$agents)){
-    classes <- c(canvasObjects$agents[[i]]$Class, classes)
-  }
-
-  updateSelectizeInput(inputId = "id_class_agent", choices = if(length(classes) > 0) unique(classes) else "")
 
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
@@ -471,35 +475,35 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
   FlowID = canvasObjects$agents[[Agent]]$DeterFlow$FlowID
   entry_type = canvasObjects$agents[[Agent]]$entry_type
 
+  NumShifts = InfoApp$NumTabsTimeShift
   NumTabs = InfoApp$NumTabsTimeSlot
   #if i change type from one agent to another I have to remove all tabs type
-  if(length(NumTabs) > 0){
+  if(length(NumShifts) > 0){
     #if it's the first agent ever we click on we remove the default void slot
     if(InfoApp$oldAgentType == ""){
-      removeTab(inputId = "Rate_tabs", target = "1 slot")
-      removeTab(inputId = "Time_tabs", target = "1 slot")
-
+      removeTab(inputId = "Rate_tabs", target = "slot_1")
+      removeTab(inputId = "Shift_tabs", target = "shift_1")
     }
     if(InfoApp$oldAgentType == "Time window"){
-      for( i in NumTabs) {
-        removeTab(inputId = "Time_tabs", target = paste0(i, " slot"))
+      for(i in NumShifts) {
+        removeTab(inputId = "Shift_tabs", target = paste0("shift_", i))
       }
     }
     else if(InfoApp$oldAgentType == "Daily Rate"){
-      for( i in NumTabs) {
-        removeTab(inputId = "Rate_tabs", target = paste0(i, " slot"))
+      for(i in NumTabs) {
+        removeTab(inputId = "Rate_tabs", target = paste0("slot_", i))
       }
     }
   }
 
-  InfoApp$NumTabsTimeSlot = numeric(0)
+  InfoApp$NumTabsTimeShift = 1
 
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",
-              tabPanel(paste0(1," slot"),
-                       value = paste0(1," slot"),
+              tabPanel("1 slot",
+                       value = "slot_1",
                        tags$b("Entrance rate:"),
-                       get_distribution_panel(paste0("daily_rate_", 1)),
+                       get_distribution_panel(paste0("daily_rate_1")),
                        column(7,
                               textInput(inputId = "EntryTimeRate_1", label = "Initial generation time:", placeholder = "hh:mm"),
                               textInput(inputId = "ExitTimeRate_1", label = "Final generation time:", placeholder = "hh:mm"),
@@ -513,78 +517,106 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                        )
               )
     )
-    InfoApp$NumTabsTimeSlot = 1
-    showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
 
-    updateTextInput(inputId = "num_agent", value = 0)
-    disable("num_agent")
+    InfoApp$NumTabsTimeSlot = 1
+    showTab(inputId = "Rate_tabs", target = "slot_1", select = T)
   }else if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Time window"){
-    appendTab(inputId = "Time_tabs",
-              tabPanel(paste0(1," slot"),
-                       value = paste0(1," slot"),
-                       column(7,
-                              textInput(inputId = "EntryTime_1", label = "Entry time:", placeholder = "hh:mm"),
-                              if(length(FlowID)>0){
-                                selectInput(inputId = "Select_TimeDetFlow_1",
-                                            label = "Associate with a determined flow:",
-                                            choices = sort(unique(FlowID)) )
-                              }else{
-                                selectInput(inputId = "Select_TimeDetFlow_1",
-                                            label = "Associate with a determined flow:",
-                                            choices = "1 flow")
-                              }
-                       ),
-                       column(5,
-                              checkboxGroupInput("selectedDays_1", "Select Days of the Week",
-                                                 choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                 selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-                              )
-
-                       )
-              )
-    )
-    InfoApp$NumTabsTimeSlot = 1
-    showTab(inputId = "Time_tabs", target = paste0(1, " slot"), select = T)
-
-    enable("num_agent")
-  }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){
-    updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
-
-    slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
-    for(i in (slots) ){
-      InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
-      df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
-
-      appendTab(inputId = "Time_tabs",
-                tabPanel(paste0(i," slot"),
-                         value = paste0(i," slot"),
-                         column(7,
-                                textInput(inputId = paste0("EntryTime_",i), label = "Entry time:", value = unique(df$EntryTime), placeholder = "hh:mm"),
-                                selectInput(inputId = paste0("Select_TimeDetFlow_",i),
-                                            label = "Associate with a determined flow:",
-                                            selected = unique(df$FlowID),
-                                            choices = sort(unique(FlowID)))
+    appendTab(inputId = "Shift_tabs",
+                tabPanel("1 shift",
+                         value = "shift_1",
+                         fluidRow(
+                           column(4,offset=1,
+                                  textInput(inputId = "num_agent_1", label = "Number of agents:",
+                                            placeholder = "The number must be a positive integer")
+                           )
                          ),
-                         column(5,
-                                checkboxGroupInput(paste0("selectedDays_",i), "Select Days of the Week",
-                                                   choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                   selected = df$Days
-                                )
+                         fluidRow(
+                           column(11,offset=1,
+                                  sortableTabsetPanel(id = "Time_tabs_1",
+                                              tabPanel("1 slot",
+                                                       value = "slot_1_1",
+                                                       column(7,
+                                                              textInput(inputId = "EntryTime_1_1", label = "Entry time:", placeholder = "hh:mm"),
+                                                              selectInput(inputId = paste0("Select_TimeDetFlow_1_1"),
+                                                                          label = "Associate with a determined flow:" ,
+                                                                          choices = "1 flow" )
+                                                       ),
+                                                       column(5,
+                                                              checkboxGroupInput("selectedDays_1_1", "Select Days of the Week",
+                                                                                 choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                                                 selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                                                              )
+
+                                                       )
+                                              )
+                                  )
+                           )
+                         )
+                )
+    )
+
+    InfoApp$NumTabsTimeSlot = list("shift_1"=1)
+    showTab(inputId = "Shift_tabs", target = "shift_1", select = T)
+    showTab(inputId = "Time_tabs", target = "slot_1_1", select = T)
+  }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){
+    # updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
+    shifts = sort(unique(gsub(pattern = " shift", replacement = "", x = EntryExitTime$Shift)))
+    InfoApp$NumTabsTimeSlot <- list()
+    for(j in shifts){
+      EntryExitTimeShiftJ <- EntryExitTime %>%
+        filter(Shift == paste0(j, " shift"))
+
+      slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTimeShiftJ$Name)))
+
+      appendTab(inputId = "Shift_tabs",
+                tabPanel(paste0(j, " shift"),
+                         value = paste0("shift_", j),
+                         fluidRow(
+                           column(4,offset=1,
+                                  textInput(inputId = paste0("num_agent_", j), label = "Number of agents:",
+                                            placeholder = "The number must be a positive integer", value = unique((EntryExitTimeShiftJ %>% filter(Shift == paste0(j, " shift")))$NumAgent))
+                           )
+                         ),
+                         fluidRow(
+                           column(11,offset=1,
+                                  sortableTabsetPanel(id = paste0("Time_tabs_", j),
+                                              !!!lapply(slots, function(i) {
+                                                tabPanel(paste0(i, " slot"),
+                                                         value = paste0("slot_", j, "_", i),
+                                                         column(7,
+                                                                textInput(inputId = paste0("EntryTime_", j, "_", i), value = unique((EntryExitTimeShiftJ %>% filter(Name == paste0(i, " slot")))$EntryTime), label = "Entry time:", placeholder = "hh:mm"),
+                                                                selectInput(inputId = paste0("Select_TimeDetFlow_", j, "_", i),
+                                                                            label = "Associate with a determined flow:",
+                                                                            choices = sort(unique(FlowID)),
+                                                                            selected = unique((EntryExitTimeShiftJ %>% filter(Name == paste0(i, " slot")))$FlowID))
+                                                         ),
+                                                         column(5,
+                                                                checkboxGroupInput(inputId = paste0("selectedDays_", j, "_", i),
+                                                                                   label = "Select Days of the Week",
+                                                                                   choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                                                   selected = (EntryExitTimeShiftJ %>% filter(Name == paste0(i, " slot")))$Days
+                                                                )
+                                                         )
+                                                )
+                                              })
+                                  )
+                           )
                          )
                 )
       )
-    }
-    showTab(inputId = "Time_tabs", target = paste0(slots[1], " slot"), select = T)
-    enable("num_agent")
-  } else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Daily Rate"){
-    updateRadioButtons(session, "ckbox_entranceFlow", selected = "Daily Rate")
 
+      InfoApp$NumTabsTimeSlot[paste0("shift_", j)] = slots
+    }
+
+    showTab(inputId = "Shift_tabs", target = paste0("shift_", shifts[1]), select = T)
+    showTab(inputId = "Time_tabs", target = paste0("slot_", slots[1]), select = T)
+  } else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Daily Rate"){
+    # updateRadioButtons(session, "ckbox_entranceFlow", selected = "Daily Rate")
     slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
     tab <- "DetTime_tab"
-    for(i in (slots) ){
-      InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,i)
-      df = EntryExitTime %>% filter(Name ==paste0(i, " slot"))
-
+    for(i in (slots)){
+      InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot, i)
+      df = EntryExitTime %>% filter(Name == paste0(i, " slot"))
 
       params <- parse_distribution(unique(df$RateTime), unique(df$RateDist))
       rate_dist <- unique(df$RateDist)
@@ -595,7 +627,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 
       appendTab(inputId = "Rate_tabs",
                 tabPanel(paste0(i," slot"),
-                         value = paste0(i," slot"),
+                         value = paste0("slot_", i),
                          tags$b("Entrance rate:"),
                          get_distribution_panel(paste0("daily_rate_", i), a=rate_a, b=rate_b, selected_dist = rate_dist),
                          column(7,
@@ -613,13 +645,10 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 
       # update_distribution(paste0("daily_rate_", i), rate_dist, rate_a, rate_b, tab)
     }
-    showTab(inputId = "Rate_tabs", target = paste0(1, " slot"), select = T)
+    showTab(inputId = "Rate_tabs", target = paste0("slot_", slots[1]), select = T)
     showTab(inputId = paste0("DistTime_tabs_daily_rate_", slots[1]), target = tab, select = T)
     # if(tab == "StocTime_tab")
     #   updateSelectInput(inputId = paste0("DistStoc_id_daily_rate_", slots[1]), selected = rate_dist)
-
-    updateTextInput(inputId = "num_agent", value = 0)
-    disable("num_agent")
   }
 }
 
@@ -683,7 +712,7 @@ check_distribution_parameters <- function(input, suffix){
 
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
-      shinyalert("You must specify a time > 0 (in minutes).")
+      shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
       return(list(NULL, NULL))
     }
     new_time = input[[paste0("DetTime_", suffix)]]
@@ -696,7 +725,7 @@ check_distribution_parameters <- function(input, suffix){
         return(list(NULL, NULL))
 
       if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]])) <= 0 ){
-        shinyalert("You must specify a time > 0 (in minutes).")
+        shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
         return(list(NULL, NULL))
       }
       new_time = input[[paste0("DistStoc_ExpRate_", suffix)]]
@@ -708,7 +737,7 @@ check_distribution_parameters <- function(input, suffix){
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]]))) ||
           as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]])) >= as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]])) ||
           as.numeric(input[[paste0("DistStoc_UnifRate_a_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_UnifRate_b_", suffix)]]) <= 0){
-        shinyalert("You must specify a and b as numeric, a < b (in minutes and both > 0).")
+        shinyalert("Error", "You must specify a and b as numeric (in minutes and both > 0), with a < b.", type = "error")
         return(list(NULL, NULL))
       }
       new_time = paste0("a = ",input[[paste0("DistStoc_UnifRate_a_", suffix)]] ,"; b = ",input[[paste0("DistStoc_UnifRate_b_", suffix)]])
@@ -719,7 +748,7 @@ check_distribution_parameters <- function(input, suffix){
       if( is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
           as.numeric(input[[paste0("DistStoc_NormRate_m_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_NormRate_sd_", suffix)]]) < 0){
-        shinyalert("You must specify the mean and standard deviation as numeric (in minutes, with mean > 0 and std >= 0).")
+        shinyalert("Error", "You must specify the mean and standard deviation as numeric (in minutes, with mean > 0 and std >= 0).", type = "error")
         return(list(NULL, NULL))
       }
       new_time = paste0("Mean = ",input[[paste0("DistStoc_NormRate_m_", suffix)]] ,"; Sd = ",input[[paste0("DistStoc_NormRate_sd_", suffix)]])
@@ -1027,23 +1056,73 @@ F4FgetVolumes=function(exclude, from="~", custom_name="Home"){
   return(volumes)
 }
 
-check <- function(canvasObjects, input, output){
+is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
+  x <- room$door_x
+  y <- room$door_y
+
+  # Check if all matrix values along Bresenham path are in allowed set (0, 2, 3)
+  check_path_values <- function(matrix, x_points, y_points) {
+    allowed_values <- c(0, 2, 3)
+
+    for (i in seq_along(x_points)) {
+      x <- x_points[i]
+      y <- y_points[i]
+
+      if (!(matrix[y, x] %in% allowed_values))
+        return(FALSE)
+    }
+
+    return(TRUE)
+  }
+
+  for (i in 1:nrow(roomsINcanvas)) {
+    if (x == roomsINcanvas[i,]$door_x && y == roomsINcanvas[i,]$door_y) next
+
+    ox <- roomsINcanvas[i,]$door_x
+    oy <- roomsINcanvas[i,]$door_y
+
+    line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
+    x_points <- line_pts$x
+    y_points <- line_pts$y
+
+    valid_path <- check_path_values(matrix, x_points, y_points)
+  }
+
+  if(valid_path) return(TRUE)
+
+  if(!is.null(nodesINcanvas) && nrow(nodesINcanvas) > 0){
+    for (i in 1:nrow(nodesINcanvas)) {
+      ox <- nodesINcanvas[i,]$x
+      oy <- nodesINcanvas[i,]$y
+
+      line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
+      x_points <- line_pts$x
+      y_points <- line_pts$y
+
+      valid_path <- check_path_values(matrix, x_points, y_points)
+    }
+  }
+
+  return(valid_path)
+}
+
+check <- function(canvasObjects, input, output, InfoApp){
   show_modal_spinner()
 
   if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
-    shinyalert(paste0("No agent is defined."))
+    shinyalert("Error", "No agent is defined (Agents page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(is.null(canvasObjects$rooms) || length(canvasObjects$rooms) == 0){
-    shinyalert(paste0("No room is defined."))
+    shinyalert("Error", "No room is defined (Rooms page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
-    shinyalert(paste0("No room is drew in the canvas."))
+    shinyalert("Error", "No room is drew in the canvas (Canvas page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
@@ -1052,7 +1131,7 @@ check <- function(canvasObjects, input, output){
     filter(type == "Spawnroom")
 
   if(nrow(spawnroom) != 1){
-    shinyalert(paste0("There must be exactly one Spawnroom in the canvas."))
+    shinyalert("Error", "There must be exactly one Spawnroom in the canvas (Canvas page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
@@ -1061,14 +1140,14 @@ check <- function(canvasObjects, input, output){
     filter(!type %in% c("Spawnroom", "Fillingroom", "Stair", "Waitingroom"))
 
   if(nrow(rooms) < 1){
-    shinyalert(paste0("There must at least one room in the canvas with a type different from Spawnroom, Fillingroom, Stair, and Waitingroom."))
+    shinyalert("Error", "There must be at least one room in the canvas with a type different from Spawnroom, Fillingroom, Stair, and Waitingroom (Canvas page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   for(agent in 1:length(canvasObjects$agents)){
     if(is.null(canvasObjects$agents[[agent]]$DeterFlow) || nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
-      shinyalert(paste0("No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
+      shinyalert("Error", "No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
@@ -1080,13 +1159,13 @@ check <- function(canvasObjects, input, output){
       rooms_type <- unique(df_local$Room)
 
       if(length(rooms_type) <= 1){
-        shinyalert(paste0("The flow ", df, " of agent ", names(canvasObjects$agents)[[agent]], " has less then two rooms' types. The first and last rooms must be the Spawnroom with at least another type of room in the middle."))
+        shinyalert("Error", "The flow ", df, " of agent ", names(canvasObjects$agents)[[agent]], " has less then two rooms' types. The first and last rooms of a determined flow must be the Spawnroom, with at least another type of room in the middle (Agents page).", type = "error")
         remove_modal_spinner()
         return(NULL)
       }
 
       if(!("Spawnroom" == strsplit(df_local$Room[1], "-")[[1]][1]) || !("Spawnroom" == strsplit(df_local$Room[nrow(df_local)], "-")[[1]][1])){
-        shinyalert(paste0("The first and/or the last rooms of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " are not a Spawnroom."))
+        shinyalert("Error", "The first and/or the last room of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " is not a Spawnroom (Agents page).", type = "error")
         remove_modal_spinner()
         return(NULL)
       }
@@ -1097,7 +1176,7 @@ check <- function(canvasObjects, input, output){
     }
 
     if(is.null(canvasObjects$agents[[agent]]$EntryExitTime) || nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
-      shinyalert(paste0("No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], "."))
+      shinyalert("Error", "No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
@@ -1107,7 +1186,7 @@ check <- function(canvasObjects, input, output){
         # Sovrapposition check
         overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
         if(!is.null(overlaps)){
-          shinyalert(paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], "."))
+          shinyalert("Error", "There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
           remove_modal_spinner()
           return(NULL)
         }
@@ -1116,26 +1195,26 @@ check <- function(canvasObjects, input, output){
   }
 
   if(is.null(canvasObjects$disease$beta_contact)){
-    shinyalert("You must insert the beta contact parameter (in the Infection page).")
+    shinyalert("Error", "You must insert the beta contact parameter (Infection page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(is.null(canvasObjects$disease$beta_aerosol)){
-    shinyalert("You must insert the beta aerosol parameter (in the Infection page).")
+    shinyalert("Error", "You must insert the beta aerosol parameter (Infection page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(is.null(canvasObjects$disease$gamma_time)){
-    shinyalert("You must insert the gamma parameter (in the Infection page).")
+    shinyalert("Error", "You must insert the gamma parameter (Infection page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(grepl("E", canvasObjects$disease$Name)){
     if(is.null(canvasObjects$disease$alpha_time)){
-      shinyalert("You must insert the alpha parameter (in the Infection page).")
+      shinyalert("Error", "You must insert the alpha parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
@@ -1144,7 +1223,7 @@ check <- function(canvasObjects, input, output){
 
   if(grepl("D", canvasObjects$disease$Name)){
     if(is.null(canvasObjects$disease$lambda_time)){
-      shinyalert("You must insert the lambda parameter (in the Infection page).")
+      shinyalert("Error", "You must insert the lambda parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
@@ -1153,34 +1232,56 @@ check <- function(canvasObjects, input, output){
 
   if(canvasObjects$disease$Name[length(canvasObjects$disease$Name)] == "S"){
     if(is.null(canvasObjects$disease$nu_time)){
-      shinyalert("You must insert the nu parameter (in the Infection page).")
+      shinyalert("Error", "You must insert the nu parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
   }
 
   if (!(grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", input$initial_time) || grepl("^\\d{1,2}$", input$initial_time))){
-    shinyalert("The format of the initial time (in the Configuration page) should be: hh:mm (e.g. 06:15, or 20).")
+    shinyalert("Error", "The format of the initial time (Configuration page) should be: hh:mm (e.g. 06:15, or 20).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$seed == "" || !grepl("(^[0-9]+).*", input$seed) || input$seed < 0){
-    shinyalert("You must specify a number greater or equals than 0 (>= 0) as seed (in the Configuration tab).")
+    shinyalert("Error", "You must specify a number greater or equals than 0 (>= 0) as seed (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days <= 0){
-    shinyalert("You must specify a number greater than 0 (> 0) as number of days to simulate (in the Configuration tab).")
+    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of days to simulate (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$nrun == "" || !grepl("(^[0-9]+).*", input$nrun) || input$nrun <= 0){
-    shinyalert("You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration tab).")
+    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
+  }
+
+  # Check if there are rooms not linked to any other room
+  if(length(InfoApp$invalidRooms) > 0){
+    for(i in 1:length(InfoApp$invalidRooms)){
+      room <- canvasObjects$roomsINcanvas %>%
+        filter(ID == InfoApp$invalidRooms[i])
+
+      matrix <- CanvasToMatrix(canvasObjects, canvas = room$CanvasID)
+
+      valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas)
+
+      if(valid_rooms){
+        InfoApp$invalidRooms <- InfoApp$invalidRooms[InfoApp$invalidRooms != room$id]
+      }
+    }
+
+    if(length(InfoApp$invalidRooms) > 0){
+      shinyalert("Error", paste0("There are rooms that are not connected to any other room or graph point on the canvas (Cansa page). Please, move it in a different position. Rooms: ", paste0(canvasObjects$roomsINcanvas$Name[which(canvasObjects$roomsINcanvas$ID %in% InfoApp$invalidRooms)], " #", InfoApp$invalidRooms, collapse = ", "), "."), type = "error")
+      remove_modal_spinner()
+      return(NULL)
+    }
   }
 
   enable("rds_generation")
@@ -1189,41 +1290,12 @@ check <- function(canvasObjects, input, output){
   return("OK")
 }
 
-can_reach_greater_than_1 <- function(mat, start_r, start_c) {
-  nrows <- nrow(mat)
-  ncols <- ncol(mat)
-
-  # Check if the starting position is a valid 2 or 3
-  if (!(mat[start_r, start_c] %in% c(2, 3))) return(FALSE)
-
-  # Direction vectors for up, down, left, right
-  dirs <- matrix(c(-1,0, 1,0, 0,-1, 0,1), ncol=2, byrow=TRUE)
-
-  # BFS function to explore the matrix
-  bfs <- function(start_r, start_c) {
-    visited <- matrix(FALSE, nrow=nrows, ncol=ncols)
-    queue <- list(c(start_r, start_c))
-    visited[start_r, start_c] <- TRUE
-
-    while (length(queue) > 0) {
-      current <- queue[[1]]
-      queue <- queue[-1]
-      for (d in 1:nrow(dirs)) {
-        nr <- current[1] + dirs[d, 1]
-        nc <- current[2] + dirs[d, 2]
-        if (nr >= 1 && nr <= nrows && nc >= 1 && nc <= ncols &&
-            !visited[nr, nc] && mat[nr, nc] != 0) {
-          visited[nr, nc] <- TRUE
-          if (mat[nr, nc] > 1) {
-            return(TRUE)  # Found a value greater than 1!
-          }
-          queue <- append(queue, list(c(nr, nc)))
-        }
-      }
+first_missing_number <- function(arr) {
+  arr <- sort(unique(arr))
+  for (i in seq_along(arr)) {
+    if (arr[i] != i) {
+      return(i)
     }
-    return(FALSE)
   }
-
-  # Perform BFS from the start position
-  return(bfs(start_r, start_c))
+  return(max(arr) + 1)
 }

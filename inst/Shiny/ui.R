@@ -23,6 +23,7 @@ library(bslib)
 library(lubridate)
 library(sf)
 library(purrr)
+library(shinyjqui)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -589,10 +590,7 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            title = div(class = "icon-container",
-                        h4("Agent definition ", icon("info-circle")),
-                        div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
-            ),
+            title = h4("Agent definition ", icon("info-circle")),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
@@ -609,18 +607,7 @@ ui <- dashboardPage(
               column(3,
                      actionButton("button_copy_agent",label = "Copy", style = 'margin-top:25px')
               )
-            ),
-            fluidRow(
-              column(3,offset = 1,
-                     selectizeInput(inputId = "id_class_agent", label = "Agent class:",
-                                    options = list(create = TRUE),
-                                    choices=c(""))
-              ),
-              column(3,offset=2,
-                     textInput(inputId = "num_agent", label = "Number of agents:",
-                               placeholder = "The number must be a positive integer")
-              )
-            ),
+            )
           ),
           box(
             width = 12,
@@ -661,7 +648,7 @@ ui <- dashboardPage(
                        radioButtons(inputId = "ckbox_agentLink_det_flow",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Select type of link:"),
-                                                div(class = "icon-text", "Two options are available: accompaniment only means that the linked agent will .")
+                                                div(class = "icon-text", "Two options are available: 'Accompaniment only' means the linked agent accompanies the agent only to its destination, while 'Accompaniment and stay' means the linked agent remains with the agent for the entire duration of the support.")
                                     ),
                                     choices = c("Accompaniment only", "Accompaniment and stay"),
                                     selected = "Accompaniment only"
@@ -735,7 +722,7 @@ ui <- dashboardPage(
                        radioButtons(inputId = "ckbox_agentLink_rand_flow",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Select type of link:"),
-                                                div(class = "icon-text", "Two options are available: accompaniment only means that the linked agent will .")
+                                                div(class = "icon-text", "Two options are available: 'Accompaniment only' means the linked agent accompanies the agent only to its destination, while 'Accompaniment and stay' means the linked agent remains with the agent for the entire duration of the support.")
                                     ),
                                     choices = c("Accompaniment only", "Accompaniment and stay"),
                                     selected = "Accompaniment only"
@@ -762,7 +749,7 @@ ui <- dashboardPage(
             fluidRow(
               column(4,offset = 1,
                      fluidRow(
-                       column(8,offset = 1,
+                       column(5,
                               radioButtons(inputId = "ckbox_entranceFlow",
                                            label = "Select type of entrace:",
                                            choices = c("Daily Rate", "Time window"),
@@ -773,15 +760,15 @@ ui <- dashboardPage(
                        )
                      )
               ),
-              column(6,offset=1,
+              column(5,offset=1,
                      conditionalPanel(
                        condition="input.ckbox_entranceFlow== 'Daily Rate'",
 
                        fluidRow(
-                         tabsetPanel(id = "Rate_tabs",
-                                     tabPanel(paste0(1," slot"),
-                                              value = paste0(1," slot"),
-                                              column(7,
+                         sortableTabsetPanel(id = "Rate_tabs",
+                                     tabPanel("1 slot",
+                                              value = "slot_1",
+                                              column(5,
                                                      tags$b("Entrance rate:"),
                                                      get_distribution_panel("daily_rate_1"),
                                                      textInput(inputId = "EntryTimeRate_1", label = "Initial generation time:", placeholder = "hh:mm"),
@@ -805,28 +792,49 @@ ui <- dashboardPage(
                        condition="input.ckbox_entranceFlow== 'Time window' ",
 
                        fluidRow(
-                         tabsetPanel(id = "Time_tabs",
-                                     tabPanel(paste0(1," slot"),
-                                              value = paste0(1," slot"),
-                                              column(7,
-                                                     textInput(inputId = "EntryTime_1", label = "Entry time:", placeholder = "hh:mm"),
-                                                     selectInput(inputId = paste0("Select_TimeDetFlow_",1),
-                                                                 label = "Associate with a determined flow:" ,
-                                                                 choices = "" )
-                                              ),
-                                              column(5,
-                                                     checkboxGroupInput("selectedDays_1", "Select Days of the Week",
-                                                                        choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                                        selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-                                                     )
+                         sortableTabsetPanel(id = "Shift_tabs",
+                                     tabPanel("1 shift",
+                                              value = "shift_1",
+                                              fluidRow(
+                                                column(4,offset=1,
+                                                       textInput(inputId = "num_agent_1", label = "Number of agents:",
+                                                                 placeholder = "The number must be a positive integer")
+                                               )
+                                             ),
+                                             fluidRow(
+                                               column(11,offset=1,
+                                                      sortableTabsetPanel(id = "Time_tabs_1",
+                                                             tabPanel("1 slot",
+                                                                      value = "slot_1_1",
+                                                                      column(7,
+                                                                             textInput(inputId = "EntryTime_1_1", label = "Entry time:", placeholder = "hh:mm"),
+                                                                             selectInput(inputId = paste0("Select_TimeDetFlow_1_1"),
+                                                                                         label = "Associate with a determined flow:" ,
+                                                                                         choices = "1 flow" )
+                                                                      ),
+                                                                      column(5,
+                                                                             checkboxGroupInput("selectedDays_1_1", "Select Days of the Week",
+                                                                                                choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                                                                selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                                                                             )
 
-                                              )
+                                                                      )
+                                                                      )
+                                                            )
+                                               )
+                                             )
                                      )
                          )
                        ),
                        fluidRow(
-                         actionButton("add_slot", "Add slot"),
-                         actionButton("rm_slot", "Remove slot")
+                         column(11,offset=1,
+                           actionButton("add_slot", "Add slot"),
+                           actionButton("rm_slot", "Remove slot")
+                         )
+                       ),
+                       fluidRow(
+                         actionButton("add_shift", "Add shift", style="margin-top:20px;"),
+                         actionButton("rm_shift", "Remove shift", style="margin-top:20px;")
                        )
                      )
               )
