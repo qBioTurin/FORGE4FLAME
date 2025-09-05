@@ -2360,12 +2360,12 @@ server <- function(input, output,session) {
 
         if(!is.null(list_detflow) &&
            length(agent$Room) > 0 &&
-           length(list_detflow) == length(agent$Label) ){
+           length(list_detflow) == length(agent$Label)){
           newOrder = data.frame(Name = input$id_new_agent,
-                                Label = agent$Label,
-                                Flow = 1:length(agent$Label) )
+                                Label = list_detflow,
+                                Flow = 1:length(list_detflow))
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
+            select(Name,Room,Dist, Time, Flow, Activity,Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })
