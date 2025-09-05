@@ -2760,7 +2760,7 @@ server <- function(input, output,session) {
         AgentInfo <- canvasObjects$agents[[Agent]]
 
         if(!is.null(AgentInfo$EntryExitTime))
-          AgentInfo$EntryExitTime <- AgentInfo$EntryExitTime[which(!(AgentInfo$EntryExitTime$Name == paste0(slotrm, " slot") && AgentInfo$EntryExitTime$Shift == showed_shift)),]
+          AgentInfo$EntryExitTime <- AgentInfo$EntryExitTime[which(!(AgentInfo$EntryExitTime$Name == paste0(slotrm, " slot") & AgentInfo$EntryExitTime$Shift == showed_shift)),]
 
         canvasObjects$agents[[Agent]] <- AgentInfo
       }
