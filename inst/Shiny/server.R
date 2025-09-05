@@ -1353,14 +1353,12 @@ server <- function(input, output,session) {
         for(a in 1:length(canvasObjects$agents)){
           if(!is.null(canvasObjects$agents[[a]]$DeterFlow)){
             roomparts <- strsplit(canvasObjects$agents[[a]]$DeterFlow$Room, "-")
-            if(roomparts[[1]][1]!="Do nothing")
             {for(i in 1:length(roomparts)){
               if(nrow(canvasObjects$roomsINcanvas %>% filter(type == roomparts[[i]][1], area == roomparts[[i]][2]))==0){
                 canvasObjects$agents[[a]]$DeterFlow <- canvasObjects$agents[[a]]$DeterFlow %>% filter(Room != canvasObjects$agents[[a]]$DeterFlow$Room[i])
               }
             }}
             roomparts<-strsplit(canvasObjects$agents[[a]]$RandFlow$Room, "-")
-            if(roomparts[[1]][1]!="Do nothing")
             {for(i in 1:length(roomparts)){
               if(nrow(canvasObjects$roomsINcanvas %>% filter(type == roomparts[[i]][1], area == roomparts[[i]][2]))==0){
                 canvasObjects$agents[[a]]$RandFlow <- canvasObjects$agents[[a]]$RandFlow %>% filter(Room != canvasObjects$agents[[a]]$RandFlow$Room[i])
@@ -1856,8 +1854,8 @@ server <- function(input, output,session) {
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
                                Label = character(0), FlowID = character(0), AgentLinked = character(0), AgentLinkedType = character(0)),
-        RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = "None", AgentLinkedType = "None"),
+        RandFlow  = data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                               Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)),
         EntryExitTime = NULL,
         NumAgent = "1"
       )
@@ -1939,7 +1937,9 @@ server <- function(input, output,session) {
 
       ### END updating
 
-      shinyjs::show(id = "rand_description")
+      if(nrow(canvasObjects$agents[[Agent]]$RandFlow) > 0)
+        shinyjs::show(id = "rand_description")
+
       InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
     }
   })
@@ -1962,7 +1962,8 @@ server <- function(input, output,session) {
       UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
 
       output$RandomEvents_table = DT::renderDataTable(
-        DT::datatable(data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0, Weight =1, AgentLinked = "None", AgentLinkedType = "None") %>% select(-c(Name, Activity)),
+        DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                 Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
                       options = list(
                         columnDefs = list(list(className = 'dt-left', targets=0),
                                           list(className = 'dt-left', targets=1),
@@ -2425,15 +2426,6 @@ server <- function(input, output,session) {
       return()
     }
 
-    sumweights = as.numeric(gsub(",", "\\.", input$RandWeight)) + sum(as.numeric(canvasObjects$agents[[name]]$RandFlow$Weight)) - as.numeric(canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"])
-
-    if(sumweights <= 0 && sumweights > 1 ){
-      shinyalert("Error", "The sum of weight of going anywhere must not greater (>=) than 1.", type = "error")
-      return()
-    }
-
-    canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"] = 1 - sumweights #round(1-sumweights,digits = 4)
-
     listTimes = canvasObjects$agents[[name]]$RandFlow %>%
       filter(
         Name == name,
@@ -2486,6 +2478,7 @@ server <- function(input, output,session) {
       )
     )
 
+    shinyjs::show(id = "rand_description")
   })
 
   #aggiorna la visualizzazione di RandomEvents_table quando cambia l'agent
@@ -2520,24 +2513,43 @@ server <- function(input, output,session) {
     req(input$id_new_agent!= "")
 
     if (!is.null(info$row)) {
-      if(info$row %in% which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing")){
-        shinyalert("Error", "'Do nothing' event cannot be removed. ",type = "error")
-        return()
-      }else{
-        shinyalert(
-          title = "Delete Entry?",
-          text = "Are you sure you want to delete this row?",
-          type = "warning",
-          showCancelButton = TRUE,
-          confirmButtonText = "Yes, delete it!",
-          callbackR = function(x) {
-            if (x) {
-              canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]] <-as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]])) + as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[info$row]]))
-              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-info$row,]
+      shinyalert(
+        title = "Delete Entry?",
+        text = "Are you sure you want to delete this row?",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, delete it!",
+        callbackR = function(x) {
+          if (x) {
+            if(nrow(canvasObjects$agents[[input$id_new_agent]]$RandFlow) == 1){
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                                                                Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0))
+
+              output$RandomEvents_table = DT::renderDataTable(
+                DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                         Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
+                              options = list(
+                                columnDefs = list(list(className = 'dt-left', targets=0),
+                                                  list(className = 'dt-left', targets=1),
+                                                  list(className = 'dt-left', targets=2),
+                                                  list(className = 'dt-left', targets=3),
+                                                  list(className = 'dt-left', targets=4),
+                                                  list(className = 'dt-left', targets=5),
+                                                  list(className = 'dt-left', targets=6),
+                                                  list(className = 'dt-left', targets=7)),
+                                pageLength = 5
+                              ),
+                              selection = 'single',
+                              rownames = F,
+                              colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
+                )
+              )
             }
+            else
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-info$row,]
           }
-        )
-      }
+        }
+      )
     }
   })
 
@@ -2980,9 +2992,8 @@ server <- function(input, output,session) {
               rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
                              canvasObjects$agents[[agent]]$RandFlow$Room)
               if(length(rooms)>0){
-                df_Rand <- canvasObjects$agents[[agent]]$RandFlow %>%
-                  filter(Room != "Do nothing")
-                if(dim(df_Rand)[1] > 0){
+                df_Rand <- canvasObjects$agents[[agent]]$RandFlow
+                if(!is.null(df_Rand) && dim(df_Rand)[1] > 0){
                   rbind(
                     data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
                     data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
