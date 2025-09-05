@@ -1930,9 +1930,14 @@ server <- function(input, output,session) {
         InfoApp$NumTabsFlow = 1
       }
 
-      # InfoApp$NumTabsTimeSlot <- 0
-      # if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime))
-      #   InfoApp$NumTabsTimeSlot <- length(unique(canvasObjects$agents[[Agent]]$EntryExitTime$Name))
+      InfoApp$NumTabsTimeShift <- 1
+      InfoApp$NumTabsTimeSlot <- list("shift_1"=1)
+      if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
+        InfoApp$NumTabsTimeShift <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
+
+        for(shift in InfoApp$NumTabsTimeShift)
+          InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
+      }
 
 
       ### END updating
@@ -2361,12 +2366,12 @@ server <- function(input, output,session) {
 
         if(!is.null(list_detflow) &&
            length(agent$Room) > 0 &&
-           length(list_detflow) == length(agent$Label) ){
+           length(list_detflow) == length(agent$Label)){
           newOrder = data.frame(Name = input$id_new_agent,
-                                Label = agent$Label,
-                                Flow = 1:length(agent$Label) )
+                                Label = list_detflow,
+                                Flow = 1:length(list_detflow))
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
+            select(Name,Room,Dist, Time, Flow, Activity,Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })
@@ -2918,6 +2923,8 @@ server <- function(input, output,session) {
       }
 
     }else{
+      canvasObjects$agents[[input$id_new_agent]]$EntryExitTime <- NULL
+
       for(shift in InfoApp$NumTabsTimeShift){
         indexes =  InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]]
 
@@ -2958,7 +2965,7 @@ server <- function(input, output,session) {
 
 
             if(!is.null(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime) && is.data.frame(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime))
-              canvasObjects$agents[[input$id_new_agent]]$EntryExitTime = rbind(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime %>% filter(Shift != paste0(shift, " shift"), Name !=  paste0(index, " slot")), df)
+              canvasObjects$agents[[input$id_new_agent]]$EntryExitTime = rbind(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime, df)
             else
               canvasObjects$agents[[input$id_new_agent]]$EntryExitTime =  df
           }

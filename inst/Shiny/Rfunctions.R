@@ -1183,13 +1183,17 @@ check <- function(canvasObjects, input, output, InfoApp){
     }
 
     if(canvasObjects$agents[[agent]]$entry_type != "Daily Rate"){
-      for(df in 1:length(unique(canvasObjects$agents[[agent]]$EntryExitTime$FlowID))){
-        # Sovrapposition check
-        overlaps <- check_overlaps(canvasObjects$agents[[agent]]$EntryExitTime, canvasObjects$agents[[agent]]$DeterFlow)
-        if(!is.null(overlaps)){
-          shinyalert("Error", "There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
-          remove_modal_spinner()
-          return(NULL)
+      for(shift in unique(canvasObjects$agents[[agent]]$EntryExitTime$Shift)){
+        EntryExitTimeShift <- canvasObjects$agents[[agent]]$EntryExitTime %>% filter(Shift == shift)
+
+        for(df in unique(EntryExitTimeShift)){
+          # Sovrapposition check
+          overlaps <- check_overlaps(EntryExitTimeShift, canvasObjects$agents[[agent]]$DeterFlow)
+          if(!is.null(overlaps)){
+            shinyalert("Error", "There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
+            remove_modal_spinner()
+            return(NULL)
+          }
         }
       }
     }
