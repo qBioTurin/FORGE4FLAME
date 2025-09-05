@@ -347,6 +347,8 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
       else
         canvasObjects$agents[[a]]$EntryExitTime$NumAgent <- "0"
     }
+
+    canvasObjects$agents[[a]]$RandFlow <- canvasObjects$agents[[a]]$RandFlow %>% filter(Room != "Do nothing")
   }
 
   ####
@@ -447,7 +449,6 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
                            lapply(names(canvasObjects$agents), function(agent) {
                              rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
                                               canvasObjects$agents[[agent]]$RandFlow$Room))
-                             rooms <- rooms[rooms != "Do nothing"]
                              if(length(rooms)>0)
                                data.frame(Agent = agent , Room =  rooms)
                              else NULL

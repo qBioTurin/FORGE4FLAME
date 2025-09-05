@@ -733,7 +733,7 @@ ui <- dashboardPage(
             fluidRow(
               h3(""),
               column(10, offset=1,
-                     div(id="rand_description", style="margin-top:20px;", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
+                     div(id="rand_description", style="margin-top:20px;", "Click on an event to remove it. At each time step, the probability of doing nothing is equal to one minus the sum of the other probabilities.", hidden="hidden")
               )
             ),
             fluidRow(
