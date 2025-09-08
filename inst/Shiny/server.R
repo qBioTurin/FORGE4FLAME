@@ -2510,6 +2510,27 @@ server <- function(input, output,session) {
           )
         )
       }
+      else{
+        output$RandomEvents_table = DT::renderDataTable(
+          DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                   Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
+                        options = list(
+                          columnDefs = list(list(className = 'dt-left', targets=0),
+                                            list(className = 'dt-left', targets=1),
+                                            list(className = 'dt-left', targets=2),
+                                            list(className = 'dt-left', targets=3),
+                                            list(className = 'dt-left', targets=4),
+                                            list(className = 'dt-left', targets=5),
+                                            list(className = 'dt-left', targets=6),
+                                            list(className = 'dt-left', targets=7)),
+                          pageLength = 5
+                        ),
+                        selection = 'single',
+                        rownames = F,
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
+          )
+        )
+      }
     }
   })
 
