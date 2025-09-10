@@ -1930,13 +1930,15 @@ server <- function(input, output,session) {
         InfoApp$NumTabsFlow = 1
       }
 
-      InfoApp$NumTabsTimeShift <- 1
-      InfoApp$NumTabsTimeSlot <- list("shift_1"=1)
-      if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
-        InfoApp$NumTabsTimeShift <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
+      if(is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
+        InfoApp$NumTabsTimeShift <- 1
+        InfoApp$NumTabsTimeSlot <- list("shift_1"=1)
+        if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
+          InfoApp$NumTabsTimeShift <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
 
-        for(shift in InfoApp$NumTabsTimeShift)
-          InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
+          for(shift in InfoApp$NumTabsTimeShift)
+            InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
+        }
       }
 
 

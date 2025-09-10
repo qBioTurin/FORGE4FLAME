@@ -485,16 +485,16 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       removeTab(inputId = "Rate_tabs", target = "slot_1")
       removeTab(inputId = "Shift_tabs", target = "shift_1")
     }
-    if(InfoApp$oldAgentType == "Time window"){
+    #if(InfoApp$oldAgentType == "Time window"){
       for(i in NumShifts) {
         removeTab(inputId = "Shift_tabs", target = paste0("shift_", i))
       }
-    }
-    else if(InfoApp$oldAgentType == "Daily Rate"){
+    #}
+    #else if(InfoApp$oldAgentType == "Daily Rate"){
       for(i in NumTabs) {
         removeTab(inputId = "Rate_tabs", target = paste0("slot_", i))
       }
-    }
+    #}
   }
 
   InfoApp$NumTabsTimeShift = 1
@@ -615,7 +615,8 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
     # updateRadioButtons(session, "ckbox_entranceFlow", selected = "Daily Rate")
     slots = sort(unique(gsub(pattern = " slot", replacement = "", x = EntryExitTime$Name)))
     tab <- "DetTime_tab"
-    for(i in (slots)){
+    InfoApp$NumTabsTimeSlot <- c()
+    for(i in slots){
       InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot, i)
       df = EntryExitTime %>% filter(Name == paste0(i, " slot"))
 
