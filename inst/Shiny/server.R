@@ -2825,7 +2825,7 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     if(length(InfoApp$NumTabsTimeSlot)>1){
       removeTab( inputId = "Rate_tabs", target =  input$Rate_tabs, session = session)
-      slotrm = gsub(pattern = " slot", replacement = "", x = input$Rate_tabs)
+      slotrm = gsub(pattern = "slot_", replacement = "", x = input$Rate_tabs)
       InfoApp$NumTabsTimeSlot = InfoApp$NumTabsTimeSlot[which(InfoApp$NumTabsTimeSlot!=slotrm)]
 
       Agent <- input$id_new_agent

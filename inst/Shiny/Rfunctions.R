@@ -27,6 +27,7 @@ CheckEntryExit = function(EntryTime, ExitTime, listTimes){
     ExitTime <- paste0(ExitTime,":00")
   }
 
+
   #check if the number before : in EntryTime is lower than number before : in ExitTime
   if(as.numeric(strsplit(EntryTime, ":")[[1]][1]) > as.numeric(strsplit(ExitTime, ":")[[1]][1])) {
     return(c("Error", "The Entry time should be lower than the Exit time."))
@@ -972,6 +973,7 @@ check_overlaps <- function(entry_exit_df, deter_flow_df) {
     }
   }
 
+
   # Merge datasets on FlowID
   merged_df <- entry_exit_df %>%
     inner_join(deter_flow_df, by = "FlowID") %>%
@@ -1111,6 +1113,7 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
 check <- function(canvasObjects, input, output, InfoApp){
   show_modal_spinner()
 
+
   if(is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0){
     shinyalert("Error", "No agent is defined (Agents page).", type = "error")
     remove_modal_spinner()
@@ -1161,7 +1164,14 @@ check <- function(canvasObjects, input, output, InfoApp){
       rooms_type <- unique(df_local$Room)
 
       if(length(rooms_type) <= 1){
-        shinyalert("Error", "The flow ", df, " of agent ", names(canvasObjects$agents)[[agent]], " has less then two rooms' types. The first and last rooms of a determined flow must be the Spawnroom, with at least another type of room in the middle (Agents page).", type = "error")
+        shinyalert(
+          title = "Error",
+          text = sprintf(
+            "The flow %s of agent %s has less than two rooms' types. The first and last rooms of a determined flow must be the Spawnroom, with at least another type of room in the middle (Agents page).",
+            df, names(canvasObjects$agents)[[agent]]
+          ),
+          type = "error"
+        )
         remove_modal_spinner()
         return(NULL)
       }
