@@ -479,6 +479,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 
   NumShifts = InfoApp$NumTabsTimeShift
   NumTabs = InfoApp$NumTabsTimeSlot
+  browser()
   #if i change type from one agent to another I have to remove all tabs type
   if(length(NumShifts) > 0){
     #if it's the first agent ever we click on we remove the default void slot
@@ -487,8 +488,8 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       removeTab(inputId = "Shift_tabs", target = "shift_1")
     }
     #if(InfoApp$oldAgentType == "Time window"){
-      for(i in NumShifts) {
-        removeTab(inputId = "Shift_tabs", target = paste0("shift_", i))
+      for(i in names(NumShifts)) {
+        removeTab(inputId = "Shift_tabs", target = i)
       }
     #}
     #else if(InfoApp$oldAgentType == "Daily Rate"){
@@ -497,8 +498,6 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       }
     #}
   }
-
-  InfoApp$NumTabsTimeShift = 1
 
   if((is.null(EntryExitTime) || nrow(EntryExitTime) == 0) && ckbox_entranceFlow == "Daily Rate"){
     appendTab(inputId = "Rate_tabs",
@@ -563,7 +562,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
   }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){
     # updateRadioButtons(session, "ckbox_entranceFlow", selected = "Time window")
     shifts = sort(unique(gsub(pattern = " shift", replacement = "", x = EntryExitTime$Shift)))
-    InfoApp$NumTabsTimeSlot <- list()
+    InfoApp$NumTabsTimeShift <- list()
     for(j in shifts){
       EntryExitTimeShiftJ <- EntryExitTime %>%
         filter(Shift == paste0(j, " shift"))
@@ -607,7 +606,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                 )
       )
 
-      InfoApp$NumTabsTimeSlot[paste0("shift_", j)] = slots
+      InfoApp$NumTabsTimeShift[paste0("shift_", j)] = slots
     }
 
     showTab(inputId = "Shift_tabs", target = paste0("shift_", shifts[1]), select = T)
