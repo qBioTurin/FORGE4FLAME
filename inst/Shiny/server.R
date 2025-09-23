@@ -731,29 +731,32 @@ server <- function(input, output,session) {
                              area = input$select_area,
                              CanvasID = input$canvas_selector)
 
+        length = ceiling(length)
+        width = ceiling(width)
+
         if(input$door_new_room == "top"){
-          newroom$door_x = newroom$x + floor(newroom$l/2) + 1
+          newroom$door_x = newroom$x + floor(length/2) + 1
           newroom$door_y = newroom$y
-          newroom$center_y = newroom$y + ceiling((newroom$w + 1) / 2)
-          newroom$center_x = newroom$x + floor(newroom$l/2) + 1
+          newroom$center_y = newroom$y + ceiling((width + 1) / 2)
+          newroom$center_x = newroom$x + floor(length/2) + 1
         }
         else if(input$door_new_room == "bottom"){
-          newroom$door_x = newroom$x + floor(newroom$l/2) + 1
-          newroom$door_y = newroom$y + newroom$w + 1
-          newroom$center_y = newroom$y + floor((newroom$w + 1) / 2)
-          newroom$center_x = newroom$x + floor(newroom$l/2) + 1
+          newroom$door_x = newroom$x + floor(length/2) + 1
+          newroom$door_y = newroom$y + width + 1
+          newroom$center_y = newroom$y + floor((width + 1) / 2)
+          newroom$center_x = newroom$x + floor(length/2) + 1
         }
         else if(input$door_new_room == "left"){
           newroom$door_x = newroom$x
-          newroom$door_y = newroom$y + round(newroom$w/2) + 1
-          newroom$center_y = newroom$y + round(newroom$w/2) + 1
-          newroom$center_x = newroom$x + ceiling((newroom$l + 1) / 2)
+          newroom$door_y = newroom$y + round(width/2) + 1
+          newroom$center_y = newroom$y + round(width/2) + 1
+          newroom$center_x = newroom$x + ceiling((length + 1) / 2)
         }
         else if(input$door_new_room == "right"){
-          newroom$door_x =newroom$x+ newroom$l + 1
-          newroom$door_y = newroom$y + floor(newroom$w/2) + 1
-          newroom$center_y = newroom$y + floor(newroom$w/2) + 1
-          newroom$center_x = newroom$x + floor((newroom$l + 1) / 2)
+          newroom$door_x =newroom$x+ length + 1
+          newroom$door_y = newroom$y + floor(width/2) + 1
+          newroom$center_y = newroom$y + floor(width/2) + 1
+          newroom$center_x = newroom$x + floor((length + 1) / 2)
         }
 
         if(is.null(canvasObjects$roomsINcanvas)){
@@ -1531,8 +1534,8 @@ server <- function(input, output,session) {
         y = floor(input$y/10)
       }
       else{
-        x = round(input$x/10)
-        y = round(input$y/10)
+        x = input$x/10
+        y = input$y/10
       }
 
       length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
@@ -1574,10 +1577,7 @@ server <- function(input, output,session) {
   })
 
   observeEvent(input$movement_completed, {
-    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
     room <- input$movement_completed
-
-    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
 
     room$x <- room$x / 10
     room$y <- room$y / 10
@@ -1609,7 +1609,17 @@ server <- function(input, output,session) {
       room$center_x = room$x + floor((room$length + 1) / 2)
     }
 
-    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas)
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, c("x","y")] = c(room$x, room$y)
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"door_x"] = room$door_x
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"door_y"] = room$door_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"center_y"] = room$center_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"center_x"] = room$center_x
+
+    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
+
+    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
+
+    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector))
 
     if (!valid_rooms) {
       showNotification("The room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")

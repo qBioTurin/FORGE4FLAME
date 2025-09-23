@@ -1089,9 +1089,8 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
     y_points <- line_pts$y
 
     valid_path <- check_path_values(matrix, x_points, y_points)
+    if(valid_path) return(TRUE)
   }
-
-  if(valid_path) return(TRUE)
 
   if(!is.null(nodesINcanvas) && nrow(nodesINcanvas) > 0){
     for (i in 1:nrow(nodesINcanvas)) {
@@ -1103,10 +1102,11 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
       y_points <- line_pts$y
 
       valid_path <- check_path_values(matrix, x_points, y_points)
+      if(valid_path) return(TRUE)
     }
   }
 
-  return(valid_path)
+  return(FALSE)
 }
 
 check <- function(canvasObjects, input, output, InfoApp){
