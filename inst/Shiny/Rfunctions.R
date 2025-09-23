@@ -556,7 +556,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                 )
     )
 
-    InfoApp$NumTabsTimeSlot = list("shift_1"=1)
+    InfoApp$NumTabsTimeShift = list("shift_1"=1)
     showTab(inputId = "Shift_tabs", target = "shift_1", select = T)
     showTab(inputId = "Time_tabs", target = "slot_1_1", select = T)
   }else if((!is.null(EntryExitTime) || nrow(EntryExitTime) > 0) && ckbox_entranceFlow == "Time window"){

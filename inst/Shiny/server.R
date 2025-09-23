@@ -67,7 +67,7 @@ server <- function(input, output,session) {
                                  height = NULL,
   )
 
-  InfoApp = reactiveValues(NumTabsFlow = 0, NumTabsTimeShift = 1, NumTabsTimeSlot = list("shift_1"=1), tabs_ids = c(), oldAgentType = "", invalidRooms = c())
+  InfoApp = reactiveValues(NumTabsFlow = 0, NumTabsTimeSlot = 1, NumTabsTimeShift = list("shift_1"=1), tabs_ids = c(), oldAgentType = "", invalidRooms = c())
 
   canvasObjectsSTART = canvasObjects
 
@@ -1941,15 +1941,15 @@ server <- function(input, output,session) {
       }
 
       if(is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
-        InfoApp$NumTabsTimeShift <- 1
-        InfoApp$NumTabsTimeSlot <- list("shift_1"=1)
-        if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
-          InfoApp$NumTabsTimeShift <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
+        InfoApp$NumTabsTimeSlot <- 1
+        InfoApp$NumTabsTimeShift <- list("shift_1"=1)
+      }else {
+          shifts <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
 
-          for(shift in InfoApp$NumTabsTimeShift)
-            InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
+          for(shift in shifts)
+            InfoApp$NumTabsTimeShift[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
         }
-      }
+
 
 
       ### END updating
@@ -1959,6 +1959,7 @@ server <- function(input, output,session) {
 
       InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
     }
+
   })
 
   observeEvent(input$button_rm_agent,{
@@ -2672,8 +2673,8 @@ server <- function(input, output,session) {
 
     showed_shift <- gsub("shift_", "", input$Shift_tabs)
 
-    NumTabs = first_missing_number(InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]])
-    InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]] = sort(c(InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]], NumTabs))
+    NumTabs = first_missing_number(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]])
+    InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] = sort(c(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]], NumTabs))
     appendTab(inputId = paste0("Time_tabs_", showed_shift),
               tabPanel(paste0(NumTabs," slot"),
                        value = paste0("slot_", showed_shift, "_", NumTabs),
@@ -2706,8 +2707,9 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    NumShifts = first_missing_number(InfoApp$NumTabsTimeShift)
-    InfoApp$NumTabsTimeShift = sort(c(InfoApp$NumTabsTimeShift, NumShifts))
+    shifts <- as.numeric(gsub("shift_", "", names(InfoApp$NumTabsTimeShift)))
+
+    NumShifts <- min(setdiff(seq_len(max(shifts) + 1), shifts))
     appendTab(inputId = "Shift_tabs",
               tabPanel(paste0(NumShifts, " shift"),
                        value = paste0("shift_", NumShifts),
@@ -2749,7 +2751,7 @@ server <- function(input, output,session) {
     )
 
     showTab(inputId = "Shift_tabs", target = paste0("shift_", NumShifts), select = T)
-    InfoApp$NumTabsTimeSlot[[paste0("shift_", NumShifts)]] <- 1
+    InfoApp$NumTabsTimeShift[[paste0("shift_", NumShifts)]] <- 1
   })
 
   observeEvent(input$add_slot_rate, {
@@ -2786,12 +2788,12 @@ server <- function(input, output,session) {
 
     showed_shift <- gsub("shift_", "", input$Shift_tabs)
 
-    NumTabs = as.numeric(InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]])
+    NumTabs = as.numeric(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]])
     if(length(NumTabs) > 1){
       removeTab( inputId = paste0("Time_tabs_", showed_shift), target = input[[paste0("Time_tabs_", showed_shift)]], session = session)
 
       slotrm = gsub(pattern = paste0("slot_", showed_shift, "_"), replacement = "", x = input[[paste0("Time_tabs_", showed_shift)]])
-      InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]] =InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]][which(InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]] != slotrm)]
+      InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] =InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]][which(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] != slotrm)]
 
       Agent <- input$id_new_agent
       if(Agent != ""){
@@ -2816,7 +2818,7 @@ server <- function(input, output,session) {
 
       shiftrm = gsub(pattern = "shift_", replacement = "", x = input$Shift_tabs)
       InfoApp$NumTabsTimeShift = InfoApp$NumTabsTimeShift[which(InfoApp$NumTabsTimeShift != shiftrm)]
-      InfoApp$NumTabsTimeSlot[[paste0("shift_", showed_shift)]] <- NULL
+      InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] <- NULL
 
       Agent <- input$id_new_agent
       if(Agent != ""){
@@ -2958,13 +2960,14 @@ server <- function(input, output,session) {
     }else{
       canvasObjects$agents[[input$id_new_agent]]$EntryExitTime <- NULL
 
-      for(shift in InfoApp$NumTabsTimeShift){
-        indexes =  InfoApp$NumTabsTimeSlot[[paste0("shift_", shift)]]
+      for(shift in names(InfoApp$NumTabsTimeShift)){
+        indexes =  InfoApp$NumTabsTimeShift[[shift]]
+        num_shift = as.numeric(gsub("shift_", "", shift))
 
         for(index in indexes){
-          EntryTime <- input[[paste0("EntryTime_", shift, "_", index)]]
+          EntryTime <- input[[paste0("EntryTime_", num_shift, "_", index)]]
           if(!any(sapply(list(EntryTime,
-                              input[[paste0("selectedDays_", shift, "_",index)]]), is.null))){
+                              input[[paste0("selectedDays_", num_shift, "_",index)]]), is.null))){
             if(EntryTime == ""){
               shinyalert("Error", "You should define the entry time.", type = "error")
               return()
@@ -2981,19 +2984,19 @@ server <- function(input, output,session) {
             }
 
             if(EntryTime  != ""){
-              df = data.frame(Shift = paste0(shift, " shift"),
+              df = data.frame(Shift = paste0(num_shift, " shift"),
                               Name = paste0(index, " slot"),
                               EntryTime = EntryTime ,
-                              Days = input[[paste0("selectedDays_", shift, "_",index)]],
-                              FlowID = input[[paste0("Select_TimeDetFlow_", shift, "_",index)]],
-                              NumAgent = input[[paste0("num_agent_", shift)]])
+                              Days = input[[paste0("selectedDays_", num_shift, "_",index)]],
+                              FlowID = input[[paste0("Select_TimeDetFlow_", num_shift, "_",index)]],
+                              NumAgent = input[[paste0("num_agent_", num_shift)]])
             }else{
-              df = data.frame(Shift=paste0(shift, " shift"),
+              df = data.frame(Shift=paste0(num_shift, " shift"),
                               Name = paste0(index, " slot"),
                               EntryTime = NA ,
                               Days = NA,
                               FlowID = NA,
-                              NumAgent = input[[paste0("num_agent_", shift)]])
+                              NumAgent = input[[paste0("num_agent_", num_shift)]])
             }
 
 
