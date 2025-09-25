@@ -1529,48 +1529,48 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if(!is.null(input$id)){
-      if(input$type == "circle"){
-        x = floor(input$x/10)
-        y = floor(input$y/10)
-      }
-      else{
-        x = input$x/10
-        y = input$y/10
-      }
-
-      length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
-      width = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"])
-
-      if(input$type == "circle")
-        canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
-      else{
-        canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
-
-        if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "top"){
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + ceiling((width + 1) / 2)
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
-        }
-        else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "bottom"){
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + width + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor((width + 1) / 2)
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
-        }
-        else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "left"){
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + round(width/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + round(width/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + ceiling((length + 1) / 2)
-        }
-        else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "right"){
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + length + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + floor(width/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor(width/2) + 1
-          canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor((length + 1) / 2)
-        }
-      }
+      # if(input$type == "circle"){
+      #   x = floor(input$x/10)
+      #   y = floor(input$y/10)
+      # }
+      # else{
+      #   x = input$x/10
+      #   y = input$y/10
+      # }
+      #
+      # length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
+      # width = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"])
+      #
+      # if(input$type == "circle")
+      #   canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
+      # else{
+      #   canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
+      #
+      #   if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "top"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + ceiling((width + 1) / 2)
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "bottom"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + width + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor((width + 1) / 2)
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "left"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + round(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + round(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + ceiling((length + 1) / 2)
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "right"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + length + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + floor(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor((length + 1) / 2)
+      #   }
+      # }
 
       canvasObjects$selectedId = input$id
     }
@@ -1619,7 +1619,7 @@ server <- function(input, output,session) {
 
     if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
 
-    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector))
+    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), if(!is.null(canvasObjects$nodesINcanvas)) canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector) else NULL)
 
     if (!valid_rooms) {
       showNotification("The room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")

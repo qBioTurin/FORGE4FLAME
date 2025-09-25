@@ -479,7 +479,6 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
 
   NumShifts = InfoApp$NumTabsTimeShift
   NumTabs = InfoApp$NumTabsTimeSlot
-  browser()
   #if i change type from one agent to another I have to remove all tabs type
   if(length(NumShifts) > 0){
     #if it's the first agent ever we click on we remove the default void slot
@@ -1275,6 +1274,46 @@ check <- function(canvasObjects, input, output, InfoApp){
     shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
+  }
+
+  for(i in canvasObjects$roomsINcanvas$ID){
+    room = canvasObjects$roomsINcanvas %>% filter(ID == i)
+
+    if(room$door == "top"){
+      door_x = room$x + floor(room$l/2) + 1
+      door_y = room$y
+      center_y = room$y + ceiling((room$w + 1) / 2)
+      center_x = room$x + floor(room$l/2) + 1
+    }
+    else if(room$door == "bottom"){
+      door_x = room$x + floor(room$l/2) + 1
+      door_y = room$y + room$w + 1
+      center_y = room$y + floor((room$w + 1) / 2)
+      center_x = room$x + floor(room$l/2) + 1
+    }
+    else if(room$door == "left"){
+      door_x = room$x
+      door_y = room$y + round(room$w/2) + 1
+      center_y = room$y + round(room$w/2) + 1
+      center_x = room$x + ceiling((room$l + 1) / 2)
+    }
+    else if(room$door == "right"){
+      door_x = room$x + room$l + 1
+      door_y = room$y + floor(room$w/2) + 1
+      center_y = room$y + floor(room$w/2) + 1
+      center_x = room$x + floor((room$l + 1) / 2)
+    }
+    else{
+      door_x = 0
+      door_y = 0
+      center_y = 0
+      center_x = 0
+    }
+
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"door_x"] = door_x
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"door_y"] = door_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"center_y"] = center_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"center_x"] = center_x
   }
 
   # Check if there are rooms not linked to any other room
