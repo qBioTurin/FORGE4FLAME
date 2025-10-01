@@ -860,7 +860,7 @@ FromToMatrices.generation = function(WHOLEmodel){
       Parameters = c( "Type: No mask; Fraction: 0",
                       "Efficacy: 1; Fraction: 0; Coverage Dist.Days: Deterministic, 0, 0",
                       "Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 ",
-                      "Dist.Days: No quarantine, 0, 0; Q.Room: Spawnroom-None; Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 ",
+                      paste0("Dist.Days: No quarantine, 0, 0; Q.Room: ", (WHOLEmodel$roomsINcanvas %>% filter(grepl("^Spawnroom", type)))$type[1], "-", (WHOLEmodel$roomsINcanvas %>% filter(grepl("^Spawnroom", type)))$area[1], "; Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 "),
                       "First: 0; Second: 0" ),
       From = 1,
       To = WHOLEmodel$starting$simulation_days,
@@ -1133,8 +1133,8 @@ check <- function(canvasObjects, input, output, InfoApp){
   spawnroom <- canvasObjects$roomsINcanvas %>%
     filter(type == "Spawnroom")
 
-  if(nrow(spawnroom) != 1){
-    shinyalert("Error", "There must be exactly one Spawnroom in the canvas (Canvas page).", type = "error")
+  if(nrow(spawnroom) == 0){
+    shinyalert("Error", "There must be at least one Spawnroom in the canvas (Canvas page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
@@ -1150,14 +1150,14 @@ check <- function(canvasObjects, input, output, InfoApp){
 
   for(agent in 1:length(canvasObjects$agents)){
     if(is.null(canvasObjects$agents[[agent]]$DeterFlow) || nrow(canvasObjects$agents[[agent]]$DeterFlow) == 0){
-      shinyalert("Error", "No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
+      shinyalert("Error", paste0("No determined flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page)."), type = "error")
       remove_modal_spinner()
       return(NULL)
     }
 
-    for(df in 1:length(unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID))){
+    for(df in unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID)){
       df_local <- canvasObjects$agents[[agent]]$DeterFlow %>%
-        filter(FlowID == unique(canvasObjects$agents[[agent]]$DeterFlow$FlowID)[df])
+        filter(FlowID == df)
 
       rooms_type <- unique(df_local$Room)
 
@@ -1175,9 +1175,28 @@ check <- function(canvasObjects, input, output, InfoApp){
       }
 
       if(!("Spawnroom" == strsplit(df_local$Room[1], "-")[[1]][1]) || !("Spawnroom" == strsplit(df_local$Room[nrow(df_local)], "-")[[1]][1])){
-        shinyalert("Error", "The first and/or the last room of agent ", names(canvasObjects$agents)[[agent]], ", flow ", df, " is not a Spawnroom (Agents page).", type = "error")
+        shinyalert("Error", paste0("The first and/or the last room of agent ", names(canvasObjects$agents)[[agent]], ", ", df, " is not a Spawnroom (Agents page)."), type = "error")
         remove_modal_spinner()
         return(NULL)
+      }
+
+      spawnroom_indices <- grep("^Spawnroom", df_local$Room)
+      middle_spawnrooms <- spawnroom_indices[-c(1, length(spawnroom_indices))]
+
+      if (length(middle_spawnrooms) %% 2 != 0) {
+        shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
+        remove_modal_spinner()
+        return(NULL)
+      }
+
+      if(length(middle_spawnrooms) > 0){
+        for (i in seq(1, length(middle_spawnrooms), by = 2)) {
+          if (middle_spawnrooms[i + 1] - middle_spawnrooms[i] != 1) {
+            shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
+            remove_modal_spinner()
+            return(NULL)
+          }
+        }
       }
 
       df_local$Time[nrow(df_local)] <- 0
@@ -1186,7 +1205,7 @@ check <- function(canvasObjects, input, output, InfoApp){
     }
 
     if(is.null(canvasObjects$agents[[agent]]$EntryExitTime) || nrow(canvasObjects$agents[[agent]]$EntryExitTime) == 0){
-      shinyalert("Error", "No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
+      shinyalert("Error", paste0("No entry flow is defined for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page)."), type = "error")
       remove_modal_spinner()
       return(NULL)
     }
@@ -1199,7 +1218,7 @@ check <- function(canvasObjects, input, output, InfoApp){
           # Sovrapposition check
           overlaps <- check_overlaps(EntryExitTimeShift, canvasObjects$agents[[agent]]$DeterFlow)
           if(!is.null(overlaps)){
-            shinyalert("Error", "There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page).", type = "error")
+            shinyalert("Error", paste0("There is a sovrapposition in the definition of the entry flow for the agent ", names(canvasObjects$agents)[[agent]], " (Agents page)."), type = "error")
             remove_modal_spinner()
             return(NULL)
           }

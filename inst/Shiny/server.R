@@ -72,6 +72,7 @@ server <- function(input, output,session) {
   canvasObjectsSTART = canvasObjects
 
   hideElement("outside_contagion_plot")
+  hideElement("DownloadPostProc_Button")
 
   observeEvent(input$link_canvas_tab, { updateTabItems(session, "SideTabs", "canvas_tab") })
   observeEvent(input$link_rooms, { updateTabItems(session, "SideTabs", "rooms") })
@@ -635,14 +636,6 @@ server <- function(input, output,session) {
         updateSelectizeInput(inputId = "door_new_room", choices = c("right","left","top","bottom","none"),selected = "right")
         enable("door_new_room")
       }
-
-      if(selectedRoom$type == "Spawnroom"){
-        updateSelectizeInput(inputId = "select_area",selected = "None")
-        disable("select_area")
-      }
-      else{
-        enable("select_area")
-      }
     }
   })
 
@@ -679,15 +672,6 @@ server <- function(input, output,session) {
     if(input$select_room != ""){
 
       roomSelected = canvasObjects$rooms %>% filter(Name == input$select_room)
-
-      if(roomSelected$type == "Spawnroom" && !is.null(canvasObjects$roomsINcanvas)){
-        exist = canvasObjects$roomsINcanvas %>% filter(type == "Spawnroom")
-
-        if(nrow(exist) > 0){
-          shinyalert("Error", "There already exists a Spawnroom. It is possible to have only one room of this type.", type = "error")
-          return()
-        }
-      }
 
       width = roomSelected$w
       length = roomSelected$l
@@ -1644,11 +1628,30 @@ server <- function(input, output,session) {
 
     if(!is.null(output))
       enable("rds_generation")
+
+    enable("run")
+  })
+
+  observeEvent(input$check_run, {
+    disable("rds_generation")
+    disable("flamegpu_connection")
+
+    output <- check(canvasObjects, input, output, InfoApp)
+
+    is_docker <- file.exists("/.dockerenv")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(!is.null(output) && (!is_docker || is_docker_compose))
+      enable("flamegpu_connection")
+
+    if(!is.null(output))
+      enable("rds_generation")
+
+    enable("run")
   })
 
   output$rds_generation <- downloadHandler(
     filename = function() {
-      paste0('WHOLEmodel', Sys.Date(), '.zip')
+      paste0('model', Sys.Date(), '.zip')
     },
     content = function(file) {
       canvasObjects$TwoDVisual <- NULL
@@ -1664,7 +1667,7 @@ server <- function(input, output,session) {
 
       model = reactiveValuesToList(canvasObjects)
 
-      file_name <- glue("WHOLEmodel.RDs")
+      file_name <- glue("model.RDs")
       saveRDS(model, file=file.path(temp_directory, file_name))
 
       out = FromToMatrices.generation(model)
@@ -1710,7 +1713,7 @@ server <- function(input, output,session) {
 
     model = reactiveValuesToList(canvasObjects)
 
-    file_name <- glue("WHOLEmodel.RDs")
+    file_name <- glue("model.RDs")
     saveRDS(model, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     out = FromToMatrices.generation(model)
@@ -1718,7 +1721,7 @@ server <- function(input, output,session) {
     model$agents_whatif = out$AgentMeasuresFromTo
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
-    file_name <- glue("WHOLEmodel.json")
+    file_name <- glue("model.json")
     write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     success_text <- "Model linked to FLAME GPU 2 in FLAMEGPU-FORGE4FLAME/resources/f4f/."
@@ -3893,10 +3896,12 @@ server <- function(input, output,session) {
         return()
       }
       total_agents <- 0
-      for(a in 1:length(canvasObjects$agents)){
+      for(a in 1:length(names(canvasObjects$agents))){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-          if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
-            shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."), type = "error")
+          eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+          NumAgent <- sum(as.numeric(eet$NumAgent))
+          if(as.integer(input$initial_infected_global) > NumAgent){
+            shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", NumAgent, " agents)."), type = "error")
             return()
           }
         }
@@ -3909,7 +3914,9 @@ server <- function(input, output,session) {
       total_agents <- 0
       for(a in 1:length(canvasObjects$agents)){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-          total_agents <- total_agents + as.numeric(canvasObjects$agents[[a]]$NumAgent)
+          eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+          NumAgent <- sum(as.numeric(eet$NumAgent))
+          total_agents <- total_agents + NumAgent
         }
       }
 
@@ -3920,8 +3927,10 @@ server <- function(input, output,session) {
     }else{
       a = input$agent_initial_infected
       if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-        if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
-          shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."), type = "error")
+        eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+        NumAgent <- sum(as.numeric(eet$NumAgent))
+        if(as.integer(input$initial_infected_global) > NumAgent){
+          shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", NumAgent, " agents)."), type = "error")
           return()
         }
       }
@@ -4527,7 +4536,7 @@ server <- function(input, output,session) {
     })
 
     remove_modal_spinner()
-
+    showElement("DownloadPostProc_Button")
   })
 
   observe({
@@ -4661,7 +4670,7 @@ server <- function(input, output,session) {
     }
     pl = pl +
       geom_line(data = df, aes(x = Day, y = Number,col = Compartments, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="Cumulative number of individuals",col="Compartments", linetype="Type")+
+      labs(y="Actual number of individuals",col="Compartments", linetype="Type")+
       scale_color_manual(values = fixed_colors,
                          limits = names(fixed_colors),
                          labels = names(fixed_colors),
@@ -4858,21 +4867,84 @@ server <- function(input, output,session) {
 
   })
 
-  # output$DownloadPostProc_Button <- downloadHandler(
+  # output$rds_generation <- downloadHandler(
   #   filename = function() {
-  #     paste('PostProcData', Sys.Date(), '.RDs', sep='')
+  #     paste0('model', Sys.Date(), '.zip')
   #   },
   #   content = function(file) {
-  #     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
-  #     evolutionCSV = req(postprocObjects$evolutionCSV)
-  #     Mapping = req(postprocObjects$Mapping)
+  #     canvasObjects$TwoDVisual <- NULL
+  #     canvasObjects$plot_2D <- NULL
+  #     temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
+  #     dir.create(temp_directory)
   #
-  #     manageSpinner(TRUE)
+  #     matricesCanvas <- list()
+  #     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
+  #       matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
+  #     }
+  #     canvasObjects$matricesCanvas <- matricesCanvas
   #
+  #     model = reactiveValuesToList(canvasObjects)
   #
-  #     manageSpinner(FALSE)
-  #   }
+  #     file_name <- glue("model.RDs")
+  #     saveRDS(model, file=file.path(temp_directory, file_name))
+  #
+  #     out = FromToMatrices.generation(model)
+  #     model$rooms_whatif = out$RoomsMeasuresFromTo
+  #     model$agents_whatif = out$AgentMeasuresFromTo
+  #     model$initial_infected = out$initial_infected
+  #     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
+  #     write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
+  #
+  #     zip::zip(
+  #       zipfile = file,
+  #       files = dir(temp_directory),
+  #       root = temp_directory
+  #     )
+  #   },
+  #   contentType = "application/zip"
   # )
+
+  output$DownloadPostProc_Button <- downloadHandler(
+    filename = function() {
+      paste0('PostProcData', Sys.Date(), '.zip')
+    },
+    content = function(file) {
+      AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
+      CONTACTcsv = req(postprocObjects$CONTACTcsv)
+      CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
+      evolutionCSV = req(postprocObjects$evolutionCSV)
+      COUNTERScsv = req(postprocObjects$COUNTERScsv)
+      Mapping = req(postprocObjects$Mapping)
+
+      temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
+      dir.create(temp_directory)
+
+      file_name <- glue("AEROSOL.RDs")
+      saveRDS(AEROSOLcsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("CONTACTcsv.RDs")
+      saveRDS(CONTACTcsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("CONTACTmatrix.RDs")
+      saveRDS(CONTACTmatrix, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("evolutionCSV.RDs")
+      saveRDS(evolutionCSV, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("COUNTERScsv.RDs")
+      saveRDS(COUNTERScsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("Mapping.RDs")
+      saveRDS(Mapping, file=file.path(temp_directory, file_name))
+
+      zip::zip(
+        zipfile = file,
+        files = dir(temp_directory),
+        root = temp_directory
+      )
+    },
+    contentType = "application/zip"
+  )
   #### end query post processing ####
 
   #### 2D visualisation ####
@@ -5480,29 +5552,29 @@ server <- function(input, output,session) {
     if(is_docker_compose){
       system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
-      file_name <- glue("WHOLEmodel.RDs")
+      file_name <- glue("model.RDs")
       saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-      file_name <- glue("WHOLEmodel.json")
+      file_name <- glue("model.json")
       write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
     }
     else{
       if(input$run_type == "Docker"){
         system(paste0("mkdir -p Data/", input$popup_text))
 
-        file_name <- glue("WHOLEmodel.RDs")
+        file_name <- glue("model.RDs")
         saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
 
-        file_name <- glue("WHOLEmodel.json")
+        file_name <- glue("model.json")
         write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
       }
       else{
         system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
-        file_name <- glue("WHOLEmodel.RDs")
+        file_name <- glue("model.RDs")
         saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-        file_name <- glue("WHOLEmodel.json")
+        file_name <- glue("model.json")
         write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
       }
     }

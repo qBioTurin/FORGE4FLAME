@@ -1729,9 +1729,14 @@ ui <- dashboardPage(
                         column(6, offset = 1, textOutput("error_docker"), tags$style("#error_docker {color:red;}"))
                       ),
                       fluidRow(
+                        column(1,offset=1,
+                               actionButton(
+                                 inputId = "check_run",
+                                 label = "Check model",
+                                 icon = icon("check"))
+                        ),
                         column(1,
-                               offset = 1,
-                               actionButton("run", "Run")
+                               actionButton("run", "Run", disabled = TRUE, icon = icon("play"))
                         )
                       )
                     ),
@@ -1790,8 +1795,8 @@ ui <- dashboardPage(
                       ),
                       column(
                         width = 3,
-                        #style = "margin-top: 20px;",
-                        #downloadButton("DownloadPostProc_Button", label = "Download")
+                        style = "margin-top: 20px;",
+                        downloadButton("DownloadPostProc_Button", label = "Download")
                       )
                     ),
                     fluidRow(
