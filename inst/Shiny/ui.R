@@ -1759,7 +1759,6 @@ ui <- dashboardPage(
               )
       ),
       tabItem(tabName = "post_process",
-              title = h3("Post Processing of the simulation"),
               fluidRow(
                 box(width = 12,
                     title = div(class = "icon-container", style="margin-top:20px",
@@ -1792,11 +1791,14 @@ ui <- dashboardPage(
                         width = 4,
                         #style = "margin-top: 20px;",
                         verbatimTextOutput("dirPath")
-                      ),
+                      )
+                    ),
+                    fluidRow(
                       column(
+                        offset = 4,
                         width = 3,
                         style = "margin-top: 20px;",
-                        downloadButton("DownloadPostProc_Button", label = "Download")
+                        downloadButton("DownloadPostProc_Button", label = "Download processed data")
                       )
                     ),
                     fluidRow(
