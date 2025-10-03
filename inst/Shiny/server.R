@@ -5470,35 +5470,32 @@ server <- function(input, output,session) {
                  session = session)
 
   observeEvent(input$run, {
-    output <- check(canvasObjects, input, output)
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    if(!is.null(output)){
-      if(!is_docker_compose){
-        showModal(
-          modalDialog(
-            title = "Insert a directory name to identify uniquely this model",
-            textInput("popup_text", "Directory name:", ""),
-            shinyDirButton("dir_results", "Select Folder", "Upload"),
-            verbatimTextOutput("dirResultsPath"),
-            footer = tagList(
-              modalButton("Cancel"),
-              actionButton("save_text_run", "Run")
-            )
+    if(!is_docker_compose){
+      showModal(
+        modalDialog(
+          title = "Insert a directory name to identify uniquely this model",
+          textInput("popup_text", "Directory name:", ""),
+          shinyDirButton("dir_results", "Select Folder", "Upload"),
+          verbatimTextOutput("dirResultsPath"),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("save_text_run", "Run")
           )
         )
-      }
-      else{
-        showModal(
-          modalDialog(
-            title = "Insert a directory name to identify uniquely this model",
-            textInput("popup_text", "Directory name:", ""),
-            footer = tagList(
-              modalButton("Cancel"),
-              actionButton("save_text_run", "Run")
-            )
+      )
+    }
+    else{
+      showModal(
+        modalDialog(
+          title = "Insert a directory name to identify uniquely this model",
+          textInput("popup_text", "Directory name:", ""),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("save_text_run", "Run")
           )
         )
-      }
+      )
     }
   })
 
