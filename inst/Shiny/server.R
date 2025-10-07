@@ -93,7 +93,7 @@ server <- function(input, output,session) {
       }
       # 3. Inspect available layers
       layers_info <- tryCatch(
-        st_layers(input$BGfile$datapath),
+        sf::st_layers(input$BGfile$datapath),
         error = function(e) {
           showNotification(paste("Cannot read layers:", e$message), type = "error", duration = 5)
           return(NULL)
