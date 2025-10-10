@@ -4867,43 +4867,6 @@ server <- function(input, output,session) {
 
   })
 
-  # output$rds_generation <- downloadHandler(
-  #   filename = function() {
-  #     paste0('model', Sys.Date(), '.zip')
-  #   },
-  #   content = function(file) {
-  #     canvasObjects$TwoDVisual <- NULL
-  #     canvasObjects$plot_2D <- NULL
-  #     temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
-  #     dir.create(temp_directory)
-  #
-  #     matricesCanvas <- list()
-  #     for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
-  #       matricesCanvas[[cID]] = CanvasToMatrix(canvasObjects, canvas = cID)
-  #     }
-  #     canvasObjects$matricesCanvas <- matricesCanvas
-  #
-  #     model = reactiveValuesToList(canvasObjects)
-  #
-  #     file_name <- glue("model.RDs")
-  #     saveRDS(model, file=file.path(temp_directory, file_name))
-  #
-  #     out = FromToMatrices.generation(model)
-  #     model$rooms_whatif = out$RoomsMeasuresFromTo
-  #     model$agents_whatif = out$AgentMeasuresFromTo
-  #     model$initial_infected = out$initial_infected
-  #     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
-  #     write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
-  #
-  #     zip::zip(
-  #       zipfile = file,
-  #       files = dir(temp_directory),
-  #       root = temp_directory
-  #     )
-  #   },
-  #   contentType = "application/zip"
-  # )
-
   output$DownloadPostProc_Button <- downloadHandler(
     filename = function() {
       paste0('PostProcData', Sys.Date(), '.zip')
