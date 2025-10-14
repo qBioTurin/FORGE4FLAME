@@ -67,11 +67,23 @@ server <- function(input, output,session) {
                                  height = NULL,
   )
 
-  InfoApp = reactiveValues(NumTabsFlow = 0, NumTabsTimeSlot = 1, tabs_ids = c(), oldAgentType = "")
+  InfoApp = reactiveValues(NumTabsFlow = 0, NumTabsTimeSlot = 1, NumTabsTimeShift = list("shift_1"=1), tabs_ids = c(), oldAgentType = "", invalidRooms = c())
 
   canvasObjectsSTART = canvasObjects
 
   hideElement("outside_contagion_plot")
+  hideElement("DownloadPostProc_Button")
+
+  observeEvent(input$link_canvas_tab, { updateTabItems(session, "SideTabs", "canvas_tab") })
+  observeEvent(input$link_rooms, { updateTabItems(session, "SideTabs", "rooms") })
+  observeEvent(input$link_agents, { updateTabItems(session, "SideTabs", "agents") })
+  observeEvent(input$link_resources, { updateTabItems(session, "SideTabs", "resources") })
+  observeEvent(input$link_infection, { updateTabItems(session, "SideTabs", "infection") })
+  observeEvent(input$link_whatif, { updateTabItems(session, "SideTabs", "whatif") })
+  observeEvent(input$link_settings, { updateTabItems(session, "SideTabs", "settings") })
+  observeEvent(input$link_configuration, { updateTabItems(session, "SideTabs", "configuration") })
+  observeEvent(input$link_run, { updateTabItems(session, "SideTabs", "run") })
+  observeEvent(input$link_post_process, { updateTabItems(session, "SideTabs", "post_process") })
 
 
   observeEvent(input$LoadBG_image, {
@@ -81,21 +93,21 @@ server <- function(input, output,session) {
 
     if(is.null(canvasObjects$floors))
     {
-      shinyalert("To set the background it is necessary to define a floor.")
+      shinyalert("Error", "To set the background it is necessary to define a floor.", type = "error")
       return()
     }
 
       # 2. Validate extension
       ext <- tools::file_ext(input$BGfile$name)
       if (tolower(ext) != "dxf") {
-        showNotification("Please upload a .dxf file.", type = "error", duration = 5)
+        shinyalert("Error", "Please upload a .dxf file.", type = "error")
         return()
       }
       # 3. Inspect available layers
       layers_info <- tryCatch(
         st_layers(input$BGfile$datapath),
         error = function(e) {
-          showNotification(paste("Cannot read layers:", e$message), type = "error", duration = 5)
+          shinyalert("Error", paste("Cannot read layers:", e$message), type = "error")
           return(NULL)
         }
       )
@@ -117,7 +129,7 @@ server <- function(input, output,session) {
       plan_raw <- tryCatch(
         st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
         error = function(e) {
-          showNotification(paste("Error reading DXF:", e$message), type = "error", duration = 5)
+          shinyalert("Error", paste("Error reading DXF:", e$message), type = "error")
           return(NULL)
         }
       )
@@ -125,7 +137,7 @@ server <- function(input, output,session) {
 
       # 5. Check for empty geometry
       if (nrow(plan_raw) == 0 || all(is.na(st_geometry(plan_raw)))) {
-        showNotification("No geometries found in the uploaded DXF.", type = "warning", duration = 5)
+        shinyalert("Warning", "No geometries found in the uploaded DXF.", type = "warning")
         return()
       }
 
@@ -199,7 +211,7 @@ server <- function(input, output,session) {
         }
 
         if((canvasObjects$roomsINcanvas$x[i] + length + 1)*10 >= newCanvasWidth || (canvasObjects$roomsINcanvas$y[i] + width + 1)*10 >= newCanvasHeight){
-          shinyalert("The new canvas dimension is too small. There will be at least one room outside the canvas.")
+          shinyalert("Error", "The new canvas dimension is too small. There will be at least one room outside the canvas.", type = "error")
           return()
         }
       }
@@ -268,7 +280,7 @@ server <- function(input, output,session) {
       Name = gsub(" ", "", input$canvas_selector)
       if(Name != ""){
         if(!grepl("^[a-zA-Z0-9_]+$", Name)){
-          shinyalert("Floor name cannot contain special charachters.")
+          shinyalert("Error", "Floor name cannot contain special charachters.", type = "error")
           updateSelectizeInput(inputId = "canvas_selector",
                                selected = "",
                                choices = c("", canvasObjects$floors$Name) )
@@ -277,7 +289,7 @@ server <- function(input, output,session) {
 
         if(!is.null(canvasObjects$floors) && nrow(canvasObjects$floors) != 0){
           if(nrow(canvasObjects$floors) > 1000){
-            shinyalert("The maximum permitted number of floors is 1000.")
+            shinyalert("Error", "The maximum permitted number of floors is 1000.", type = "error")
             return()
           }
 
@@ -386,7 +398,7 @@ server <- function(input, output,session) {
     height_new_room = as.numeric(gsub(" ", "", gsub(",", "\\.", input$height_new_room)))
 
     if(is.na(length_new_room) || is.na(width_new_room) || is.na(height_new_room) ){
-      shinyalert(paste0("The height, the lenght and the width must be numbers."))
+      shinyalert("Error", "The height, the lenght and the width must be numbers.", type = "error")
       return()
     }
 
@@ -394,37 +406,37 @@ server <- function(input, output,session) {
     if(Name != "" && width_new_room != "" && length_new_room != "" && height_new_room != ""){
 
       if(Name %in% canvasObjects$rooms$Name){
-        shinyalert(paste0("There already exist a room with name: ", Name, "."))
+        shinyalert("Error", paste0("There already exist a room with name: ", Name, "."), type = "error")
         return()
       }
 
       if(input$select_type == ""){
-        shinyalert("You must select a type.")
+        shinyalert("Error", "You must select a type.", type = "error")
         return()
       }
 
       if(input$select_type %in% names(canvasObjects$agents)){
-        shinyalert("You can not define a room type using the same name assigned to an agent.")
+        shinyalert("Error", "You can not define a room type using the same name assigned to an agent.", type = "error")
         return()
       }
 
       if(height_new_room > 10){
-        shinyalert("The maximum permitted height for a room is 10 meters.")
+        shinyalert("Error", "The maximum permitted height for a room is 10 meters.", type = "error")
         return()
       }
 
       if(width_new_room < 2 ||  length_new_room < 2 ||  height_new_room < 2){
-        shinyalert("The dimension of the room can not be smaller than 2x2x2.")
+        shinyalert("Error", "The dimension of the room can not be smaller than 2x2x2.", type = "error")
         return()
       }
 
       if(!grepl("(^[A-Za-z]+).*", Name)){
-        shinyalert("Room name must start with a letter (a-z).")
+        shinyalert("Error", "Room name must start with a letter (a-z).", type = "error")
         return()
       }
 
       if(!grepl("^[a-zA-Z0-9_]+$", Name)){
-        shinyalert("Room name cannot contain special charachters.")
+        shinyalert("Error", "Room name cannot contain special charachters.", type = "error")
         return()
       }
 
@@ -441,7 +453,7 @@ server <- function(input, output,session) {
         canvasObjects$rooms <- newRoom
       }else{
         if(Name %in% canvasObjects$rooms$Name){
-          shinyalert(paste0("There already exists a room named ", Name, " (case insensitive). "))
+          shinyalert("Error", paste0("There already exists a room named ", Name, " (case insensitive). "), type = "error")
           return()
         }
 
@@ -450,7 +462,7 @@ server <- function(input, output,session) {
           newRoom)
       }
     }else{
-      shinyalert("All the dimensions must be defined.")
+      shinyalert("Error", "All the dimensions must be defined.", type = "error")
       return()
     }
 
@@ -466,7 +478,7 @@ server <- function(input, output,session) {
       Name = gsub(" ", "", input$select_area)
       if(Name != ""){
         if(!grepl("^[a-zA-Z0-9_]+$", Name)){
-          shinyalert("Area name cannot contain special charachters.")
+          shinyalert("Error", "Area name cannot contain special charachters.", type = "error")
           updateSelectizeInput(inputId = "select_area",
                                selected = "None",
                                choices = c("", unique(canvasObjects$areas$Name)) )
@@ -556,12 +568,12 @@ server <- function(input, output,session) {
     if(Name != ""){
       if(!tolower(Name) %in% tolower(canvasObjects$types$Name)){
         if(!grepl("(^[A-Za-z]+).*", Name)){
-          shinyalert("Room name must start with a letter (a-z).")
+          shinyalert("Error", "Room name must start with a letter (a-z).", type = "error")
           return()
         }
 
         if(Name %in% names(canvasObjects$agents)){
-          shinyalert("You can not define a room type using the same name assigned to an agent.")
+          shinyalert("Error", "You can not define a room type using the same name assigned to an agent.", type = "error")
           updateSelectizeInput(inputId = "select_type",
                                selected = "",
                                choices = c("", canvasObjects$types$Name))
@@ -569,7 +581,7 @@ server <- function(input, output,session) {
         }
 
         if(grepl("-", Name)){
-          shinyalert("The type cannot contain special charachters.")
+          shinyalert("Error", "The type cannot contain special charachters.", type = "error")
           updateSelectizeInput(inputId = "select_type",
                                selected = "",
                                choices = c("", canvasObjects$types$Name))
@@ -624,14 +636,6 @@ server <- function(input, output,session) {
         updateSelectizeInput(inputId = "door_new_room", choices = c("right","left","top","bottom","none"),selected = "right")
         enable("door_new_room")
       }
-
-      if(selectedRoom$type == "Spawnroom"){
-        updateSelectizeInput(inputId = "select_area",selected = "None")
-        disable("select_area")
-      }
-      else{
-        enable("select_area")
-      }
     }
   })
 
@@ -662,21 +666,12 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     #Se non sono presenti piani non è possibile aggiungere stanze
     if(input$canvas_selector == ""){
-      shinyalert("You must select a floor.")
+      shinyalert("Error", "You must select a floor.", type = "error")
       return()
     }
     if(input$select_room != ""){
 
       roomSelected = canvasObjects$rooms %>% filter(Name == input$select_room)
-
-      if(roomSelected$type == "Spawnroom" && !is.null(canvasObjects$roomsINcanvas)){
-        exist = canvasObjects$roomsINcanvas %>% filter(type == "Spawnroom")
-
-        if(nrow(exist) > 0){
-          shinyalert(paste0("There already exists a Spawnroom. It is possible to have only one room of this type."))
-          return()
-        }
-      }
 
       width = roomSelected$w
       length = roomSelected$l
@@ -695,7 +690,7 @@ server <- function(input, output,session) {
       ynew = result[1]
 
       if(is.null(xnew) || is.null(ynew)){
-        shinyalert("Error",paste0("No space available in the floor for a new ",input$select_room , " room."), "error", 5000)
+        shinyalert("Error", paste0("No space available in the floor '", input$canvas_selector, "' for a new ", input$select_room , " room."), "error")
         return()
       }else{
         color_type <- canvasObjects$color
@@ -718,8 +713,35 @@ server <- function(input, output,session) {
                              colorFill = room_color,
                              colorBorder = "rgba(0, 0, 0, 1)",
                              area = input$select_area,
-                             CanvasID = input$canvas_selector
-        )
+                             CanvasID = input$canvas_selector)
+
+        length = ceiling(length)
+        width = ceiling(width)
+
+        if(input$door_new_room == "top"){
+          newroom$door_x = newroom$x + floor(length/2) + 1
+          newroom$door_y = newroom$y
+          newroom$center_y = newroom$y + ceiling((width + 1) / 2)
+          newroom$center_x = newroom$x + floor(length/2) + 1
+        }
+        else if(input$door_new_room == "bottom"){
+          newroom$door_x = newroom$x + floor(length/2) + 1
+          newroom$door_y = newroom$y + width + 1
+          newroom$center_y = newroom$y + floor((width + 1) / 2)
+          newroom$center_x = newroom$x + floor(length/2) + 1
+        }
+        else if(input$door_new_room == "left"){
+          newroom$door_x = newroom$x
+          newroom$door_y = newroom$y + round(width/2) + 1
+          newroom$center_y = newroom$y + round(width/2) + 1
+          newroom$center_x = newroom$x + ceiling((length + 1) / 2)
+        }
+        else if(input$door_new_room == "right"){
+          newroom$door_x =newroom$x+ length + 1
+          newroom$door_y = newroom$y + floor(width/2) + 1
+          newroom$center_y = newroom$y + floor(width/2) + 1
+          newroom$center_x = newroom$x + floor((length + 1) / 2)
+        }
 
         if(is.null(canvasObjects$roomsINcanvas)){
           canvasObjects$roomsINcanvas = newroom
@@ -739,10 +761,59 @@ server <- function(input, output,session) {
                              choices = roomsAvailable)
         updateSelectizeInput(session = session, "room_quarantine",
                              choices = roomsAvailable)
+
+        # If the new room is of type Stair, add it also in the other floors, if any and if there space
+        if(roomSelected$type == "Stair" && nrow(canvasObjects$floors) > 1){
+          shinyalert(
+            title = "Stairs",
+            text = "Do you want to add a Stair room to the other floors as well?",
+            type = "info",
+            showCancelButton = TRUE,
+            confirmButtonText = "Yes",
+            cancelButtonText = "No",
+            callbackR = function(x) {
+              if (x) {
+                floor_without_space <- c()
+                for(floor in canvasObjects$floors$Name){
+                  if(floor == input$canvas_selector) next
+
+                  matrix = CanvasToMatrix(canvasObjects,FullRoom = T,canvas = floor)
+
+                  # Check if there is still space for the new room
+                  result <- find_ones_submatrix_coordinates(matrix, target_rows = ceiling(width), target_cols = ceiling(length))
+                  xnew = result[2]
+                  ynew = result[1]
+
+                  if(is.null(xnew) || is.null(ynew)){
+                    floor_without_space <- c(floor_without_space, floor)
+                  }else{
+                    # Add the room
+                    newroom$ID = max(canvasObjects$roomsINcanvas$ID, 1) + 1
+                    newroom$CanvasID <- floor
+
+                    canvasObjects$roomsINcanvas = rbind(canvasObjects$roomsINcanvas, newroom)
+
+                    runjs( command_addRoomObject( newroom) )
+
+                    rooms = canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
+                    roomsAvailable = c("", unique(paste0( rooms$type,"-", rooms$area) ) )
+                    updateSelectizeInput(session = session, "room_ventilation",
+                                         choices = roomsAvailable)
+                    updateSelectizeInput(session = session, "room_quarantine",
+                                         choices = roomsAvailable)
+                  }
+                }
+
+                if(length(floor_without_space) > 0)
+                  showNotification(paste0("A Stair room has been added to each floor, except in ",  paste(floor_without_space, collapse = ", "), " because there is no space available (consider adding them if you need them). Adjust its position as needed."), duration = 5)
+                else
+                  showNotification(paste0("A Stair room has been added to each floor. Adjust its position as needed."), duration = 5)
+              }
+            }
+          )
+        }
       }
-
     }
-
   })
 
   deletingRoomFromCanvas = function(session,objectDelete,canvasObjects){
@@ -764,15 +835,6 @@ server <- function(input, output,session) {
 
     if(nrow(canvasObjects$roomsINcanvas %>% filter(type == objectDelete$type, area == objectDelete$area)) == 0)
       canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != paste0( objectDelete$type,"-", objectDelete$area) )
-
-    ## if the room is present in Agents Flow then we have to remove them
-    ## when there are this type of room anymore
-    if(!is.null(canvasObjects$agents)){
-      for(a in 1:length(canvasObjects$agents))
-        if(!is.null(canvasObjects$agents[[a]]$DeterFlow))
-          canvasObjects$agents[[a]]$DeterFlow = canvasObjects$agents[[a]]$DeterFlow %>%
-            filter(Room  %in% c("Spawnroom-None", paste0(canvasObjects$roomsINcanvas$type, "-", canvasObjects$roomsINcanvas$area)))
-    }
 
     if(!is.null(canvasObjects$pathINcanvas)){
       pathsINcanvasFloor <- canvasObjects$pathINcanvas %>%
@@ -808,8 +870,8 @@ server <- function(input, output,session) {
   observeEvent(input$remove_room,{
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(input$select_RemoveRoom != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
 
+    if(input$select_RemoveRoom != "" && !is.null(canvasObjects$roomsINcanvas) && dim(canvasObjects$roomsINcanvas)[1] > 0) {
       objectDelete = canvasObjects$roomsINcanvas %>%
         mutate(NewID = paste0( Name," #", ID ) ) %>%
         filter(NewID == input$select_RemoveRoom)
@@ -830,20 +892,20 @@ server <- function(input, output,session) {
             filter(Room == paste0(objectDelete$type, "-", objectDelete$area)) %>%
             pull(Name)
 
-          agents_with_room_type2 <- do.call(rbind, lapply(canvasObjects$agents,"[[","DeterFlow") ) %>%
+          agents_with_room_type2 <- do.call(rbind, lapply(canvasObjects$agents,"[[","RandFlow") ) %>%
             select(Name,Room) %>%
             distinct() %>%
             filter(Room == paste0(objectDelete$type, "-", objectDelete$area)) %>%
             pull(Name)
 
-          agents_with_room_type = unique(agents_with_room_type1,agents_with_room_type2)
+          agents_with_room_type = c(agents_with_room_type1,agents_with_room_type2)
 
           if(length(agents_with_room_type) > 0){
 
             shinyalert(
               title = "Confirmation",
-              text = paste0("Impossible to delete the room: ", objectDelete$Name,
-                            " as it is the last room available for the flow of the following agents: ",
+              text = paste0("Pay attention to delete the room '", objectDelete$Name,
+                            "' as it is the last room available for the flow of the following agents: ",
                             paste(unique(agents_with_room_type), collapse = ", "), "."),
               type = "warning",
               showCancelButton = TRUE,
@@ -851,7 +913,7 @@ server <- function(input, output,session) {
               cancelButtonText = "Cancel",
               callbackR = function(x) {
                 if (x) {
-                  for(a in  agents_with_room_type){
+                  for(a in agents_with_room_type){
                     if(!is.null(canvasObjects$agents[[a]]$DeterFlow)){
                       canvasObjects$agents[[a]]$DeterFlow = canvasObjects$agents[[a]]$DeterFlow %>% filter(Room != paste0(objectDelete$type, "-", objectDelete$area) )
                     }
@@ -868,14 +930,13 @@ server <- function(input, output,session) {
           }
         }
 
-        ### Feleting rooms from whatif tables
+        ### Deleting rooms from what-if tables
         RoomToDelete =  paste0(objectDelete$type, "-", objectDelete$area)
         if(nrow(canvasObjects$rooms_whatif) > 0)
           canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != RoomToDelete)
       }
 
       deletingRoomFromCanvas(session,objectDelete,canvasObjects)
-
     }})
 
   #### Color legend: ####
@@ -1279,14 +1340,12 @@ server <- function(input, output,session) {
         for(a in 1:length(canvasObjects$agents)){
           if(!is.null(canvasObjects$agents[[a]]$DeterFlow)){
             roomparts <- strsplit(canvasObjects$agents[[a]]$DeterFlow$Room, "-")
-            if(roomparts[[1]][1]!="Do nothing")
             {for(i in 1:length(roomparts)){
               if(nrow(canvasObjects$roomsINcanvas %>% filter(type == roomparts[[i]][1], area == roomparts[[i]][2]))==0){
                 canvasObjects$agents[[a]]$DeterFlow <- canvasObjects$agents[[a]]$DeterFlow %>% filter(Room != canvasObjects$agents[[a]]$DeterFlow$Room[i])
               }
             }}
             roomparts<-strsplit(canvasObjects$agents[[a]]$RandFlow$Room, "-")
-            if(roomparts[[1]][1]!="Do nothing")
             {for(i in 1:length(roomparts)){
               if(nrow(canvasObjects$roomsINcanvas %>% filter(type == roomparts[[i]][1], area == roomparts[[i]][2]))==0){
                 canvasObjects$agents[[a]]$RandFlow <- canvasObjects$agents[[a]]$RandFlow %>% filter(Room != canvasObjects$agents[[a]]$RandFlow$Room[i])
@@ -1454,25 +1513,105 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if(!is.null(input$id)){
-      if(input$type == "circle"){
-        x = floor(input$x/10)
-        y = floor(input$y/10)
-      }
-      else{
-        x = round(input$x/10)
-        y = round(input$y/10)
-      }
-
-      length = canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"]
-      width = canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"]
-
-      if(input$type == "circle")
-        canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
-      else{
-        canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
-      }
+      # if(input$type == "circle"){
+      #   x = floor(input$x/10)
+      #   y = floor(input$y/10)
+      # }
+      # else{
+      #   x = input$x/10
+      #   y = input$y/10
+      # }
+      #
+      # length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
+      # width = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"])
+      #
+      # if(input$type == "circle")
+      #   canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
+      # else{
+      #   canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
+      #
+      #   if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "top"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + ceiling((width + 1) / 2)
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "bottom"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + width + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor((width + 1) / 2)
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "left"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + round(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + round(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + ceiling((length + 1) / 2)
+      #   }
+      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "right"){
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + length + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + floor(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor(width/2) + 1
+      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor((length + 1) / 2)
+      #   }
+      # }
 
       canvasObjects$selectedId = input$id
+    }
+  })
+
+  observeEvent(input$movement_completed, {
+    room <- input$movement_completed
+
+    room$x <- room$x / 10
+    room$y <- room$y / 10
+    room$length <- ceiling(room$length / 10)
+    room$width <- ceiling(room$width / 10)
+
+    if(room$side == "top"){
+      room$door_x = room$x + floor(room$length/2) + 1
+      room$door_y = room$y
+      room$center_y = room$y + ceiling((room$width + 1) / 2)
+      room$center_x = room$x + floor(room$length/2) + 1
+    }
+    else if(room$side == "bottom"){
+      room$door_x = room$x + floor(room$length/2) + 1
+      room$door_y = room$y + room$width + 1
+      room$center_y = room$y + floor((room$width + 1) / 2)
+      room$center_x = room$x + floor(room$length/2) + 1
+    }
+    else if(room$side == "left"){
+      room$door_x = room$x
+      room$door_y = room$y + round(room$width/2) + 1
+      room$center_y = room$y + round(room$width/2) + 1
+      room$center_x = room$x + ceiling((room$length + 1) / 2)
+    }
+    else if(room$side == "right"){
+      room$door_x = room$x + room$length + 1
+      room$door_y = room$y + floor(room$width/2) + 1
+      room$center_y = room$y + floor(room$width/2) + 1
+      room$center_x = room$x + floor((room$length + 1) / 2)
+    }
+
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, c("x","y")] = c(room$x, room$y)
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"door_x"] = room$door_x
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"door_y"] = room$door_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"center_y"] = room$center_y
+    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id,"center_x"] = room$center_x
+
+    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
+
+    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
+
+    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), if(!is.null(canvasObjects$nodesINcanvas)) canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector) else NULL)
+
+    if (!valid_rooms) {
+      showNotification("The room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")
+      if(length(InfoApp$invalidRooms[InfoApp$invalidRooms == room$id]) == 0)
+        InfoApp$invalidRooms <- c(InfoApp$invalidRooms, room$id)
+    }
+    else{
+      InfoApp$invalidRooms <- InfoApp$invalidRooms[InfoApp$invalidRooms != room$id]
     }
   })
 
@@ -1480,7 +1619,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    output <- check(canvasObjects, input, output)
+    output <- check(canvasObjects, input, output, InfoApp)
 
     is_docker <- file.exists("/.dockerenv")
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
@@ -1489,18 +1628,36 @@ server <- function(input, output,session) {
 
     if(!is.null(output))
       enable("rds_generation")
+
+    enable("run")
+  })
+
+  observeEvent(input$check_run, {
+    disable("rds_generation")
+    disable("flamegpu_connection")
+
+    output <- check(canvasObjects, input, output, InfoApp)
+
+    is_docker <- file.exists("/.dockerenv")
+    is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
+    if(!is.null(output) && (!is_docker || is_docker_compose))
+      enable("flamegpu_connection")
+
+    if(!is.null(output))
+      enable("rds_generation")
+
+    enable("run")
   })
 
   output$rds_generation <- downloadHandler(
     filename = function() {
-      paste0('WHOLEmodel', Sys.Date(), '.zip')
+      paste0('model', Sys.Date(), '.zip')
     },
     content = function(file) {
       canvasObjects$TwoDVisual <- NULL
       canvasObjects$plot_2D <- NULL
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
-      dir.create(paste0(temp_directory, "/obj"))
 
       matricesCanvas <- list()
       for(cID in unique(canvasObjects$roomsINcanvas$CanvasID)){
@@ -1510,7 +1667,7 @@ server <- function(input, output,session) {
 
       model = reactiveValuesToList(canvasObjects)
 
-      file_name <- glue("WHOLEmodel.RDs")
+      file_name <- glue("model.RDs")
       saveRDS(model, file=file.path(temp_directory, file_name))
 
       out = FromToMatrices.generation(model)
@@ -1519,8 +1676,6 @@ server <- function(input, output,session) {
       model$initial_infected = out$initial_infected
       model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
       write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
-
-      # generate_obj(paste0(temp_directory, "/obj"))
 
       zip::zip(
         zipfile = file,
@@ -1558,7 +1713,7 @@ server <- function(input, output,session) {
 
     model = reactiveValuesToList(canvasObjects)
 
-    file_name <- glue("WHOLEmodel.RDs")
+    file_name <- glue("model.RDs")
     saveRDS(model, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
     out = FromToMatrices.generation(model)
@@ -1566,10 +1721,10 @@ server <- function(input, output,session) {
     model$agents_whatif = out$AgentMeasuresFromTo
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
-    file_name <- glue("WHOLEmodel.json")
+    file_name <- glue("model.json")
     write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-    success_text <- "Model linked to FLAME GPU 2 in FLAMEGPU-FORGE4FLAME/resources/f4f/"
+    success_text <- "Model linked to FLAME GPU 2 in FLAMEGPU-FORGE4FLAME/resources/f4f/."
 
     shinyalert("Success", success_text, "success", 1000)
   })
@@ -1606,7 +1761,7 @@ server <- function(input, output,session) {
         postprocObjects$MappingID_room = FALSE
         postprocObjects$Model = NULL
         if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
-          shinyalert("Error","Please select one RDs file.", "error", 5000)
+          shinyalert("Error", "Please select one RDs file.", "error")
           return()
         }
 
@@ -1615,8 +1770,8 @@ server <- function(input, output,session) {
 
         if(!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART)) ){
           shinyalert("Error",
-                     paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
-                     "error", 5000)
+                     paste(mess[["message"]],"\n The file must be RDs saved throught this application."),
+                     "error")
           return()
         }
 
@@ -1639,7 +1794,7 @@ server <- function(input, output,session) {
     # output$LoadingError_RDs <- renderText(
     isolate({
       if(is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)){
-        shinyalert("Error","Please select one RDs file.", "error", 5000)
+        shinyalert("Error","Please select one RDs file.", "error")
         return()
       }
 
@@ -1649,7 +1804,7 @@ server <- function(input, output,session) {
       if(!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART)) ){
         shinyalert("Error",
                    paste(mess[["message"]],"\n The file must be RDs saved throught this application." ),
-                   "error", 5000)
+                   "error")
         return()
       }
 
@@ -1690,12 +1845,12 @@ server <- function(input, output,session) {
       }
 
       if(Agent %in% canvasObjects$types$Name){
-        shinyalert("You can not define an agent using the same name assigned to a room type.")
+        shinyalert("Error", "You can not define an agent using the same name assigned to a room type.", type = "error")
         return()
       }
 
       if(!grepl("^[a-zA-Z0-9_]+$", Agent)){
-        shinyalert("Agent name cannot contain special charachters.")
+        shinyalert("Error", "Agent name cannot contain special charachters.", type = "error")
         updateSelectizeInput(inputId = "id_new_agent",
                              selected = "",
                              choices = c("", names(canvasObjects$agents)) )
@@ -1703,7 +1858,7 @@ server <- function(input, output,session) {
       }
 
       if(stringr::str_to_lower(Agent) %in% c("global","random")){
-        shinyalert("Agent name cannot be 'global' or 'random'.")
+        shinyalert("Error", "Agent name cannot be 'global' or 'random'.", type = "error")
         updateSelectizeInput(inputId = "id_new_agent",
                              selected = "",
                              choices = c("", names(canvasObjects$agents)) )
@@ -1711,10 +1866,9 @@ server <- function(input, output,session) {
       }
       new_agent = list(
         DeterFlow = data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Acticity = numeric(0),
-                               Label = character(0), FlowID = character(0), AgentLinked = character(0) ),
-        RandFlow  = data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0,
-                               Weight =1, TimeSlot = "00:00 - 23:59", AgentLinked = ""),
-        Class = "",
+                               Label = character(0), FlowID = character(0), AgentLinked = character(0), AgentLinkedType = character(0)),
+        RandFlow  = data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                               Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)),
         EntryExitTime = NULL,
         NumAgent = "1"
       )
@@ -1730,9 +1884,6 @@ server <- function(input, output,session) {
         canvasObjects$agents[[Agent]]$entry_type <- "Time window"
       }
 
-      updateSelectizeInput(session = session,"id_class_agent",selected = canvasObjects$agents[[Agent]]$Class )
-      updateTextInput(session, "num_agent", value = canvasObjects$agents[[Agent]]$NumAgent)
-
       if(length(names(canvasObjects$agents)) > 1){
         agents <- names(canvasObjects$agents)[which(names(canvasObjects$agents) != Agent)]
 
@@ -1746,7 +1897,7 @@ server <- function(input, output,session) {
 
       ## update table of entrance time ##
       # first remove all tabs
-      updateCheckboxInput(session, inputId = "ckbox_entranceFlow", value = canvasObjects$agents[[Agent]]$entry_type)
+      updateRadioButtons(session, inputId = "ckbox_entranceFlow", selected = canvasObjects$agents[[Agent]]$entry_type)
       UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
 
       ## Updating the flows tabs ##
@@ -1792,16 +1943,26 @@ server <- function(input, output,session) {
         InfoApp$NumTabsFlow = 1
       }
 
-      # InfoApp$NumTabsTimeSlot <- 0
-      # if(!is.null(canvasObjects$agents[[Agent]]$EntryExitTime))
-      #   InfoApp$NumTabsTimeSlot <- length(unique(canvasObjects$agents[[Agent]]$EntryExitTime$Name))
+      if(is.null(canvasObjects$agents[[Agent]]$EntryExitTime)){
+        InfoApp$NumTabsTimeSlot <- 1
+        InfoApp$NumTabsTimeShift <- list("shift_1"=1)
+      }else {
+          shifts <- as.numeric(sort(gsub(" shift", "", unique(canvasObjects$agents[[Agent]]$EntryExitTime$Shift))))
+
+          for(shift in shifts)
+            InfoApp$NumTabsTimeShift[[paste0("shift_", shift)]] <- as.numeric(sort(gsub(" slot", "", unique((canvasObjects$agents[[Agent]]$EntryExitTime %>% filter(Shift == paste0(shift, " shift")))$Name))))
+        }
+
 
 
       ### END updating
 
-      shinyjs::show(id = "rand_description")
+      if(nrow(canvasObjects$agents[[Agent]]$RandFlow) > 0)
+        shinyjs::show(id = "rand_description")
+
       InfoApp$oldAgentType = canvasObjects$agents[[Agent]]$entry_type
     }
+
   })
 
   observeEvent(input$button_rm_agent,{
@@ -1822,7 +1983,8 @@ server <- function(input, output,session) {
       UpdatingTimeSlots_tabs(input,output,canvasObjects,InfoApp,session,canvasObjects$agents[[Agent]]$entry_type)
 
       output$RandomEvents_table = DT::renderDataTable(
-        DT::datatable(data.frame(Name=Agent, Room="Do nothing", Dist="Deterministic", Activity=1, ActivityLabel="Light", Time=0, Weight =1) %>% select(-c(Name, Activity)),
+        DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                 Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
                       options = list(
                         columnDefs = list(list(className = 'dt-left', targets=0),
                                           list(className = 'dt-left', targets=1),
@@ -1830,12 +1992,13 @@ server <- function(input, output,session) {
                                           list(className = 'dt-left', targets=3),
                                           list(className = 'dt-left', targets=4),
                                           list(className = 'dt-left', targets=5),
-                                          list(className = 'dt-left', targets=6)),
+                                          list(className = 'dt-left', targets=6),
+                                          list(className = 'dt-left', targets=7)),
                         pageLength = 5
                       ),
                       selection = 'single',
                       rownames = F,
-                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                      colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
         )
       )
 
@@ -1909,36 +2072,33 @@ server <- function(input, output,session) {
     }
   })
 
-  input_num_agent <- debounce(reactive({input$num_agent}), 1000L)
-
-  observeEvent(input_num_agent(),{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    NumAgent = gsub(" ", "", input$num_agent)
-
-    if(input$id_new_agent != ""){
-      if(NumAgent == "" || !grepl("(^[0-9]+).*", NumAgent) || is.na(as.integer(NumAgent)) || as.integer(NumAgent) < 0){
-        shinyalert("You must insert a positive integer value.")
-        return()
-      }
-
-      if(!is.null(canvasObjects$agents)){
-        canvasObjects$agents[[input$id_new_agent]]$NumAgent = NumAgent
-      }
-    }
-  })
+  # input_num_agent <- debounce(reactive({input$num_agent}), 1000L)
+  #
+  # observeEvent(input_num_agent(),{
+  #   disable("rds_generation")
+  #   disable("flamegpu_connection")
+  #   NumAgent = gsub(" ", "", input$num_agent)
+  #
+  #   if(input$id_new_agent != ""){
+  #     if(NumAgent == "" || !grepl("(^[0-9]+).*", NumAgent) || is.na(as.integer(NumAgent)) || as.integer(NumAgent) < 0){
+  #       shinyalert("Error", "You must insert a positive integer value.", type = "error")
+  #       return()
+  #     }
+  #
+  #     if(!is.null(canvasObjects$agents)){
+  #       canvasObjects$agents[[input$id_new_agent]]$NumAgent = NumAgent
+  #     }
+  #   }
+  # })
 
   observeEvent(input$button_copy_agent,{
     disable("rds_generation")
     disable("flamegpu_connection")
     if(input$id_agents_to_copy == ""){
-      shinyalert("You must select an agent to copy.")
+      shinyalert("Error", "You must select an agent to copy.", type = "error")
       return()
     }
-    if(canvasObjects$agents[[input$id_agents_to_copy]]$Class== ""){
-      shinyalert("You must select a valid class for the new agent.")
-      return()
-    }
+
     Agent <- input$id_new_agent
     canvasObjects$agents[[Agent]] = canvasObjects$agents[[input$id_agents_to_copy]]
     if(nrow(canvasObjects$agents[[Agent]]$DeterFlow) > 0)
@@ -1956,10 +2116,6 @@ server <- function(input, output,session) {
         filter(Type != Agent)
       canvasObjects$agents_whatif <- rbind(canvasObjects$agents_whatif, new_agent_whatif)
     }
-
-    updateSelectizeInput(session = session,inputId ="id_class_agent",
-                         selected = canvasObjects$agents[[Agent]]$Class)
-    updateTextInput(session, "num_agent", value = canvasObjects$agents[[Agent]]$NumAgent )
 
     ##### updating all the agents tabs
     ## update table of entrance time ##
@@ -2011,13 +2167,6 @@ server <- function(input, output,session) {
     ### END updating
   })
 
-  observeEvent(input$id_class_agent,{
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if(input$id_new_agent != "")
-      canvasObjects$agents[[input$id_new_agent]]$Class = input$id_class_agent
-  })
-
   #### Determined flow ####
   observeEvent(input$add_room_to_det_flow,{
     disable("rds_generation")
@@ -2027,7 +2176,7 @@ server <- function(input, output,session) {
       new_room = input$Det_select_room_flow
 
       if(new_room == ""){
-        shinyalert("Error", "Please, select a room for the determined flow.", "error", 5000)
+        shinyalert("Error", "Please, select a room for the determined flow.", "error")
         return()
       }
 
@@ -2036,7 +2185,7 @@ server <- function(input, output,session) {
       new_time <- det_flow[[2]]
 
       if(is.null(new_dist) || is.null(new_time)){
-        shinyalert("Error", "Please, specify a time for the determined flow.", "error", 5000)
+        shinyalert("Error", "Please, specify a time for the determined flow.", "error")
         return()
       }
 
@@ -2053,16 +2202,17 @@ server <- function(input, output,session) {
       FlowID = input$DetFlow_tabs
 
       if(is.null(FlowID)){
-        shinyalert("You must select a flow.")
+        shinyalert("Error", "You must select a flow.", type = "error")
         return()
       }
 
       if(input$DetActivity == ""){
-        shinyalert("You must specify an activity.")
+        shinyalert("Error", "You must specify an activity.", type = "error")
         return()
       }
 
-      agentlinked = ifelse(input$agentLink_det_flow == "", ".",input$agentLink_det_flow)
+      agentlinked = ifelse(input$agentLink_det_flow == "", "None",input$agentLink_det_flow)
+      agentlinkedtype = ifelse(input$agentLink_det_flow == "", "None",input$ckbox_agentLink_det_flow)
 
       if(new_room != "" && new_time != ""){
         agentsOLD = canvasObjects$agents[[name]]$DeterFlow
@@ -2075,7 +2225,8 @@ server <- function(input, output,session) {
                            Activity = activity,
                            Label = paste0(new_room, " - ",new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked),
                            FlowID = FlowID,
-                           AgentLinked = agentlinked )
+                           AgentLinked = agentlinked,
+                           AgentLinkedType = agentlinkedtype)
 
         if(agent$Label %in% agentsOLD_filter[,"Label"])
         {
@@ -2210,7 +2361,7 @@ server <- function(input, output,session) {
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow[-nrow,]
         }else{
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow <- data.frame(Name=character(0), Room=character(0), Time=numeric(0), Flow =numeric(0), Activity = numeric(0),
-                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0))
+                                                                               Label = character(0), FlowID = character(0), AgentLinked =  character(0), AgentLinkedType =  character(0))
         }
       }
     }
@@ -2231,12 +2382,12 @@ server <- function(input, output,session) {
 
         if(!is.null(list_detflow) &&
            length(agent$Room) > 0 &&
-           length(list_detflow) == length(agent$Label) ){
+           length(list_detflow) == length(agent$Label)){
           newOrder = data.frame(Name = input$id_new_agent,
                                 Label = list_detflow,
-                                Flow = 1:length(list_detflow) )
+                                Flow = 1:length(list_detflow))
           DeterFlow = merge(agent %>% select(-Flow), newOrder, by = c("Name","Label")) %>%
-            select(Name,Room,Dist, Time, Flow, Activity,  Label,FlowID,AgentLinked) %>% arrange(Flow)
+            select(Name,Room,Dist, Time, Flow, Activity,Label,FlowID,AgentLinked,AgentLinkedType) %>% arrange(Flow)
           canvasObjects$agents[[ input$id_new_agent ]]$DeterFlow = rbind(DeterFlow_tmp,DeterFlow)
         }
       })
@@ -2252,7 +2403,7 @@ server <- function(input, output,session) {
     agent = canvasObjects$agents[[name]]$RandFlow
 
     if(input$Rand_select_room_flow == ""){
-      shinyalert("Error", "Please, select a room for the random flow.", "error", 5000)
+      shinyalert("Error", "Please, select a room for the random flow.", "error")
       return()
     }
 
@@ -2271,19 +2422,19 @@ server <- function(input, output,session) {
                            "Hard - e.g. loudly speaking"= "Hard")
 
     if(is.null(canvasObjects$agents[[name]])){
-      shinyalert("You should define an agent.")
+      shinyalert("Error", "You should define an agent.", type = "error")
       return()
     }
 
     if(input$RandActivity == ""){
-      shinyalert("You must specify an activity.")
+      shinyalert("Error", "You must specify an activity.", type = "error")
       return()
     }
 
     if(input$RandWeight == "" ||
        (as.double(as.numeric(gsub(",", "\\.", input$RandWeight)))<=0 ||
         as.double((as.numeric(gsub(",", "\\.", input$RandWeight))))>=1) ){
-      shinyalert("You must specify a weight between 0 and 1.")
+      shinyalert("Error", "You must specify a weight between 0 and 1.", type = "error")
       return()
     }
 
@@ -2292,18 +2443,9 @@ server <- function(input, output,session) {
     new_time <- rand_flow[[2]]
 
     if(is.null(new_dist) || is.null(new_time)){
-      shinyalert("Error", "Please, specify a time for the random flow.", "error", 5000)
+      shinyalert("Error", "Please, specify a time for the random flow.", "error")
       return()
     }
-
-    sumweights = as.numeric(gsub(",", "\\.", input$RandWeight)) + sum(as.numeric(canvasObjects$agents[[name]]$RandFlow$Weight)) - as.numeric(canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"])
-
-    if(sumweights <= 0 && sumweights > 1 ){
-      shinyalert("The sum of weight of going anywhere must not greater (>=) than 1.")
-      return()
-    }
-
-    canvasObjects$agents[[name]]$RandFlow[canvasObjects$agents[[name]]$RandFlow$Room == "Do nothing","Weight"] = 1 - sumweights #round(1-sumweights,digits = 4)
 
     listTimes = canvasObjects$agents[[name]]$RandFlow %>%
       filter(
@@ -2315,11 +2457,12 @@ server <- function(input, output,session) {
     times = CheckEntryExit(EntryTime,ExitTime,listTimes)
 
     if(times[1] == "Error"){
-      shinyalert(times[2])
+      shinyalert("Error", times[2], type = "error")
       return()
     }
 
-    agentlinked = input$agentLink_rand_flow
+    agentlinked = agentlinkedtype = ifelse(input$agentLink_rand_flow == "", "None",input$agentLink_rand_flow)
+    agentlinkedtype = ifelse(input$agentLink_rand_flow == "", "None",input$ckbox_agentLink_rand_flow)
 
     if(input$Rand_select_room_flow != "" ){
 
@@ -2331,7 +2474,8 @@ server <- function(input, output,session) {
                             ActivityLabel = activityLabel,
                             Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
                             TimeSlot = times[1],
-                            AgentLinked = agentlinked
+                            AgentLinked = agentlinked,
+                            AgentLinkedType = agentlinkedtype
       )
       canvasObjects$agents[[name]]$RandFlow = rbind(canvasObjects$agents[[name]]$RandFlow,newOrder)
     }
@@ -2345,15 +2489,17 @@ server <- function(input, output,session) {
                                         list(className = 'dt-left', targets=3),
                                         list(className = 'dt-left', targets=4),
                                         list(className = 'dt-left', targets=5),
-                                        list(className = 'dt-left', targets=6)),
+                                        list(className = 'dt-left', targets=6),
+                                        list(className = 'dt-left', targets=7)),
                       pageLength = 5
                     ),
                     selection = 'single',
                     rownames = F,
-                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked")
+                    colnames = c("Room", "Distribution", "Activity", "Time", "Weight","Time Slot","Agent Linked", "Agent Linked Type")
       )
     )
 
+    shinyjs::show(id = "rand_description")
   })
 
   #aggiorna la visualizzazione di RandomEvents_table quando cambia l'agent
@@ -2370,12 +2516,34 @@ server <- function(input, output,session) {
                                             list(className = 'dt-left', targets=3),
                                             list(className = 'dt-left', targets=4),
                                             list(className = 'dt-left', targets=5),
-                                            list(className = 'dt-left', targets=6)),
+                                            list(className = 'dt-left', targets=6),
+                                            list(className = 'dt-left', targets=7)),
                           pageLength = 5
                         ),
                         selection = 'single',
                         rownames = F,
-                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked")
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
+          )
+        )
+      }
+      else{
+        output$RandomEvents_table = DT::renderDataTable(
+          DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                   Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
+                        options = list(
+                          columnDefs = list(list(className = 'dt-left', targets=0),
+                                            list(className = 'dt-left', targets=1),
+                                            list(className = 'dt-left', targets=2),
+                                            list(className = 'dt-left', targets=3),
+                                            list(className = 'dt-left', targets=4),
+                                            list(className = 'dt-left', targets=5),
+                                            list(className = 'dt-left', targets=6),
+                                            list(className = 'dt-left', targets=7)),
+                          pageLength = 5
+                        ),
+                        selection = 'single',
+                        rownames = F,
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
           )
         )
       }
@@ -2387,24 +2555,43 @@ server <- function(input, output,session) {
     req(input$id_new_agent!= "")
 
     if (!is.null(info$row)) {
-      if(info$row %in% which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing")){
-        shinyalert(" 'Do nothing' event cannot be removed. ",type = "error")
-        return()
-      }else{
-        shinyalert(
-          title = "Delete Entry?",
-          text = "Are you sure you want to delete this row?",
-          type = "warning",
-          showCancelButton = TRUE,
-          confirmButtonText = "Yes, delete it!",
-          callbackR = function(x) {
-            if (x) {
-              canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]] <-as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[which(canvasObjects$agents[[input$id_new_agent]]$RandFlow$Room == "Do nothing" )]])) + as.numeric(gsub(",", "\\.", canvasObjects$agents[[input$id_new_agent]]$RandFlow$Weight[[info$row]]))
-              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-info$row,]
+      shinyalert(
+        title = "Delete Entry?",
+        text = "Are you sure you want to delete this row?",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, delete it!",
+        callbackR = function(x) {
+          if (x) {
+            if(nrow(canvasObjects$agents[[input$id_new_agent]]$RandFlow) == 1){
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                                                                Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0))
+
+              output$RandomEvents_table = DT::renderDataTable(
+                DT::datatable(data.frame(Name=character(0), Room=character(0), Dist=character(0), Activity=numeric(0), ActivityLabel=character(0), Time=numeric(0),
+                                         Weight =numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)) %>% select(-c(Name, Activity)),
+                              options = list(
+                                columnDefs = list(list(className = 'dt-left', targets=0),
+                                                  list(className = 'dt-left', targets=1),
+                                                  list(className = 'dt-left', targets=2),
+                                                  list(className = 'dt-left', targets=3),
+                                                  list(className = 'dt-left', targets=4),
+                                                  list(className = 'dt-left', targets=5),
+                                                  list(className = 'dt-left', targets=6),
+                                                  list(className = 'dt-left', targets=7)),
+                                pageLength = 5
+                              ),
+                              selection = 'single',
+                              rownames = F,
+                              colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot","Agent Linked", "Agent Linked Type")
+                )
+              )
             }
+            else
+              canvasObjects$agents[[input$id_new_agent]]$RandFlow <- canvasObjects$agents[[input$id_new_agent]]$RandFlow[-info$row,]
           }
-        )
-      }
+        }
+      )
     }
   })
 
@@ -2447,7 +2634,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     canvasObjects$cancel_button_selected = TRUE
-    updateCheckboxInput(session, inputId = "ckbox_entranceFlow",value = canvasObjects$agents[[input$id_new_agent]]$entry_type)
+    updateRadioButtons(session, inputId = "ckbox_entranceFlow", selected = canvasObjects$agents[[input$id_new_agent]]$entry_type)
     removeModal()
   })
 
@@ -2487,25 +2674,27 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
-    NumTabs = as.numeric(max(c(0, InfoApp$NumTabsTimeSlot)))+1
-    InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,NumTabs)
-    appendTab(inputId = "Time_tabs",
+    showed_shift <- gsub("shift_", "", input$Shift_tabs)
+
+    NumTabs = first_missing_number(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]])
+    InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] = sort(c(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]], NumTabs))
+    appendTab(inputId = paste0("Time_tabs_", showed_shift),
               tabPanel(paste0(NumTabs," slot"),
-                       value = paste0(NumTabs," slot"),
+                       value = paste0("slot_", showed_shift, "_", NumTabs),
                        column(7,
-                              textInput(inputId = paste0("EntryTime_",NumTabs), label = "Entry time:", placeholder = "hh:mm"),
+                              textInput(inputId = paste0("EntryTime_",showed_shift, "_",NumTabs), label = "Entry time:", placeholder = "hh:mm"),
                               if(length(canvasObjects$agents[[input$id_new_agent]]$DeterFlow$FlowID)>0){
-                                selectInput(inputId = paste0("Select_TimeDetFlow_",NumTabs),
+                                selectInput(inputId = paste0("Select_TimeDetFlow_",showed_shift, "_",NumTabs),
                                             label = "Associate with a determined flow:",
                                             choices = sort(unique(canvasObjects$agents[[input$id_new_agent]]$DeterFlow$FlowID)) )
                               }else{
-                                selectInput(inputId = paste0("Select_TimeDetFlow_",NumTabs),
+                                selectInput(inputId = paste0("Select_TimeDetFlow_",showed_shift, "_",NumTabs),
                                             label = "Associate with a determined flow:",
                                             choices = "1 flow")
                               }
                        ),
                        column(5,
-                              checkboxGroupInput(paste0("selectedDays_",NumTabs), "Select Days of the Week",
+                              checkboxGroupInput(paste0("selectedDays_",showed_shift, "_",NumTabs), "Select Days of the Week",
                                                  choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                                                  selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
                               )
@@ -2513,13 +2702,67 @@ server <- function(input, output,session) {
                        )
               )
     )
+
+    showTab(inputId = paste0("Time_tabs_", showed_shift), target = paste0("slot_", showed_shift, "_", NumTabs), select = T)
+  })
+
+  observeEvent(input$add_shift, {
+    disable("rds_generation")
+    disable("flamegpu_connection")
+
+    shifts <- as.numeric(gsub("shift_", "", names(InfoApp$NumTabsTimeShift)))
+
+    NumShifts <- min(setdiff(seq_len(max(shifts) + 1), shifts))
+    appendTab(inputId = "Shift_tabs",
+              tabPanel(paste0(NumShifts, " shift"),
+                       value = paste0("shift_", NumShifts),
+                       fluidRow(
+                         column(4,offset=1,
+                                textInput(inputId = paste0("num_agent_", NumShifts), label = "Number of agents:",
+                                          placeholder = "The number must be a positive integer")
+                         )
+                       ),
+                       fluidRow(
+                         column(11,offset=1,
+                                tabsetPanel(id = paste0("Time_tabs_", NumShifts),
+                                            tabPanel("1 slot",
+                                                     value = paste0("slot_", NumShifts, "_1"),
+                                                     column(7,
+                                                            textInput(inputId = paste0("EntryTime_", NumShifts, "_1"), label = "Entry time:", placeholder = "hh:mm"),
+                                                            if(length(canvasObjects$agents[[input$id_new_agent]]$DeterFlow$FlowID)>0){
+                                                              selectInput(inputId = paste0("Select_TimeDetFlow_",NumShifts, "_1"),
+                                                                          label = "Associate with a determined flow:",
+                                                                          choices = sort(unique(canvasObjects$agents[[input$id_new_agent]]$DeterFlow$FlowID)) )
+                                                            }else{
+                                                              selectInput(inputId = paste0("Select_TimeDetFlow_",NumShifts, "_1"),
+                                                                          label = "Associate with a determined flow:",
+                                                                          choices = "1 flow")
+                                                            }
+                                                     ),
+                                                     column(5,
+                                                            checkboxGroupInput(paste0("selectedDays_", NumShifts, "_1"), "Select Days of the Week",
+                                                                               choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                                               selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                                                            )
+
+                                                     )
+                                            )
+                                )
+                         )
+                       )
+              )
+    )
+
+    showTab(inputId = "Shift_tabs", target = paste0("shift_", NumShifts), select = T)
+    InfoApp$NumTabsTimeShift[[paste0("shift_", NumShifts)]] <- 1
   })
 
   observeEvent(input$add_slot_rate, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    NumTabs = as.numeric(max(c(0, InfoApp$NumTabsTimeSlot)))+1
-    InfoApp$NumTabsTimeSlot = c(InfoApp$NumTabsTimeSlot,NumTabs)
+
+    NumTabs = first_missing_number(InfoApp$NumTabsTimeSlot)
+    InfoApp$NumTabsTimeSlot = sort(c(InfoApp$NumTabsTimeSlot, NumTabs))
     appendTab(inputId = "Rate_tabs",
               tabPanel(paste0(NumTabs," slot"),
                        value = paste0(NumTabs," slot"),
@@ -2527,8 +2770,8 @@ server <- function(input, output,session) {
                        get_distribution_panel(paste0("daily_rate_", NumTabs)),
                        #textInput(inputId = paste0("EntranceRate_", NumTabs), label = "Entrance rate:", placeholder = "Daily entrance rate", value = ""),
                        column(7,
-                              textInput(inputId = paste0("EntryTimeRate_",NumTabs), label = "Entry time:", placeholder = "hh:mm"),
-                              textInput(inputId = paste0("ExitTimeRate_",NumTabs), label = "Exit time:", placeholder = "hh:mm"),
+                              textInput(inputId = paste0("EntryTimeRate_",NumTabs), label = "Initial generation time:", placeholder = "hh:mm"),
+                              textInput(inputId = paste0("ExitTimeRate_",NumTabs), label = "Final generation time:", placeholder = "hh:mm"),
 
                        ),
                        column(5,
@@ -2545,16 +2788,47 @@ server <- function(input, output,session) {
   observeEvent(input$rm_slot, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    if(length(InfoApp$NumTabsTimeSlot)>1){
-      removeTab( inputId = "Time_tabs", target =  input$Time_tabs, session = session)
-      slotrm = gsub(pattern = " slot", replacement = "", x = input$Time_tabs)
-      InfoApp$NumTabsTimeSlot = InfoApp$NumTabsTimeSlot[which(InfoApp$NumTabsTimeSlot!=slotrm)]
+
+    showed_shift <- gsub("shift_", "", input$Shift_tabs)
+
+    NumTabs = as.numeric(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]])
+    if(length(NumTabs) > 1){
+      removeTab( inputId = paste0("Time_tabs_", showed_shift), target = input[[paste0("Time_tabs_", showed_shift)]], session = session)
+
+      slotrm = gsub(pattern = paste0("slot_", showed_shift, "_"), replacement = "", x = input[[paste0("Time_tabs_", showed_shift)]])
+      InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] =InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]][which(InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] != slotrm)]
 
       Agent <- input$id_new_agent
       if(Agent != ""){
         AgentInfo <- canvasObjects$agents[[Agent]]
 
-        AgentInfo$EntryExitTime <- AgentInfo$EntryExitTime[which(!AgentInfo$EntryExitTime$Name == paste0(slotrm, " slot")),]
+        if(!is.null(AgentInfo$EntryExitTime))
+          AgentInfo$EntryExitTime <- AgentInfo$EntryExitTime[which(!(AgentInfo$EntryExitTime$Name == paste0(slotrm, " slot") & AgentInfo$EntryExitTime$Shift == showed_shift)),]
+
+        canvasObjects$agents[[Agent]] <- AgentInfo
+      }
+    }
+  })
+
+  observeEvent(input$rm_shift, {
+    disable("rds_generation")
+    disable("flamegpu_connection")
+
+    NumShifts = InfoApp$NumTabsTimeShift
+    showed_shift <- gsub("shift_", "", input$Shift_tabs)
+    if(length(NumShifts) > 1){
+      removeTab(inputId = "Shift_tabs", target = paste0("shift_", showed_shift), session = session)
+
+      shiftrm = gsub(pattern = "shift_", replacement = "", x = input$Shift_tabs)
+      InfoApp$NumTabsTimeShift = InfoApp$NumTabsTimeShift[which(InfoApp$NumTabsTimeShift != shiftrm)]
+      InfoApp$NumTabsTimeShift[[paste0("shift_", showed_shift)]] <- NULL
+
+      Agent <- input$id_new_agent
+      if(Agent != ""){
+        AgentInfo <- canvasObjects$agents[[Agent]]
+
+        if(!is.null(AgentInfo$EntryExitTime))
+          AgentInfo$EntryExitTime <- AgentInfo$EntryExitTime[which(!(AgentInfo$EntryExitTime$Shift == paste0(shiftrm, " shift"))),]
 
         canvasObjects$agents[[Agent]] <- AgentInfo
       }
@@ -2566,7 +2840,7 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     if(length(InfoApp$NumTabsTimeSlot)>1){
       removeTab( inputId = "Rate_tabs", target =  input$Rate_tabs, session = session)
-      slotrm = gsub(pattern = " slot", replacement = "", x = input$Rate_tabs)
+      slotrm = gsub(pattern = "slot_", replacement = "", x = input$Rate_tabs)
       InfoApp$NumTabsTimeSlot = InfoApp$NumTabsTimeSlot[which(InfoApp$NumTabsTimeSlot!=slotrm)]
 
       Agent <- input$id_new_agent
@@ -2586,7 +2860,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if(is.null(canvasObjects$agents)){
-      shinyalert("You should define an agent.")
+      shinyalert("Error", "You should define an agent.", type = "error")
       return()
     }
 
@@ -2599,7 +2873,7 @@ server <- function(input, output,session) {
         new_time <- daily_rate[[2]]
 
         if(is.null(new_dist) || is.null(new_time)){
-          shinyalert("Error", "Please, specify a time for the time slot.", "error", 5000)
+          shinyalert("Error", "Please, specify a time for the time slot.", "error")
           return()
         }
 
@@ -2610,13 +2884,13 @@ server <- function(input, output,session) {
                             ExitTimeRate,
                             input[[paste0("selectedDaysRate_",index)]]), is.null))){
           if(EntryTimeRate == "" || ExitTimeRate == ""){
-            shinyalert("You should define the Entry and the Exit time.")
+            shinyalert("Error", "You should define the Entry and the Exit time.", type = "error")
             return()
           }
           if(EntryTimeRate != ""){
             if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", EntryTimeRate) || grepl("^\\d{1,2}$", EntryTimeRate)) )
             {
-              shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20).")
+              shinyalert("Error", "The format of the time should be: hh:mm (e.g. 06:15, or 20).", type = "error")
               return()
             }
           }
@@ -2627,7 +2901,7 @@ server <- function(input, output,session) {
           if(ExitTimeRate != ""){
             if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$",ExitTimeRate) || grepl("^\\d{1,2}$",ExitTimeRate)) )
             {
-              shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20:30).")
+              shinyalert("Error", "The format of the time should be: hh:mm (e.g. 06:15, or 20:30).", type = "error")
               return()
             }
           }
@@ -2636,12 +2910,12 @@ server <- function(input, output,session) {
           }
           #check if the number before : in EntryTime is lower than number before : in ExitTime
           if(as.numeric(strsplit(input[[paste0("EntryTimeRate_", index)]], ":")[[1]][1]) > as.numeric(strsplit(input[[paste0("ExitTimeRate_", index)]], ":")[[1]][1])) {
-            shinyalert("The Entry time should be lower than the Exit time.")
+            shinyalert("Error", "The Entry time should be lower than the Exit time.", type = "error")
             return()
           }
           if (as.numeric(strsplit(input[[paste0("EntryTimeRate_", index)]], ":")[[1]][1]) == as.numeric(strsplit(input[[paste0("ExitTimeRate_", index)]], ":")[[1]][1]) &&
               as.numeric(strsplit(input[[paste0("EntryTimeRate_", index)]], ":")[[1]][2]) > as.numeric(strsplit(input[[paste0("ExitTimeRate_", index)]], ":")[[1]][2])) {
-            shinyalert("The Entry time should be lower than the Exit time.")
+            shinyalert("Error", "The Entry time should be lower than the Exit time.", type = "error")
             return()
           }
           #check if
@@ -2677,7 +2951,7 @@ server <- function(input, output,session) {
             if(nrow(EntryExitTime %>% filter(Name!= paste0(index, " slot")) %>% filter(Days %in%  df$Days)) > 0){
               #check if in the same day there is a time slot that collides with the new one
               if(nrow(EntryExitTime %>% filter(Name!= paste0(index, " slot")) %>% filter(Days %in%  df$Days) %>% filter(EntryTime < new_exit_time & ExitTime > new_entry_time)) > 0){
-                shinyalert("The time slot you are trying to add collides with another time slot.")
+                shinyalert("Error", "The time slot you are trying to add collides with another time slot.", type = "error")
                 return()
               }
 
@@ -2687,44 +2961,53 @@ server <- function(input, output,session) {
       }
 
     }else{
-      indexes =  InfoApp$NumTabsTimeSlot
+      canvasObjects$agents[[input$id_new_agent]]$EntryExitTime <- NULL
 
-      for(index in indexes){
-        EntryTime <- input[[paste0("EntryTime_",index)]]
-        if(!any(sapply(list(EntryTime,
-                            input[[paste0("selectedDays_",index)]]), is.null))){
-          if(EntryTime == ""){
-            shinyalert("You should define the entry time.")
-            return()
-          }
-          if(EntryTime != ""){
-            if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", EntryTime) || grepl("^\\d{1,2}$", EntryTime)) )
-            {
-              shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20).")
+      for(shift in names(InfoApp$NumTabsTimeShift)){
+        indexes =  InfoApp$NumTabsTimeShift[[shift]]
+        num_shift = as.numeric(gsub("shift_", "", shift))
+
+        for(index in indexes){
+          EntryTime <- input[[paste0("EntryTime_", num_shift, "_", index)]]
+          if(!any(sapply(list(EntryTime,
+                              input[[paste0("selectedDays_", num_shift, "_",index)]]), is.null))){
+            if(EntryTime == ""){
+              shinyalert("Error", "You should define the entry time.", type = "error")
               return()
             }
-          }
-          if(grepl("^\\d{1,2}$", EntryTime)){
-            EntryTime <- paste0(EntryTime,":00")
-          }
+            if(EntryTime != ""){
+              if (! (grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", EntryTime) || grepl("^\\d{1,2}$", EntryTime)) )
+              {
+                shinyalert("Error", "The format of the time should be: hh:mm (e.g. 06:15, or 20).", type = "error")
+                return()
+              }
+            }
+            if(grepl("^\\d{1,2}$", EntryTime)){
+              EntryTime <- paste0(EntryTime,":00")
+            }
 
-          if(EntryTime  != ""){
-            df = data.frame(Name = paste0(index, " slot"),
-                            EntryTime = EntryTime ,
-                            Days = input[[paste0("selectedDays_",index)]],
-                            FlowID = input[[paste0("Select_TimeDetFlow_",index)]])
-          }else{
-            df = data.frame(Name = paste0(index, " slot"),
-                            EntryTime = NA ,
-                            Days = NA,
-                            FlowID = NA)
+            if(EntryTime  != ""){
+              df = data.frame(Shift = paste0(num_shift, " shift"),
+                              Name = paste0(index, " slot"),
+                              EntryTime = EntryTime ,
+                              Days = input[[paste0("selectedDays_", num_shift, "_",index)]],
+                              FlowID = input[[paste0("Select_TimeDetFlow_", num_shift, "_",index)]],
+                              NumAgent = input[[paste0("num_agent_", num_shift)]])
+            }else{
+              df = data.frame(Shift=paste0(num_shift, " shift"),
+                              Name = paste0(index, " slot"),
+                              EntryTime = NA ,
+                              Days = NA,
+                              FlowID = NA,
+                              NumAgent = input[[paste0("num_agent_", num_shift)]])
+            }
+
+
+            if(!is.null(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime) && is.data.frame(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime))
+              canvasObjects$agents[[input$id_new_agent]]$EntryExitTime = rbind(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime, df)
+            else
+              canvasObjects$agents[[input$id_new_agent]]$EntryExitTime =  df
           }
-
-
-          if(!is.null(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime) && is.data.frame(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime))
-            canvasObjects$agents[[input$id_new_agent]]$EntryExitTime = rbind(canvasObjects$agents[[input$id_new_agent]]$EntryExitTime %>% filter(Name !=  paste0(index, " slot")), df)
-          else
-            canvasObjects$agents[[input$id_new_agent]]$EntryExitTime =  df
         }
       }
     }
@@ -2755,9 +3038,8 @@ server <- function(input, output,session) {
               rooms = unique(canvasObjects$agents[[agent]]$DeterFlow$Room,
                              canvasObjects$agents[[agent]]$RandFlow$Room)
               if(length(rooms)>0){
-                df_Rand <- canvasObjects$agents[[agent]]$RandFlow %>%
-                  filter(Room != "Do nothing")
-                if(dim(df_Rand)[1] > 0){
+                df_Rand <- canvasObjects$agents[[agent]]$RandFlow
+                if(!is.null(df_Rand) && dim(df_Rand)[1] > 0){
                   rbind(
                     data.frame(Agent = agent , Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
                     data.frame(Agent = agent , Room = df_Rand$Room, Flow = "Rand")
@@ -2801,7 +3083,7 @@ server <- function(input, output,session) {
          !is.null(input$textInput_resources_global) &&
          !grepl("^[0-9]+$", input$textInput_resources_global) &&
          input$textInput_resources_global >= 0){
-        shinyalert("You must specify a numeric value greater or equals than 0 (>= 0) for the global number of resources.")
+        shinyalert("Error", "You must specify a numeric value greater or equals than 0 (>= 0) for the global number of resources.", type = "error")
         return()
       }
 
@@ -3026,7 +3308,7 @@ server <- function(input, output,session) {
       data_waiting = data.frame()
 
       data_waitingOLD = canvasObjects$resources[[resources_type]]$waitingRoomsDeter
-      if(is.null(data_waitingOLD)){
+      if(is.null(data_waitingOLD) || nrow(data_waitingOLD) == 0){
         agents = unique(ResRoomsDF[ResRoomsDF$Flow == "Deter", "Agent"])
         if(length(agents) > 0 ){
           data_waiting = do.call(rbind,
@@ -3130,7 +3412,7 @@ server <- function(input, output,session) {
 
 
     if (is.na(newValue) || newValue < 0) {
-      showNotification("Please enter a positive numeric value.", type = "error")
+      shinyalert("Error", "Please enter a positive numeric value.", type = "error")
       isolate({
         canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- oldValue
       })
@@ -3626,7 +3908,7 @@ server <- function(input, output,session) {
     # Check if the exact row already exists
     duplicate_row <- subset(data, Measure == measure & Parameters == parameters & Type == type & From == from & To == to)
     if (nrow(duplicate_row) > 0) {
-      shinyalert::shinyalert("This entry already exists!", type = "error")
+      shinyalert("Error", "This entry already exists!", type = "error")
       return(NULL)
     }
 
@@ -3635,7 +3917,7 @@ server <- function(input, output,session) {
       overlap_row <- subset(data, Measure == measure & Type == type &
                               ((From <= to & To >= from) | (to >= From & from <= To)))
       if (nrow(overlap_row) > 0) {
-        shinyalert::shinyalert("Time range overlaps with an existing entry!", type = "error")
+        shinyalert("Error","Time range overlaps with an existing entry!", type = "error")
         return(NULL)
       }
     }
@@ -3660,7 +3942,7 @@ server <- function(input, output,session) {
     if(as.integer(input$ventilation_time_to) < as.integer(input$ventilation_time_from) ||
        as.integer(input$ventilation_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
        as.integer(input$ventilation_time_from) <= 0){
-      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      shinyalert("Error", paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. "), type = "error")
       return()
     }
 
@@ -3693,13 +3975,13 @@ server <- function(input, output,session) {
     agents_whatif = canvasObjects$agents_whatif
 
     if(input$mask_fraction > 1 ||input$mask_fraction < 0){
-      shinyalert("Mask fraction must be  in [0,1] ")
+      shinyalert("Error", "Mask fraction must be  in [0, 1.]", type = "error")
       return()
     }
     if(as.integer(input$mask_time_to) < as.integer(input$mask_time_from) ||
        as.integer(input$mask_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
        as.integer(input$mask_time_from) <= 0){
-      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      shinyalert("Error", paste0("The timing should be greater than 0, less than the simulation days (", canvasObjects$starting$simulation_days, "), and 'to'>'from'. "), type = "error")
       return()
     }
 
@@ -3723,12 +4005,12 @@ server <- function(input, output,session) {
 
     if((input$vaccination_efficacy) > 1 ||
        (input$vaccination_efficacy) < 0){
-      shinyalert(paste0("The efficacy should be in [0,1]") )
+      shinyalert("Error", "The efficacy should be in [0, 1].", type = "error")
       return()
     }
     if((input$vaccination_fraction) > 1 ||
        (input$vaccination_fraction) < 0){
-      shinyalert(paste0("The fraction should be in [0,1]") )
+      shinyalert("Error", "The fraction should be in [0, 1].", type = "error")
       return()
     }
 
@@ -3737,13 +4019,13 @@ server <- function(input, output,session) {
     new_time <- vaccination_coverage[[2]]
 
     if(is.null(new_time) && is.null(new_dist)){
-      shinyalert("Error", "Please, specify a value for the vaccination coverage.", "error", 5000)
+      shinyalert("Error", "Please, specify a value for the vaccination coverage.", "error")
       return()
     }
 
     if(new_dist == "Deterministic"){
       if(as.numeric(new_time) < 1){
-        shinyalert("The number of vaccine coverage days must be greater or equal (>=) 1.")
+        shinyalert("Error", "The number of vaccine coverage days must be greater or equal (>=) 1.", type = "error")
         return()
       }
       paramstext = paste0("Dist.Days: ", new_dist,", ",new_time,", 0")
@@ -3754,7 +4036,7 @@ server <- function(input, output,session) {
       b <- params[[2]]
 
       if(a < 1){
-        shinyalert("The number of vaccine coverage days must be greater or equal (>=) 1.")
+        shinyalert("Error", "The number of vaccine coverage days must be greater or equal (>=) 1.", type = "error")
         return()
       }
 
@@ -3780,7 +4062,7 @@ server <- function(input, output,session) {
     if(as.integer(input$swab_time_to) < as.integer(input$swab_time_from) ||
        as.integer(input$swab_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
        as.integer(input$swab_time_from) <= 0){
-      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      shinyalert("Error", paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'To' > 'From'."), type = "error")
       return()
     }
 
@@ -3795,7 +4077,7 @@ server <- function(input, output,session) {
     }
 
     if(is.null(new_time) && is.null(new_dist)){
-      shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
+      shinyalert("Error", "Please, specify a value as the number of days.", "error")
       return()
     }
 
@@ -3831,7 +4113,7 @@ server <- function(input, output,session) {
       if(as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
          as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
          as.integer(input$quarantine_time_from) <= 0){
-        shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+        shinyalert("Error", paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'To' > 'From'."), type = "error")
         return()
       }
 
@@ -3840,13 +4122,13 @@ server <- function(input, output,session) {
       new_time <- quarantine_global[[2]]
 
       if(is.null(new_time) && is.null(new_dist)){
-        shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
+        shinyalert("Error", "Please, specify a value as the number of days.", "error")
         return()
       }
 
       if(new_dist == "Deterministic"){
         if(as.numeric(new_time) < 1){
-          shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
+          shinyalert("Error", "The number of quarantine days must be greater or equal (>=) 1.", type = "error")
           return()
         }
 
@@ -3858,7 +4140,7 @@ server <- function(input, output,session) {
         b <- params[[2]]
 
         if(a < 1){
-          shinyalert("The number of quarantine days must be greater or equal (>=) 1.")
+          shinyalert("Error", "The number of quarantine days must be greater or equal (>=) 1.", type = "error")
           return()
         }
 
@@ -3879,7 +4161,7 @@ server <- function(input, output,session) {
         new_time <- quarantine_swab_global[[2]]
 
         if(is.null(new_time) && is.null(new_dist)){
-          shinyalert("Error", "Please, specify a value as the number of days.", "error", 5000)
+          shinyalert("Error", "Please, specify a value as the number of days.", "error")
           return()
         }
       }
@@ -3916,18 +4198,18 @@ server <- function(input, output,session) {
     agents_whatif = canvasObjects$agents_whatif
 
     if((input$external_screening_second_global) > 1 || (input$external_screening_second_global) < 0){
-      shinyalert("External screening must be  in [0,1] ")
+      shinyalert("Error", "External screening must be  in [0, 1].", type = "error")
       return()
     }
     if((input$external_screening_first_global) > 1 || (input$external_screening_first_global) < 0){
-      shinyalert("External screening must be  in [0,1] ")
+      shinyalert("Error", "External screening must be  in [0, 1].", type = "error")
       return()
     }
 
     if(as.integer(input$external_screening_time_to) < as.integer(input$external_screening_time_from) ||
        as.integer(input$external_screening_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
        as.integer(input$external_screening_time_from) <= 0){
-      shinyalert(paste0("The timing should be greater than 0, less than the simulation days (",canvasObjects$starting$simulation_days,"), and 'to'>'from'. ") )
+      shinyalert("Error", paste0("The timing should be greater than 0, less than the simulation days (", canvasObjects$starting$simulation_days, "), and 'To' > 'From'."), type = "error")
       return()
     }
 
@@ -3950,11 +4232,11 @@ server <- function(input, output,session) {
     req(input$virus_severity)
 
     if((input$virus_severity) > 1 || (input$virus_severity) < 0){
-      shinyalert("Virus severity must be  in [0,1] ")
+      shinyalert("Error", "Virus severity must be  in [0, 1].", type = "error")
       return()
     }
     if((input$virus_variant) < 0){
-      shinyalert("Virus variant must be > 0 ")
+      shinyalert("Error", "Virus variant must be > 0.", type = "error")
       return()
     }
 
@@ -3967,45 +4249,51 @@ server <- function(input, output,session) {
     req(input$virus_severity)
 
     if(is.na(as.integer(input$initial_infected_global)) || as.integer(input$initial_infected_global) < 0){
-      shinyalert("Initial infected must be a number greater or equal (>=) 0.")
+      shinyalert("Error", "Initial infected must be a number greater or equal (>=) 0.", type = "error")
       return()
     }
 
     if(input$initial_infected_type == "Global"){
       if("Global" %in% initial_infected$Type){
-        shinyalert(paste0("A 'Global' Initial infected is already defined. Please delete it by click on its row in the table. ") )
+        shinyalert("Error", "A 'Global' Initial infected is already defined. Please delete it by click on its row in the table.", type = "error")
         return()
       }
       total_agents <- 0
-      for(a in 1:length(canvasObjects$agents)){
+      for(a in 1:length(names(canvasObjects$agents))){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-          if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
-            shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."))
+          eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+          NumAgent <- sum(as.numeric(eet$NumAgent))
+          if(as.integer(input$initial_infected_global) > NumAgent){
+            shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", NumAgent, " agents)."), type = "error")
             return()
           }
         }
       }
     }else if(input$initial_infected_type == "Random"){
       if("Random" %in% initial_infected$Type){
-        shinyalert(paste0("A 'Random' Initial infected is already defined. Please delete it by click on its row in the table. ") )
+        shinyalert("Error", "A 'Random' Initial infected is already defined. Please delete it by click on its row in the table.", type = "error")
         return()
       }
       total_agents <- 0
       for(a in 1:length(canvasObjects$agents)){
         if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-          total_agents <- total_agents + as.numeric(canvasObjects$agents[[a]]$NumAgent)
+          eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+          NumAgent <- sum(as.numeric(eet$NumAgent))
+          total_agents <- total_agents + NumAgent
         }
       }
 
       if(as.integer(input$initial_infected_global) > total_agents){
-        shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (", total_agents, ")."))
+        shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (", total_agents, ")."), type = "error")
         return()
       }
     }else{
       a = input$agent_initial_infected
       if(canvasObjects$agents[[a]]$entry_type == "Time window"){
-        if(as.integer(input$initial_infected_global) > as.numeric(canvasObjects$agents[[a]]$NumAgent)){
-          shinyalert(paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", canvasObjects$agents[[a]]$NumAgent, " agents)."))
+        eet <- canvasObjects$agents[[a]]$EntryExitTime %>% select(Shift, NumAgent) %>% distinct()
+        NumAgent <- sum(as.numeric(eet$NumAgent))
+        if(as.integer(input$initial_infected_global) > NumAgent){
+          shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", NumAgent, " agents)."), type = "error")
           return()
         }
       }
@@ -4164,23 +4452,23 @@ server <- function(input, output,session) {
 
     isolate({
       if(is.null(input$OutsideContagionImport) || !file.exists(input$OutsideContagionImport$datapath) || !grepl(".csv", input$OutsideContagionImport$datapath)){
-        shinyalert("Error","Please select one csv file.", "error", 5000)
+        shinyalert("Error","Please select one csv file.", "error")
         return()
       }
 
       dataframe <- read_csv(input$OutsideContagionImport$datapath)
       if(!"day" %in% names(dataframe) || !"percentage_infected" %in% names(dataframe)){
-        shinyalert("Error", "The csv mush have two columns: day and percentage_infected", "error", 5000)
+        shinyalert("Error", "The csv mush have two columns: day and percentage_infected.", "error")
         return()
       }
 
       if(any(is.na(as.numeric(dataframe$day))) || any(is.na(as.numeric(dataframe$percentage_infected)))){
-        shinyalert("Error", "The two columns (day and percentage_infected) must contain only numbers", "error", 5000)
+        shinyalert("Error", "The two columns (day and percentage_infected) must contain only numbers.", "error")
         return()
       }
 
       if(input$population == "" || is.na(as.numeric(input$population))){
-        shinyalert("Error", "Population must be a number", "error", 5000)
+        shinyalert("Error", "Population must be a number.", "error")
         return()
       }
 
@@ -4190,14 +4478,21 @@ server <- function(input, output,session) {
       dataframe$percentage_infected <- dataframe$percentage_infected / as.numeric(input$population)
 
       if(any(dataframe$percentage_infected < 0) || any(dataframe$percentage_infected > 1)){
-        shinyalert("Error", "The percentage_infected column must contain numbers in [0, 1]", "error", 5000)
+        shinyalert("Error", "The percentage_infected column must contain numbers in [0, 1].", "error")
         return()
       }
 
-      if(any(dataframe$day <= 0) || dataframe$day[nrow(dataframe)] < as.numeric(canvasObjects$starting$simulation_days)){
-        shinyalert("Error", "The number of days to simulate is bigger then the number of days in the file", "error", 5000)
-        return()
-      }
+      # Create a full sequence of days
+      all_days <- data.frame(day = 1:canvasObjects$starting$simulation_days)
+
+      dataframe_full <- merge(all_days, dataframe, by = "day", all.x = TRUE)
+      dataframe_full$percentage_infected[is.na(dataframe_full$percentage_infected)] <- 0
+
+      dataframe <- dataframe_full %>%
+        group_by(day) %>%
+        filter(percentage_infected == max(percentage_infected)) %>%
+        ungroup() %>%
+        filter(day >= 1)
 
       canvasObjects$outside_contagion <- dataframe %>%
         select(day, percentage_infected)
@@ -4213,7 +4508,7 @@ server <- function(input, output,session) {
 
       showElement("outside_contagion_plot")
 
-      shinyalert("Success", "File loaded", "success", 1000)
+      shinyalert("Success", "File loaded.", "success", 1000)
     })
   })
 
@@ -4229,7 +4524,7 @@ server <- function(input, output,session) {
     new_time <- input$initial_time
 
     if (!(grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", new_time) || grepl("^\\d{1,2}$", new_time))){
-      shinyalert("The format of the time should be: hh:mm (e.g. 06:15, or 20).")
+      shinyalert("Error", "The format of the time should be: hh:mm (e.g. 06:15, or 20).", type = "error")
       return()
     }
 
@@ -4244,7 +4539,7 @@ server <- function(input, output,session) {
     simulation_days <- input$simulation_days
 
     if(simulation_days == "" || !grepl("(^[0-9]+).*", simulation_days) || simulation_days < 0){
-      shinyalert("You must specify a number greater than 0 (>= 0).")
+      shinyalert("Error", "You must specify a number greater than 0 (>= 0).", type = "error")
       return()
     }
 
@@ -4270,6 +4565,23 @@ server <- function(input, output,session) {
     updateNumericInput(session = session, inputId = "swab_time_to", value = simulation_days)
     updateNumericInput(session = session, inputId = "quarantine_time_to", value = simulation_days)
     updateNumericInput(session = session, inputId = "external_screening_time_to", value = simulation_days)
+
+
+    all_days <- data.frame(day = 1:canvasObjects$starting$simulation_days)
+
+    if(!is.null(canvasObjects$outside_contagion)){
+      canvasObjects$outside_contagion <- merge(all_days, canvasObjects$outside_contagion, by = "day", all.x = TRUE)
+      canvasObjects$outside_contagion$percentage_infected[is.na(canvasObjects$outside_contagion$percentage_infected)] <- 0
+
+      output$outside_contagion_plot <- renderPlot({
+        ggplot(canvasObjects$outside_contagion) +
+          geom_line(aes(x=day, y=percentage_infected), color="green", linewidth=1.5) +
+          ylim(0, NA) +
+          labs(title = "Outside contagion", x = "Day", y = "Percentage") +
+          theme(title = element_text(size = 34), axis.title = element_text(size = 26), axis.text = element_text(size = 22)) +
+          theme_fancy()
+      })
+    }
   })
 
   seed <- debounce(reactive({input$seed}), 1000L)
@@ -4280,7 +4592,7 @@ server <- function(input, output,session) {
     seed <- input$seed
 
     if(seed == "" || !grepl("(^[0-9]+).*", seed) || seed < 0){
-      shinyalert("You must specify a number greater then or equal to 0 (>= 0).")
+      shinyalert("Error", "You must specify a number greater then or equal to 0 (>= 0).", type = "error")
       return()
     }
 
@@ -4301,7 +4613,7 @@ server <- function(input, output,session) {
     nrun <- input$nrun
 
     if(nrun == "" || !grepl("(^[0-9]+).*", nrun) || nrun <= 0){
-      shinyalert("You must specify a number greater than 0 (> 0).")
+      shinyalert("Error", "You must specify a number greater than 0 (> 0).", type = "error")
       return()
     }
 
@@ -4316,7 +4628,7 @@ server <- function(input, output,session) {
     prun <- input$prun
 
     if(prun == "" || !grepl("(^[0-9]+).*", prun) || prun <= 0){
-      shinyalert("You must specify a number greater than 0 (> 0).")
+      shinyalert("Error", "You must specify a number greater than 0 (> 0).", type = "error")
       return()
     }
 
@@ -4379,7 +4691,7 @@ server <- function(input, output,session) {
     }
 
     if(is.null(canvasObjects$roomsINcanvas)){
-      shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations", "error", 5000)
+      shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations.", "error")
       return()
     }
 
@@ -4419,7 +4731,7 @@ server <- function(input, output,session) {
     subfolders <- list.dirs(dir, recursive = FALSE)
     rooms_file = paste0(dir,"/rooms_mapping.txt")
     if(!file.exists(rooms_file)){
-      shinyalert("Error", "The file rooms_mapping doesn't exists in the directory", "error")
+      shinyalert("Error", "The file rooms_mapping doesn't exists in the directory.", "error")
       postprocObjects$dirPath <- NULL
       remove_modal_progress()
       return()
@@ -4429,7 +4741,7 @@ server <- function(input, output,session) {
     if (length(model_file) > 0) {
       model_file <- model_file[1]
     } else {
-      shinyalert("Error", "The RDs file of the model doesn't exists in the directory", "error")
+      shinyalert("Error", "The RDs file of the model doesn't exists in the directory.", "error")
       postprocObjects$dirPath <- NULL
       remove_modal_progress()
       return()
@@ -4497,7 +4809,7 @@ server <- function(input, output,session) {
       }
     })
     remove_modal_progress()
-    shinyalert("Everything is loaded!")
+    shinyalert("Success", "Everything is loaded!", type = "success", 1000)
   })
 
   #### query ####
@@ -4587,7 +4899,7 @@ server <- function(input, output,session) {
     })
 
     remove_modal_spinner()
-
+    showElement("DownloadPostProc_Button")
   })
 
   observe({
@@ -4721,7 +5033,7 @@ server <- function(input, output,session) {
     }
     pl = pl +
       geom_line(data = df, aes(x = Day, y = Number,col = Compartments, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="Cumulative number of individuals",col="Compartments", linetype="Type")+
+      labs(y="Actual number of individuals",col="Compartments", linetype="Type")+
       scale_color_manual(values = fixed_colors,
                          limits = names(fixed_colors),
                          labels = names(fixed_colors),
@@ -4918,21 +5230,47 @@ server <- function(input, output,session) {
 
   })
 
-  # output$DownloadPostProc_Button <- downloadHandler(
-  #   filename = function() {
-  #     paste('PostProcData', Sys.Date(), '.RDs', sep='')
-  #   },
-  #   content = function(file) {
-  #     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
-  #     evolutionCSV = req(postprocObjects$evolutionCSV)
-  #     Mapping = req(postprocObjects$Mapping)
-  #
-  #     manageSpinner(TRUE)
-  #
-  #
-  #     manageSpinner(FALSE)
-  #   }
-  # )
+  output$DownloadPostProc_Button <- downloadHandler(
+    filename = function() {
+      paste0('PostProcData', Sys.Date(), '.zip')
+    },
+    content = function(file) {
+      AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
+      CONTACTcsv = req(postprocObjects$CONTACTcsv)
+      CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
+      evolutionCSV = req(postprocObjects$evolutionCSV)
+      COUNTERScsv = req(postprocObjects$COUNTERScsv)
+      Mapping = req(postprocObjects$Mapping)
+
+      temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
+      dir.create(temp_directory)
+
+      file_name <- glue("AEROSOL.RDs")
+      saveRDS(AEROSOLcsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("CONTACTcsv.RDs")
+      saveRDS(CONTACTcsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("CONTACTmatrix.RDs")
+      saveRDS(CONTACTmatrix, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("evolutionCSV.RDs")
+      saveRDS(evolutionCSV, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("COUNTERScsv.RDs")
+      saveRDS(COUNTERScsv, file=file.path(temp_directory, file_name))
+
+      file_name <- glue("Mapping.RDs")
+      saveRDS(Mapping, file=file.path(temp_directory, file_name))
+
+      zip::zip(
+        zipfile = file,
+        files = dir(temp_directory),
+        root = temp_directory
+      )
+    },
+    contentType = "application/zip"
+  )
   #### end query post processing ####
 
   #### 2D visualisation ####
@@ -5002,7 +5340,7 @@ server <- function(input, output,session) {
                         choices = c("All",sort(unique(simulation_log$agent_type))))
       ##
 
-      shinyalert("Success", paste0("File loaded "), "success", 1000)
+      shinyalert("Success", "File loaded.", "success", 1000)
     })
   })
 
@@ -5012,17 +5350,17 @@ server <- function(input, output,session) {
     req(canvasObjects$TwoDVisual)
 
     if(is.na(input$animationStep) || input$animationStep == "") {
-      shinyalert("The time step cannot be less than 1 sec.", type = "error")
+      shinyalert("Error", "The time step cannot be less than 1 sec.", type = "error")
       return()
     }
 
     if( input$animationStep < 1 ) {
-      shinyalert("The time step cannot be less than 1 sec.",type = "error")
+      shinyalert("Error", "The time step cannot be less than 1 sec.",type = "error")
       return()
     }
 
     if( input$animationStep > max(canvasObjects$TwoDVisual$time)* as.numeric(postprocObjects$Model$starting$step) ) {
-      shinyalert("The time step cannot be greater than the maximum time of the simulation",type = "error")
+      shinyalert("Error", "The time step cannot be greater than the maximum time of the simulation.",type = "error")
       return()
     }
 
@@ -5458,35 +5796,32 @@ server <- function(input, output,session) {
                  session = session)
 
   observeEvent(input$run, {
-    output <- check(canvasObjects, input, output)
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
-    if(!is.null(output)){
-      if(!is_docker_compose){
-        showModal(
-          modalDialog(
-            title = "Insert a directory name to identify uniquely this model",
-            textInput("popup_text", "Directory name:", ""),
-            shinyDirButton("dir_results", "Select Folder", "Upload"),
-            verbatimTextOutput("dirResultsPath"),
-            footer = tagList(
-              modalButton("Cancel"),
-              actionButton("save_text_run", "Run")
-            )
+    if(!is_docker_compose){
+      showModal(
+        modalDialog(
+          title = "Insert a directory name to identify uniquely this model",
+          textInput("popup_text", "Directory name:", ""),
+          shinyDirButton("dir_results", "Select Folder", "Upload"),
+          verbatimTextOutput("dirResultsPath"),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("save_text_run", "Run")
           )
         )
-      }
-      else{
-        showModal(
-          modalDialog(
-            title = "Insert a directory name to identify uniquely this model",
-            textInput("popup_text", "Directory name:", ""),
-            footer = tagList(
-              modalButton("Cancel"),
-              actionButton("save_text_run", "Run")
-            )
+      )
+    }
+    else{
+      showModal(
+        modalDialog(
+          title = "Insert a directory name to identify uniquely this model",
+          textInput("popup_text", "Directory name:", ""),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("save_text_run", "Run")
           )
         )
-      }
+      )
     }
   })
 
@@ -5501,7 +5836,7 @@ server <- function(input, output,session) {
 
   observeEvent(input$save_text_run, {
     if(input$popup_text == ""){
-      shinyalert("Missing directories name. Please, write one.")
+      shinyalert("Error", "Missing directories name. Please, write one.", type = "error")
       return()
     }
 
@@ -5509,7 +5844,7 @@ server <- function(input, output,session) {
     if(!is_docker_compose && (is.null(input$dir_results) ||
                               (is.numeric(input$dir_results) && input$dir_results <= 1) ||
                               (is.list(input$dir_results) && length(input$dir_results$path) > 0 && all(nchar(unlist(input$dir_results$path)) == 0)))){
-      shinyalert("Missing directories for results. Please, select one.")
+      shinyalert("Error", "Missing directories for results. Please, select one.", type = "error")
       return()
     }
 
@@ -5540,29 +5875,29 @@ server <- function(input, output,session) {
     if(is_docker_compose){
       system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
-      file_name <- glue("WHOLEmodel.RDs")
+      file_name <- glue("model.RDs")
       saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-      file_name <- glue("WHOLEmodel.json")
+      file_name <- glue("model.json")
       write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
     }
     else{
       if(input$run_type == "Docker"){
         system(paste0("mkdir -p Data/", input$popup_text))
 
-        file_name <- glue("WHOLEmodel.RDs")
+        file_name <- glue("model.RDs")
         saveRDS(model_RDS, file=file.path(paste0("Data/", input$popup_text), file_name))
 
-        file_name <- glue("WHOLEmodel.json")
+        file_name <- glue("model.json")
         write_json(x = model, path = file.path(paste0("Data/", input$popup_text), file_name))
       }
       else{
         system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
 
-        file_name <- glue("WHOLEmodel.RDs")
+        file_name <- glue("model.RDs")
         saveRDS(model_RDS, file=file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
-        file_name <- glue("WHOLEmodel.json")
+        file_name <- glue("model.json")
         write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
       }
     }

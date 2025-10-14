@@ -37,4 +37,5 @@ Imports:
     shinyWidgets,
     htmltools,
     DT,
-    shinyFiles
+    shinyFiles,
+    shinyjqui

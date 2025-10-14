@@ -66,13 +66,13 @@ system, follow these steps:
 
 • Create the docker group:
 ```
-$ sudo groupadd docker
+sudo groupadd docker
 ```
 
 • Add user to the docker group:
 
 ```
-$ sudo usermod -aG docker $USER
+sudo usermod -aG docker $USER
 ```
 
 • Log out and log back in so that group membership is re-evaluated.

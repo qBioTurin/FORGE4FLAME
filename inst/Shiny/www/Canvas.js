@@ -172,6 +172,7 @@ class Room {
         this.colorStroke = colorStroke
         this.selected = false
         this.active = false
+        this.movement_completed = false
         this.activeColor = color.replace(/,\d\d%\)/, str => str.replace(/\d\d/, str.match(/\d\d/)[0] * 0.7))
         this.activeColor2 = color.replace(/,\d\d%\)/, str => str.replace(/\d\d/, str.match(/\d\d/)[0] * 0.6))
         this.text = text; // Aggiungi la proprietà del testo
@@ -406,6 +407,11 @@ class FloorManager {
           if(this.id === selectedCanvas){
             let mouse = this.getMouseCoords(e);
 
+            if (this.type === 'rectangle'){
+              this.movement_completed = false
+              Shiny.onInputChange("movement_completed", this);
+            }
+
             this.arrayObject.forEach(e => {
                 if (e.type === 'rectangle' && this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width)) {
                     e.selected = true;
@@ -473,6 +479,10 @@ class FloorManager {
               }
 
               // Deselect after processing
+              if (obj.selected && obj.type === 'rectangle'){
+                obj.movement_completed = true;
+                Shiny.onInputChange("movement_completed", obj);
+              }
               obj.selected = false;
             });
 

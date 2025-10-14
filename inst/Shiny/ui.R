@@ -23,6 +23,7 @@ library(bslib)
 library(lubridate)
 library(sf)
 library(purrr)
+library(shinyjqui)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -265,7 +266,15 @@ ui <- dashboardPage(
                  .home {
                     margin-top: 0.5cm;
                     margin-bottom: 0.5cm;
-                 }"
+                 }
+                .shiny-notification {
+                   font-size: 25px !important;
+                   position: fixed;
+                   bottom: 20px;
+                   right: 20px;
+                   top: auto !important;
+                   left: auto !important;
+                }"
       )
       ),
       tags$a(
@@ -311,136 +320,58 @@ ui <- dashboardPage(
           fluidRow(
             column(
               width = 12,
-              div(class = "home-hero",
-                  img(src = "F4Ficon.png", height = 120, width = 120),
-                  h1(HTML("<i class='fa fa-fire'></i> Forge4Flame (F4F)")),
-                  p(class = "subtitle",
-                    "A powerful and intuitive R Shiny dashboard for defining FLAME GPU 2 Agent-Based Model environments.",
-                    br(),
-                    tags$span(class = "highlight", "Build, Configure, and Simulate with Ease")
-                  )
+              div(style = "text-align:center;",
+                  img(src = "F4Ficon.png", height = 100, width = 100),
+                  h1(strong("Forge4Flame (F4F)")),
+                  p("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
               )
             )
           ),
+          br(),
           fluidRow(
             column(
               width = 12,
-              div(class = "overview-section",
-                  h3(HTML("<i class='fa fa-lightbulb'></i> Platform Overview")),
-                  p("F4F empowers you to define all elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Explore the core components below, each designed to streamline your modeling workflow.")
-              )
+              p("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
             )
           ),
+          br(),
           fluidRow(
             lapply(
               list(
                 list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png"),
-                list(title = "Rooms", icon = "bed", desc = "Define new room types.", img = "Rooms.png", color = "#764ba2"),
-                list(title = "Agents", icon = "user", desc = "Define agent types and their movement logic.", img = "Agents.png", color = "#f093fb"),
-                list(title = "Resources", icon = "chart-simple", desc = "Specify room capacity per agent type.", img = "Resources.png", color = "#4facfe"),
-                list(title = "Infection", icon = "viruses", desc = "Define the disease model used in simulation.", img = "Infection.png", color = "#43e97b"),
-                list(title = "What-If", icon = "question", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png"), color = "#fa709a"),
-                list(title = "Configuration", icon = "flag-checkered", desc = "Set up the initial configuration for simulation.", img = "Configuration.png", color = "#30cfd0"),
-                list(title = "Run", icon = "play", desc = "Execute the simulation with defined parameters.", img = "Run.png", color = "#a8edea"),
-                list(title = "Settings", icon = "cogs", desc = "Adjust canvas size, load, and save models.", img = "Settings.png", color = "#ffa8a8"),
-                list(title = "Post Processing", icon = "file-video", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png", color = "#feca57")
+                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png"),
+                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png"),
+                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png"),
+                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png"),
+                list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png")),
+                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png"),
+                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png"),
+                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png"),
+                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png")
               ),
               function(card) {
                 column(
                   width = 6,
-                  div(
+                  card(
                     class = "f4f-card",
-                    style = paste0("border-top: 4px solid ", card$color, ";"),
-                    div(
-                      class = "card-header-custom",
-                      div(
-                        class = "icon-badge",
-                        style = paste0("background: ", card$color, ";"),
-                        icon(card$icon)
-                      ),
-                      h4(style = paste0("color: ", card$color, ";"), card$title)
-                    ),
-                    p(card$desc),
-                    if (is.character(card$img)) {
-                      if (length(card$img) == 1) {
-                        img(src = card$img, width = "100%")
-                      } else {
-                        tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px;")))
+                    full_screen = TRUE,
+                    card_header(h4(card$title)),
+                    card_body(
+                      p(card$desc),
+                      if (is.character(card$img)) {
+                        if (length(card$img) == 1) {
+                          img(src = card$img, width = "100%", style = "border-radius: 10px;")
+                        } else {
+                          tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px; border-radius:10px;")))
+                        }
                       }
-                    }
+                    )
                   )
                 )
               }
             )
           )
         )
-        # fluidRow(
-        #   box(
-        #     class = "info",
-        #     width = 12,
-        #     img(src = "F4Ficon.png", height = 100, width = 100),
-        #     br(),
-        #     strong(h1("Forge4Flame (F4F)")),
-        #     br(),
-        #     div(
-        #       style="text-align:left;",
-        #       p(h3("")),
-        #       HTML("
-        #         <h2>
-        #             F4F is a user-friendly dashboard (developed in R Shiny) designed to simplify the definition of an ABM environment for FLAME GPU 2 [5, 6] agent-based models, automatically generating the necessary code.
-        #             It enables users to define the model’s environment, the agents interacting within it, the disease model, and other components relevant to an ABM simulation.
-        #             F4F is constituted by the following components (the images refer to the school model defined in [7, 8]):
-        #         </h2>
-        #         <h2>
-        #           <ul>
-        #
-        #             <li class='home'>
-        #               <b>Canvas</b>: define the model’s environment using a drag-and-drop interface for rooms.
-        #               <img class='home' src='Canvas.png' alt='Canvas page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Rooms</b>: definenew room types.
-        #               <img class='home' src='Rooms.png' alt='Rooms page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Agents</b>: define new agent types and their associated movements within the model.
-        #               <img class='home' src='Agents.png' alt='Agents page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Resources</b>: specify the number of agents allowed in each room.
-        #               <img class='home' src='Resources.png' alt='Resources page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Infection</b>: define the disease model.
-        #               <img class='home' src='Infection.png' alt='Infection page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>What-If</b>: perform what-if analyses.
-        #               <img class='home' src='Countermeasures.png' alt='What-If page (countermeasures)', width='100%'>
-        #               <img class='home' src='Virus.png' alt='What-If page (virus)', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Configuration</b>: set up initial configurations.
-        #               <img class='home' src='Configuration.png' alt=Configuration page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Run</b>: run the model.
-        #               <img class='home' src='Run.png' alt=Run page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Settings</b>: change canvas dimension, and load and save model.
-        #               <img class='home' src='Settings.png' alt=Settings page', width='100%'>
-        #             </li>
-        #             <li class='home'>
-        #               <b>Post Processing</b>: Post Processing of the simulations.
-        #               <img class='home' src='2DVisualisation.png' alt=Post Processing page', width='100%'>
-        #             </li>
-        #           </ul>
-        #         </h2>
-        #         ")
-        #     )
-        #   )
-        # )
       ),
       ## Canvas HOME ####
       tabItem(
@@ -770,10 +701,7 @@ ui <- dashboardPage(
           box(
             width = 12,
             collapsible = T,
-            title = div(class = "icon-container",
-                        h4("Agent definition ", icon("info-circle")),
-                        div(class = "icon-text", "The agent class represents the higher level class to which an agent belongs. For example, we could have the agents surgeon_senology and surgeon_ophthalmology that belong to the class surgeon or doctor.")
-            ),
+            title = h4("Agent definition ", icon("info-circle")),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId = "id_new_agent", label = "Agent name:",
@@ -790,18 +718,7 @@ ui <- dashboardPage(
               column(3,
                      actionButton("button_copy_agent",label = "Copy", style = 'margin-top:25px')
               )
-            ),
-            fluidRow(
-              column(3,offset = 1,
-                     selectizeInput(inputId = "id_class_agent", label = "Agent class:",
-                                    options = list(create = TRUE),
-                                    choices=c(""))
-              ),
-              column(3,offset=2,
-                     textInput(inputId = "num_agent", label = "Number of agents:",
-                               placeholder = "The number must be a positive integer")
-              )
-            ),
+            )
           ),
           box(
             width = 12,
@@ -811,26 +728,42 @@ ui <- dashboardPage(
             ),
             collapsible = T,
             fluidRow(
-              column(2,offset = 1,
+              column(3,offset = 1,
                      selectizeInput(inputId= "Det_select_room_flow",
                                     label="Type:",
                                     choices = ""
                      )
               ),
-              column(2, selectizeInput(inputId = "DetActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
+              column(3,offset=2, selectizeInput(inputId = "DetActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
-              column(3,
-                     get_distribution_panel("det_flow")
+              column(1,
+                     actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
               ),
-              column(2,
+              column(1,offset=9,
+                    actionButton("remove_room_to_det_flow", "Remove last room")
+             )
+            ),
+            fluidRow(
+              column(3,offset=1,
                      selectInput("agentLink_det_flow","Select an agent to link:",choices = "",selected = "")
               ),
+              column(3,offset=2,
+                     tags$h5(strong("Duration:")),
+                     get_distribution_panel("det_flow")
+              )
+            ),
+            conditionalPanel(
+              condition="input.agentLink_det_flow != ''",
               fluidRow(
-                column(3,
-                       actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
-                ),
-                column(3,
-                       actionButton("remove_room_to_det_flow", "Remove last room", style = 'margin-top:10px')
+                column(2, offset = 1,
+                       radioButtons(inputId = "ckbox_agentLink_det_flow",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Select type of link:"),
+                                                div(class = "icon-text", "Two options are available: 'Accompaniment only' means the linked agent accompanies the agent only to its destination, while 'Accompaniment and stay' means the linked agent remains with the agent for the entire duration of the support.")
+                                    ),
+                                    choices = c("Accompaniment only", "Accompaniment and stay"),
+                                    selected = "Accompaniment only"
+                       )
                 )
               )
             ),
@@ -838,10 +771,10 @@ ui <- dashboardPage(
               condition="input.ckbox_entranceFlow != 'Daily Rate'",
               fluidRow(
                 column(1, offset = 1,
-                       actionButton("add_det_flow", "Add flow"),
+                       actionButton("add_det_flow", "Add flow", style="margin-top:20px;"),
                 ),
                 column(1,
-                       actionButton("rm_det_flow", "Remove flow")
+                       actionButton("rm_det_flow", "Remove flow", style="margin-top:20px;")
                 ),
               )
             ),
@@ -861,39 +794,57 @@ ui <- dashboardPage(
                         div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
             ),
             fluidRow(
-              column(2,offset = 1,
+              column(3,offset = 1,
                      selectizeInput(inputId= "Rand_select_room_flow",
                                     label="Type:",
                                     choices = ""
                      )
               ),
-              column(2, selectizeInput(inputId = "RandActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
+              column(3, offset=2, selectizeInput(inputId = "RandActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
-              column(1,
+              column(width = 2,
+                     actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
+              )
+            ),
+            fluidRow(
+              column(3,offset=1,
                      textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
               ),
-              column(2,
+              column(3,offset=2,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
               ),
-              column(2,
+              column(3,offset=6,
                      textInput(inputId = "ExitTimeRate_rand_flow", label = "Ending time:", placeholder = "hh:mm")
               )
             ),
             fluidRow(
-              column(offset = 1, width = 4,
-                     get_distribution_panel("rand_flow")
-              ),
-              column(width = 2,
+              column(width = 3,offset=1,
                      selectInput("agentLink_rand_flow","Select an agent to link:",choices = "",selected = "")
               ),
-              column(offset = 1, width = 2,
-                     actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
+              column(offset = 2, width = 3,
+                     tags$h5(strong("Duration:")),
+                     get_distribution_panel("rand_flow")
+              )
+            ),
+            conditionalPanel(
+              condition="input.agentLink_rand_flow != ''",
+              fluidRow(
+                column(2, offset = 1,
+                       radioButtons(inputId = "ckbox_agentLink_rand_flow",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Select type of link:"),
+                                                div(class = "icon-text", "Two options are available: 'Accompaniment only' means the linked agent accompanies the agent only to its destination, while 'Accompaniment and stay' means the linked agent remains with the agent for the entire duration of the support.")
+                                    ),
+                                    choices = c("Accompaniment only", "Accompaniment and stay"),
+                                    selected = "Accompaniment only"
+                       )
+                )
               )
             ),
             fluidRow(
               h3(""),
               column(10, offset=1,
-                     div(id="rand_description", "Click on an event to remove it (except the 'Do nothing' event)", hidden="hidden")
+                     div(id="rand_description", style="margin-top:20px;", "Click on an event to remove it. At each time step, the probability of doing nothing is equal to one minus the sum of the other probabilities.", hidden="hidden")
               )
             ),
             fluidRow(
@@ -909,7 +860,7 @@ ui <- dashboardPage(
             fluidRow(
               column(4,offset = 1,
                      fluidRow(
-                       column(8,offset = 1,
+                       column(5,
                               radioButtons(inputId = "ckbox_entranceFlow",
                                            label = "Select type of entrace:",
                                            choices = c("Daily Rate", "Time window"),
@@ -920,15 +871,15 @@ ui <- dashboardPage(
                        )
                      )
               ),
-              column(6,
+              column(5,offset=1,
                      conditionalPanel(
                        condition="input.ckbox_entranceFlow== 'Daily Rate'",
 
                        fluidRow(
-                         tabsetPanel(id = "Rate_tabs",
-                                     tabPanel(paste0(1," slot"),
-                                              value = paste0(1," slot"),
-                                              column(7,
+                         sortableTabsetPanel(id = "Rate_tabs",
+                                     tabPanel("1 slot",
+                                              value = "slot_1",
+                                              column(5,
                                                      tags$b("Entrance rate:"),
                                                      get_distribution_panel("daily_rate_1"),
                                                      textInput(inputId = "EntryTimeRate_1", label = "Initial generation time:", placeholder = "hh:mm"),
@@ -952,28 +903,49 @@ ui <- dashboardPage(
                        condition="input.ckbox_entranceFlow== 'Time window' ",
 
                        fluidRow(
-                         tabsetPanel(id = "Time_tabs",
-                                     tabPanel(paste0(1," slot"),
-                                              value = paste0(1," slot"),
-                                              column(7,
-                                                     textInput(inputId = "EntryTime_1", label = "Entry time:", placeholder = "hh:mm"),
-                                                     selectInput(inputId = paste0("Select_TimeDetFlow_",1),
-                                                                 label = "Associate with a determined flow:" ,
-                                                                 choices = "" )
-                                              ),
-                                              column(5,
-                                                     checkboxGroupInput("selectedDays_1", "Select Days of the Week",
-                                                                        choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-                                                                        selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-                                                     )
+                         sortableTabsetPanel(id = "Shift_tabs",
+                                     tabPanel("1 shift",
+                                              value = "shift_1",
+                                              fluidRow(
+                                                column(4,offset=1,
+                                                       textInput(inputId = "num_agent_1", label = "Number of agents:",
+                                                                 placeholder = "The number must be a positive integer")
+                                               )
+                                             ),
+                                             fluidRow(
+                                               column(11,offset=1,
+                                                      sortableTabsetPanel(id = "Time_tabs_1",
+                                                             tabPanel("1 slot",
+                                                                      value = "slot_1_1",
+                                                                      column(7,
+                                                                             textInput(inputId = "EntryTime_1_1", label = "Entry time:", placeholder = "hh:mm"),
+                                                                             selectInput(inputId = paste0("Select_TimeDetFlow_1_1"),
+                                                                                         label = "Associate with a determined flow:" ,
+                                                                                         choices = "1 flow" )
+                                                                      ),
+                                                                      column(5,
+                                                                             checkboxGroupInput("selectedDays_1_1", "Select Days of the Week",
+                                                                                                choices = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                                                                                selected = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                                                                             )
 
-                                              )
+                                                                      )
+                                                                      )
+                                                            )
+                                               )
+                                             )
                                      )
                          )
                        ),
                        fluidRow(
-                         actionButton("add_slot", "Add slot"),
-                         actionButton("rm_slot", "Remove slot")
+                         column(11,offset=1,
+                           actionButton("add_slot", "Add slot"),
+                           actionButton("rm_slot", "Remove slot")
+                         )
+                       ),
+                       fluidRow(
+                         actionButton("add_shift", "Add shift", style="margin-top:20px;"),
+                         actionButton("rm_shift", "Remove shift", style="margin-top:20px;")
                        )
                      )
               )
@@ -1953,9 +1925,14 @@ ui <- dashboardPage(
                         column(6, offset = 1, textOutput("error_docker"), tags$style("#error_docker {color:red;}"))
                       ),
                       fluidRow(
+                        column(1,offset=1,
+                               actionButton(
+                                 inputId = "check_run",
+                                 label = "Check model",
+                                 icon = icon("check"))
+                        ),
                         column(1,
-                               offset = 1,
-                               actionButton("run", "Run")
+                               actionButton("run", "Run", disabled = TRUE, icon = icon("play"))
                         )
                       )
                     ),
@@ -1978,7 +1955,6 @@ ui <- dashboardPage(
               )
       ),
       tabItem(tabName = "post_process",
-              title = h3("Post Processing of the simulation"),
               fluidRow(
                 box(width = 12,
                     title = div(class = "icon-container", style="margin-top:20px",
@@ -2011,11 +1987,14 @@ ui <- dashboardPage(
                         width = 4,
                         #style = "margin-top: 20px;",
                         verbatimTextOutput("dirPath")
-                      ),
+                      )
+                    ),
+                    fluidRow(
                       column(
+                        offset = 4,
                         width = 3,
-                        #style = "margin-top: 20px;",
-                        #downloadButton("DownloadPostProc_Button", label = "Download")
+                        style = "margin-top: 20px;",
+                        downloadButton("DownloadPostProc_Button", label = "Download processed data")
                       )
                     ),
                     fluidRow(
