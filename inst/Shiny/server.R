@@ -3535,7 +3535,6 @@ server <- function(input, output,session) {
       # Validate proportions sum to 1
       total_prop <- 0
       risk_classes <- list()
-      risk_classes$Name = Name
 
       for(i in 1:num_classes) {
         class_name <- input[[paste0("risk_class_name_", i)]]
@@ -3632,6 +3631,7 @@ server <- function(input, output,session) {
 
       }
 
+      risk_classes$Name = Name
       # Check if proportions sum to ~1.0
       if(abs(total_prop - 1.0) > 0.01) {
         shinyalert("Error", paste0("The sum of all proportions must equal 1.0 (current sum: ", round(total_prop, 2), ")"), "error")
