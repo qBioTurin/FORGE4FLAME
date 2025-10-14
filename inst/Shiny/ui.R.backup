@@ -344,51 +344,45 @@ ui <- dashboardPage(
               padding: 0;",
             lapply(
               list(
-                list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
-                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
-                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
-                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
-                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png", tab = "infection", icon = "viruses", color = "#9b59b6"),
-                list(title = "What-If", desc = "Perform what-if analysis with countermeasures.", img = "Countermeasures.png", tab = "whatif", icon = "question", color = "#1abc9c"),
-                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png", tab = "configuration", icon = "flag-checkered", color = "#34495e"),
-                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png", tab = "run", icon = "play", color = "#e67e22"),
-                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png", tab = "settings", icon = "cogs", color = "#95a5a6"),
-                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png", tab = "post_process", icon = "file-video", color = "#c0392b")
+                list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png", tab = "canvas_tab"),
+                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png", tab = "rooms"),
+                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png", tab = "agents"),
+                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png", tab = "resources"),
+                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png", tab = "infection"),
+                list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png"), tab = "whatif"),
+                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png", tab = "configuration"),
+                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png", tab = "run"),
+                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png", tab = "settings"),
+                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png", tab = "post_process")
               ),
               function(card) {
                 div(
-                  style = paste0("
-                    border-left: 4px solid ", card$color, ";
-                    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                    border-radius: 8px;
-                    padding: 20px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 420px;"),
-                  onmouseover = "this.style.boxShadow='0 4px 16px rgba(0,0,0,0.15)'; this.style.transform='translateY(-2px)';",
-                  onmouseout = "this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(0)';",
-                  onclick = paste0("Shiny.setInputValue('link_", card$tab, "', Math.random());"),
+                  style = "display:flex; flex-direction:column; height:100%;",
                   div(
-                    style = "display: flex; align-items: center; margin-bottom: 12px;",
-                    icon(card$icon, style = paste0("font-size: 28px; color: ", card$color, "; margin-right: 12px;")),
-                    h4(card$title, style = paste0("margin: 0; color: ", card$color, "; font-weight: 600; font-size: 22px;"))
-                  ),
-                  div(
-                    style = "margin-bottom: 15px;",
-                    p(card$desc, style = "margin: 0; color: #6c757d; font-size: 15px; line-height: 1.5;")
-                  ),
-                  div(
-                    style = "flex: 1; display: flex; align-items: center; justify-content: center; margin-top: auto;",
-                    actionLink(
-                      inputId = paste0("link_", card$tab),
-                      label = img(
-                        src = card$img,
-                        style = "width: 100%; max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);"
-                      ),
-                      style = "width: 100%;"
+                    class = "f4f-card",
+                    style = "
+                      margin:0;
+                      padding:10px;
+                      display:flex;
+                      flex-direction:column;
+                      flex:1;",
+                    div(
+                      h4(card$title, style = "margin:0 0 5px 0; padding:0;")
+                    ),
+                    div(
+                      p(card$desc, style = "margin:0 0 10px 0; padding:0; font-size:20px; line-height:1.4; flex-shrink:0;")
+                    ),
+                    div(
+                      style = "display:flex; flex-direction:column; gap:5px; flex-grow:1;",
+                      lapply(card$img, function(i) {
+                        actionLink(
+                          inputId = paste0("link_", card$tab),
+                          label = img(
+                            src = i,
+                            style = "width:100%; height:auto; border-radius:10px; display:block; margin:0; padding:0;"
+                          )
+                        )
+                      })
                     )
                   )
                 )
