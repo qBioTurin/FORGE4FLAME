@@ -67,26 +67,156 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown d-flex align-items-center",
       tags$head(tags$link(rel = "shortcut icon", href = "F4Ficon.png")),
+      tags$head(
+        tags$link(href = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@300;400;600;700;800&display=swap", rel = "stylesheet")
+      ),
       tags$style(HTML("
-        .f4f-card {
-          border: 1px solid #dee2e6;
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@300;400;600;700;800&display=swap');
+
+        /* Home page hero section */
+        .home-hero {
+          text-align: center;
+          padding: 50px 20px;
+          background: linear-gradient(135deg, rgba(95, 92, 163, 0.08) 0%, rgba(95, 92, 163, 0.03) 100%);
           border-radius: 20px;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-          margin-bottom: 20px;
-          overflow: hidden;
-          padding: 20px;
+          margin-bottom: 40px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         }
+
+        .home-hero img {
+          animation: float 3s ease-in-out infinite;
+          filter: drop-shadow(0 8px 16px rgba(95, 92, 163, 0.3));
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+
+        .home-hero h1 {
+          font-family: 'Raleway', sans-serif !important;
+          font-size: 48px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #5F5CA3 0%, #7B6FB8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 20px 0;
+        }
+
+        .home-hero .subtitle {
+          font-family: 'Poppins', sans-serif;
+          font-size: 20px;
+          color: #5a5a5a;
+          max-width: 700px;
+          margin: 20px auto;
+          line-height: 1.6;
+        }
+
+        .home-hero .highlight {
+          color: #5F5CA3;
+          font-weight: 600;
+        }
+
+        /* Overview section */
+        .overview-section {
+          text-align: center;
+          padding: 30px;
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+          margin-bottom: 40px;
+        }
+
+        .overview-section h3 {
+          font-family: 'Raleway', sans-serif;
+          color: #5F5CA3;
+          font-weight: 700;
+          font-size: 28px;
+          margin-bottom: 15px;
+        }
+
+        .overview-section p {
+          font-family: 'Poppins', sans-serif;
+          font-size: 16px;
+          color: #5a5a5a;
+          max-width: 900px;
+          margin: 0 auto;
+          line-height: 1.8;
+        }
+
+        /* Feature cards */
+        .f4f-card {
+          border: none;
+          border-radius: 16px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+          margin-bottom: 24px;
+          overflow: hidden;
+          padding: 24px;
+          background: white;
+          transition: all 0.3s ease;
+          height: 100%;
+        }
+
+        .f4f-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 12px 32px rgba(95, 92, 163, 0.2);
+        }
+
+        .f4f-card .card-header-custom {
+          display: flex;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+
+        .f4f-card .icon-badge {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 16px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          transition: all 0.3s ease;
+        }
+
+        .f4f-card:hover .icon-badge {
+          transform: scale(1.1) rotate(5deg);
+        }
+
+        .f4f-card .icon-badge i {
+          color: white;
+          font-size: 28px;
+        }
+
         .f4f-card h4 {
           font-family: 'Raleway', sans-serif;
-          color: #0d6efd;
           font-weight: 700;
-          margin-bottom: 15px;
+          margin: 0;
+          font-size: 20px;
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 1.2px;
         }
+
+        .f4f-card p {
+          font-family: 'Poppins', sans-serif;
+          color: #5a5a5a;
+          font-size: 14px;
+          line-height: 1.7;
+          margin-bottom: 16px;
+        }
+
         .f4f-card img {
-          border-radius: 10px;
-          margin-top: 10px;
+          border-radius: 12px;
+          margin-top: 12px;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          width: 100%;
+        }
+
+        .f4f-card:hover img {
+          transform: scale(1.02);
         }
       ")),
       tags$style(HTML(
@@ -181,52 +311,63 @@ ui <- dashboardPage(
           fluidRow(
             column(
               width = 12,
-              div(style = "text-align:center;",
-                  img(src = "F4Ficon.png", height = 100, width = 100),
-                  h1(strong("Forge4Flame (F4F)")),
-                  p("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
+              div(class = "home-hero",
+                  img(src = "F4Ficon.png", height = 120, width = 120),
+                  h1(HTML("<i class='fa fa-fire'></i> Forge4Flame (F4F)")),
+                  p(class = "subtitle",
+                    "A powerful and intuitive R Shiny dashboard for defining FLAME GPU 2 Agent-Based Model environments.",
+                    br(),
+                    tags$span(class = "highlight", "Build, Configure, and Simulate with Ease")
+                  )
               )
             )
           ),
-          br(),
           fluidRow(
             column(
               width = 12,
-              p("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
+              div(class = "overview-section",
+                  h3(HTML("<i class='fa fa-lightbulb'></i> Platform Overview")),
+                  p("F4F empowers you to define all elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Explore the core components below, each designed to streamline your modeling workflow.")
+              )
             )
           ),
-          br(),
           fluidRow(
             lapply(
               list(
                 list(title = "Canvas", desc = "Define the model’s environment using a drag-and-drop interface.", img = "Canvas.png"),
-                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png"),
-                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png"),
-                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png"),
-                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png"),
-                list(title = "What-If", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png")),
-                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png"),
-                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png"),
-                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png"),
-                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png")
+                list(title = "Rooms", icon = "bed", desc = "Define new room types.", img = "Rooms.png", color = "#764ba2"),
+                list(title = "Agents", icon = "user", desc = "Define agent types and their movement logic.", img = "Agents.png", color = "#f093fb"),
+                list(title = "Resources", icon = "chart-simple", desc = "Specify room capacity per agent type.", img = "Resources.png", color = "#4facfe"),
+                list(title = "Infection", icon = "viruses", desc = "Define the disease model used in simulation.", img = "Infection.png", color = "#43e97b"),
+                list(title = "What-If", icon = "question", desc = "Perform what-if analysis with countermeasures and virus settings.", img = c("Countermeasures.png", "Virus.png"), color = "#fa709a"),
+                list(title = "Configuration", icon = "flag-checkered", desc = "Set up the initial configuration for simulation.", img = "Configuration.png", color = "#30cfd0"),
+                list(title = "Run", icon = "play", desc = "Execute the simulation with defined parameters.", img = "Run.png", color = "#a8edea"),
+                list(title = "Settings", icon = "cogs", desc = "Adjust canvas size, load, and save models.", img = "Settings.png", color = "#ffa8a8"),
+                list(title = "Post Processing", icon = "file-video", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png", color = "#feca57")
               ),
               function(card) {
                 column(
                   width = 6,
-                  card(
+                  div(
                     class = "f4f-card",
-                    full_screen = TRUE,
-                    card_header(h4(card$title)),
-                    card_body(
-                      p(card$desc),
-                      if (is.character(card$img)) {
-                        if (length(card$img) == 1) {
-                          img(src = card$img, width = "100%", style = "border-radius: 10px;")
-                        } else {
-                          tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px; border-radius:10px;")))
-                        }
+                    style = paste0("border-top: 4px solid ", card$color, ";"),
+                    div(
+                      class = "card-header-custom",
+                      div(
+                        class = "icon-badge",
+                        style = paste0("background: ", card$color, ";"),
+                        icon(card$icon)
+                      ),
+                      h4(style = paste0("color: ", card$color, ";"), card$title)
+                    ),
+                    p(card$desc),
+                    if (is.character(card$img)) {
+                      if (length(card$img) == 1) {
+                        img(src = card$img, width = "100%")
+                      } else {
+                        tagList(lapply(card$img, function(i) img(src = i, width = "100%", style = "margin-bottom:10px;")))
                       }
-                    )
+                    }
                   )
                 )
               }
@@ -328,35 +469,35 @@ ui <- dashboardPage(
             fluidRow(
               box(width = 10, title = h3("Floor background image"),
                   collapsible = T, collapsed = T,
-                column(
-                  8,
-                  offset = 1,
-                  fileInput(
-                    inputId = "BGfile",
-                    label = "Background Image",
-                    placeholder = "Select an dxf file.",
-                    width = "100%",
-                    accept = "dxf",
-                    multiple = F
+                  column(
+                    8,
+                    offset = 1,
+                    fileInput(
+                      inputId = "BGfile",
+                      label = "Background Image",
+                      placeholder = "Select an dxf file.",
+                      width = "100%",
+                      accept = "dxf",
+                      multiple = F
+                    )
+                  ),
+                  column(
+                    1,
+                    style = "margin-top: 20px;",
+                    actionButton(
+                      label = "Load",
+                      icon = shiny::icon("upload"),
+                      inputId = "LoadBG_image"
+                    )
+                  ),
+                  column(
+                    1,
+                    style = "margin-top: 20px;",
+                    checkboxInput(
+                      label = "Hide",
+                      inputId = "HideBG_image"
+                    )
                   )
-                ),
-                column(
-                  1,
-                  style = "margin-top: 20px;",
-                  actionButton(
-                    label = "Load",
-                    icon = shiny::icon("upload"),
-                    inputId = "LoadBG_image"
-                  )
-                ),
-                column(
-                  1,
-                  style = "margin-top: 20px;",
-                  checkboxInput(
-                    label = "Hide",
-                    inputId = "HideBG_image"
-                  )
-                )
               )
             )
           )
@@ -930,72 +1071,157 @@ ui <- dashboardPage(
                      tags$h4("Description:"),
                      textOutput("description"),
                      tags$style("#description { height: 200px; font-size: 16px;}")
+              )
+            )
+          )
+        ),
+        fluidRow(
+          box(
+            width = 12,
+            collapsible = T,
+            collapsed = F,
+            title = h3("Disease Parameters & Risk Classes"),
+            fluidRow(
+              column(3, offset = 1,
+                     checkboxInput(
+                       inputId = "enable_risk_classes",
+                       label = "Enable Risk Classes",
+                       value = FALSE
+                     )
               ),
-              column(10, offset = 1,
-                     div(class = "icon-container",
-                         h5(icon("info-circle"), " β", tags$sub("contact"), "="),
-                         div(class = "icon-text", "β", tags$sub("contact"), "represents the contamination risk that refer to the infection due to close-range contacts based on the contagion model in [1]. For example, for the COVID-19 disease the correct value is 0.024. This is not the infection rate.")
-                     ),
-                     textInput(
-                       "beta_contact",
-                       label = NULL,
-                       width = "100px",
-                       value = 0.024
-                     ),
-              ),
-              column(10, offset = 1,
-                     div(class = "icon-container",
-                         h5(icon("info-circle"), " β", tags$sub("aerosol"), "="),
-                         div(class = "icon-text", "β", tags$sub("aerosol"), "represents the <b>risk const</b> that refer to the infection due to aerosol based on the contagion model in [2]. For example, for the COVID-19 disease the correct value is 410. This is not the infection rate.")
-                     ),
-                     textInput(
-                       "beta_aerosol",
-                       label = NULL,
-                       width = "100px",
-                       value = 410
-                     ),
-              ),
-              column(10, offset = 1,
-                     div(class = "icon-container",
-                         h5(icon("info-circle"), " γ ="),
-                         div(class = "icon-text", "γ represents the recovery rate.")
-                     ),
-                     get_distribution_panel("gamma")
-              ),
-              conditionalPanel(
-                condition = 'input.disease_model == "SEIR" || input.disease_model == "SEIRS" || input.disease_model == "SEIRD" || input.disease_model == "SEIRDS"',
-                column(10, offset=1,
-                       div(class = "icon-container",
-                           h5(icon("info-circle"), " α ="),
-                           div(class = "icon-text", "α represents the incubation rate.")
-                       ),
-                       get_distribution_panel("alpha")
-                )
-              ),
-              conditionalPanel(
-                condition = 'input.disease_model == "SIRD" || input.disease_model == "SEIRD" || input.disease_model == "SEIRDS" || input.disease_model == "SIRDS"',
-                column(10, offset=1,
-                       div(class = "icon-container",
-                           h5(icon("info-circle"), " λ ="),
-                           div(class = "icon-text", "λ represents the fatality rate.")
-                       ),
-                       get_distribution_panel("lambda")
-                )
-              ),
-              conditionalPanel(
-                condition = 'input.disease_model == "SIRS" || input.disease_model == "SEIRS" || input.disease_model == "SIRDS" || input.disease_model == "SEIRDS"',
-                column(10, offset=1,
-                       div(class = "icon-container",
-                           h5(icon("info-circle"), " ν ="),
-                           div(class = "icon-text", "ν represents the end-of-immunization rate.")
-                       ),
-                       get_distribution_panel("nu")
-                )
+              column(7,
+                     tags$p(style = "font-size: 14px; color: #5a5a5a;",
+                            "Configure disease parameters for the epidemic model. ",
+                            "Enable Risk Classes to define multiple classes for the infectious state (I) with class-specific parameters."
+                     )
               )
             ),
             fluidRow(
-              column(2, offset=1,
-                     actionButton(inputId = "save_values_disease_model", label = "Save")
+              column(3,offset = 1,
+              conditionalPanel(
+                condition = "input.enable_risk_classes == true",
+                       numericInput(
+                         inputId = "num_risk_classes",
+                         label = "Number of Risk Classes:",
+                         value = 2,
+                         min = 2,
+                         max = 5,
+                         step = 1
+                       )
+                )
+              ),
+                column(3,offset = 8,
+                       tags$div(
+                         style = "margin-top: 20px; text-align: right;",
+                         actionButton(
+                           inputId = "save_values_disease_model",
+                           label = "Save Parameters",
+                           icon = icon("save"),
+                           class = "btn-primary"
+                         )
+                       )
+                )
+            ),
+            conditionalPanel(
+              condition = "input.enable_risk_classes == true",
+              fluidRow(
+                column(10, offset = 1,
+                       uiOutput("risk_classes_ui")
+                )
+              )
+            ),
+            conditionalPanel(
+              condition = "input.enable_risk_classes == false",
+              fluidRow(
+                column(10, offset = 1,
+                       div(
+                         style = "border-left: 4px solid #3498db; padding: 15px; margin-bottom: 15px; margin-top: 15px; background-color: #f9f9f9; border-radius: 8px;",
+                         tags$h4(style = "color: #3498db; font-weight: 600; margin-bottom: 15px;",
+                                 icon("globe"), " Global Disease Parameters"),
+                         tags$p(style = "font-size: 13px; color: #6c757d; margin-bottom: 20px;",
+                                "These parameters apply uniformly to all agents."
+                         ),
+                         fluidRow(
+                           column(6,
+                                  div(class = "icon-container",
+                                      tags$label(icon("info-circle"), " β", tags$sub("contact"), ":"),
+                                      tags$div(
+                                        class = "icon-text",
+                                        style = "width: 250px;",
+                                        "β", tags$sub("contact"), " represents the contamination risk that refer to the infection due to close-range contacts based on the contagion model in [1]. For example, for the COVID-19 disease the correct value is 0.024. This is not the infection rate."
+                                      )
+                                  ),
+                                  textInput(
+                                    "beta_contact",
+                                    label = NULL,
+                                    width = "100px",
+                                    value = 0.024
+                                  )
+                           ),
+                           column(6,
+                                  div(class = "icon-container",
+                                      tags$label(icon("info-circle"), " β", tags$sub("aerosol"), ":"),
+                                      tags$div(
+                                        class = "icon-text",
+                                        style = "width: 250px;",
+                                        "β", tags$sub("aerosol"), " represents the risk constant that refer to the infection due to aerosol based on the contagion model in [2]. For example, for the COVID-19 disease the correct value is 410. This is not the infection rate."
+                                      )
+                                  ),
+                                  textInput(
+                                    "beta_aerosol",
+                                    label = NULL,
+                                    width = "100px",
+                                    value = 410
+                                  )
+                           )
+                         ),
+                         fluidRow(
+                           column(12,
+                                  div(class = "icon-container",
+                                      h5(icon("info-circle"), " γ (Recovery Rate):"),
+                                      div(class = "icon-text", "γ represents the recovery rate.")
+                                  ),
+                                  get_distribution_panel("gamma")
+                           )
+                         ),
+                         conditionalPanel(
+                           condition = 'input.disease_model == "SEIR" || input.disease_model == "SEIRS" || input.disease_model == "SEIRD" || input.disease_model == "SEIRDS"',
+                           fluidRow(
+                             column(12,
+                                    div(class = "icon-container",
+                                        h5(icon("info-circle"), " α (Incubation Rate):"),
+                                        div(class = "icon-text", "α represents the incubation rate.")
+                                    ),
+                                    get_distribution_panel("alpha")
+                             )
+                           )
+                         ),
+                         conditionalPanel(
+                           condition = 'input.disease_model == "SIRD" || input.disease_model == "SEIRD" || input.disease_model == "SEIRDS" || input.disease_model == "SIRDS"',
+                           fluidRow(
+                             column(12,
+                                    div(class = "icon-container",
+                                        h5(icon("info-circle"), " λ (Fatality Rate):"),
+                                        div(class = "icon-text", "λ represents the fatality rate.")
+                                    ),
+                                    get_distribution_panel("lambda")
+                             )
+                           )
+                         ),
+                         conditionalPanel(
+                           condition = 'input.disease_model == "SIRS" || input.disease_model == "SEIRS" || input.disease_model == "SIRDS" || input.disease_model == "SEIRDS"',
+                           fluidRow(
+                             column(12,
+                                    div(class = "icon-container",
+                                        h5(icon("info-circle"), " ν (End-of-Immunization Rate):"),
+                                        div(class = "icon-text", "ν represents the end-of-immunization rate.")
+                                    ),
+                                    get_distribution_panel("nu")
+                             )
+                           )
+                         )
+                       )
+                )
               )
             )
           )
