@@ -5241,6 +5241,9 @@ server <- function(input, output,session) {
       evolutionCSV = req(postprocObjects$evolutionCSV)
       COUNTERScsv = req(postprocObjects$COUNTERScsv)
       Mapping = req(postprocObjects$Mapping)
+      dir = req(postprocObjects$dirPath)
+
+      show_modal_spinner()
 
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
@@ -5248,26 +5251,39 @@ server <- function(input, output,session) {
       file_name <- glue("AEROSOL.RDs")
       saveRDS(AEROSOLcsv, file=file.path(temp_directory, file_name))
 
-      file_name <- glue("CONTACTcsv.RDs")
+      file_name <- glue("CONTACT.RDs")
       saveRDS(CONTACTcsv, file=file.path(temp_directory, file_name))
 
-      file_name <- glue("CONTACTmatrix.RDs")
+      file_name <- glue("CONTACT_MATRIX.RDs")
       saveRDS(CONTACTmatrix, file=file.path(temp_directory, file_name))
 
-      file_name <- glue("evolutionCSV.RDs")
+      file_name <- glue("EVOLUTION.RDs")
       saveRDS(evolutionCSV, file=file.path(temp_directory, file_name))
 
-      file_name <- glue("COUNTERScsv.RDs")
+      file_name <- glue("COUNTERS.RDs")
       saveRDS(COUNTERScsv, file=file.path(temp_directory, file_name))
 
-      file_name <- glue("Mapping.RDs")
+      file_name <- glue("MAPPING.RDs")
       saveRDS(Mapping, file=file.path(temp_directory, file_name))
+
+      subfolders <- list.dirs(dir, recursive = FALSE)
+      for(folder in subfolders){
+        file.copy(
+          from = file.path(folder, "AGENT_POSITION_AND_STATUS.csv"),
+          to = file.path(temp_directory,
+                         paste0("AGENT_POSITION_AND_STATUS_", gsub("seed", "", basename(folder)), ".csv"))
+        )
+      }
+
+      system(paste0('echo time,id,agent_type,x,y,z,disease_state > ', temp_directory, '/AGENT_POSITION_AND_STATUS_colnames.csv'))
 
       zip::zip(
         zipfile = file,
         files = dir(temp_directory),
         root = temp_directory
       )
+
+      remove_modal_spinner()
     },
     contentType = "application/zip"
   )
