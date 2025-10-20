@@ -3467,200 +3467,128 @@ server <- function(input, output,session) {
     nu_time=NULL
     nu_dist=NULL
 
-    if(!input$enable_risk_classes){
-      if(is.na(gsub(",", "\\.", input$beta_contact)) || is.na(gsub(",", "\\.", as.numeric(input$beta_contact))) || is.na(gsub(",", "\\.", input$beta_aerosol)) || is.na(as.numeric(gsub(",", "\\.", input$beta_aerosol)))){
-        shinyalert("You must specify a numeric value for beta (contact and aerosol).")
-        return()
-      }
+    num_classes <- if (isTRUE(input$enable_risk_classes)) input$num_risk_classes else 1
 
-      beta_contact=gsub(",", "\\.", input$beta_contact)
-      beta_aerosol=gsub(",", "\\.", input$beta_aerosol)
-
-      gamma <- check_distribution_parameters(input, "gamma")
-
-      gamma_dist=gamma[[1]]
-      gamma_time=gamma[[2]]
-
-      if(is.null(gamma_dist) || is.null(gamma_time)){
-        shinyalert("Error", "Please, specify a value for gamma.", "error", 5000)
-        return()
-      }
-
-      if(grepl("E", Name)){
-        alpha <- check_distribution_parameters(input, "alpha")
-
-        alpha_dist=alpha[[1]]
-        alpha_time=alpha[[2]]
-
-        if(is.null(alpha_dist) || is.null(alpha_time)){
-          shinyalert("Error", "Please, specify a value for alpha.", "error", 5000)
-          return()
-        }
-      }
-
-      if(grepl("D", Name)){
-        lambda <- check_distribution_parameters(input, "lambda")
-
-        lambda_dist=lambda[[1]]
-        lambda_time=lambda[[2]]
-
-        if(is.null(lambda_dist) || is.null(lambda_time)){
-          shinyalert("Error", "Please, specify a value for lambda.", "error", 5000)
-          return()
-        }
-      }
-
-      if(grepl("^([^S]*S[^S]*S[^S]*)$", Name)){
-        nu <- check_distribution_parameters(input, "nu")
-
-        nu_dist=nu[[1]]
-        nu_time=nu[[2]]
-
-        if(is.null(nu_dist) || is.null(nu_time)){
-          shinyalert("Error", "Please, specify a value for nu.", "error", 5000)
-          return()
-        }
-      }
-
-      ListParamsDisease = list(Name=Name,beta_contact=beta_contact,beta_aerosol=beta_aerosol,gamma_time=gamma_time,gamma_dist=gamma_dist,alpha_time=alpha_time, alpha_dist=alpha_dist,lambda_time=lambda_time,lambda_dist=lambda_dist,nu_time=nu_time,nu_dist=nu_dist)
-
-    }else{
-
-      num_classes <- input$num_risk_classes
-      if(is.null(num_classes)) {
-        shinyalert("Error", "Please specify the number of risk classes.", "error")
-        return()
-      }
-
-      # Validate proportions sum to 1
-      total_prop <- 0
-      risk_classes <- list()
-
-      for(i in 1:num_classes) {
-        class_name <- input[[paste0("risk_class_name_", i)]]
-        beta_contact <- input[[paste0("risk_class_beta_contact_", i)]]
-        beta_aerosol <- input[[paste0("risk_class_beta_aerosol_", i)]]
-        proportion <- input[[paste0("risk_class_proportion_", i)]]
-
-        # Validation for basic parameters
-        if(is.null(class_name) || class_name == "") {
-          shinyalert("Error", paste0("Please provide a name for risk class ", i), "error")
-          return()
-        }
-
-        if(is.null(beta_contact) || is.na(as.numeric(gsub(",", ".", beta_contact))) || as.numeric(gsub(",", ".", beta_contact)) < 0) {
-          shinyalert("Error", paste0("Invalid beta contact value for ", class_name), "error")
-          return()
-        }
-
-        if(is.null(beta_aerosol) || is.na(as.numeric(gsub(",", ".", beta_aerosol))) || as.numeric(gsub(",", ".", beta_aerosol)) < 0) {
-          shinyalert("Error", paste0("Invalid beta aerosol value for ", class_name), "error")
-          return()
-        }
-
-        if(is.null(proportion) || is.na(proportion) || proportion < 0 || proportion > 1) {
-          shinyalert("Error", paste0("Invalid proportion for ", class_name, ". Must be between 0 and 1."), "error")
-          return()
-        }
-
-        total_prop <- total_prop + proportion
-
-        # Extract gamma parameter (required for all models)
-        gamma_params <- check_distribution_parameters(input, paste0("gamma_class_", i))
-        gamma_dist=gamma_params[[1]]
-        gamma_time=gamma_params[[2]]
-
-        if(is.null(gamma_dist) || is.null(gamma_time)){
-          shinyalert("Error", paste0("Please specify a value for gamma (recovery rate) for risk class '", class_name, "'."), "error", 5000)
-          return()
-        }
-
-        # Initialize risk class data
-        risk_classes[[i]] <- list(
-          name = class_name,
-          beta_contact = gsub(",", ".", beta_contact),
-          beta_aerosol = gsub(",", ".", beta_aerosol),
-          proportion = proportion,
-          gamma_time=gamma_time,
-          gamma_dist=gamma_dist
-        )
-
-        # Extract alpha parameter (for SEIR models)
-
-        if(grepl("E", Name)){
-          alpha <- check_distribution_parameters(input,  paste0("alpha_class_", i))
-
-          alpha_dist=alpha[[1]]
-          alpha_time=alpha[[2]]
-
-          if(is.null(alpha_dist) || is.null(alpha_time)){
-            shinyalert("Error", paste0("Please specify a value for alpha rate for risk class '", class_name, "'."), "error", 5000)
-            return()
-          }
-          risk_classes[[i]]$alpha_dist = alpha_dist
-          risk_classes[[i]]$alpha_time = alpha_time
-        }
-
-        if(grepl("D", Name)){
-          lambda <- check_distribution_parameters(input,  paste0("lambda_class_", i))
-
-          lambda_dist=lambda[[1]]
-          lambda_time=lambda[[2]]
-
-          if(is.null(lambda_dist) || is.null(lambda_time)){
-            shinyalert("Error", paste0("Please specify a value for lambda (fatality rate) for risk class '", class_name, "'."), "error", 5000)
-            return()
-          }
-          risk_classes[[i]]$lambda_dist = lambda_dist
-          risk_classes[[i]]$lambda_time = lambda_time
-        }
-
-        if(grepl("^([^S]*S[^S]*S[^S]*)$", Name)){
-          nu <- check_distribution_parameters(input,  paste0("nu_class_", i))
-
-          nu_dist=nu[[1]]
-          nu_time=nu[[2]]
-
-          if(is.null(nu_dist) || is.null(nu_time)){
-            shinyalert("Error", paste0("Please specify a value for nu (end-of-immunization rate) for risk class '", class_name, "'."), "error", 5000)
-            return()
-          }
-          risk_classes[[i]]$nu_dist = nu_dist
-          risk_classes[[i]]$nu_time = nu_time
-        }
-
-      }
-
-      risk_classes$Name = Name
-      # Check if proportions sum to ~1.0
-      if(abs(total_prop - 1.0) > 0.01) {
-        shinyalert("Error", paste0("The sum of all proportions must equal 1.0 (current sum: ", round(total_prop, 2), ")"), "error")
-        return()
-      }
-
-      ListParamsDisease = risk_classes
-      shinyalert("Success", paste0(num_classes, " risk classes saved successfully!"), "success", timer = 3000)
+    if(is.null(num_classes)) {
+      shinyalert("Error", "Please specify the number of risk classes.", "error")
+      return()
     }
+
+    risk_classes <- list()
+    total_prop <- 0
+
+    for(i in 1:num_classes) {
+      suffix <- if (isTRUE(input$enable_risk_classes)) paste0("_class_", i) else ""
+      class_name <- if (isTRUE(input$enable_risk_classes)) input[[paste0("risk_class_name_", i)]] else Name
+
+      beta_contact <- gsub(",", ".", input[[paste0("beta_contact", suffix)]])
+      beta_aerosol <- gsub(",", ".", input[[paste0("beta_aerosol", suffix)]])
+
+      if(is.na(as.numeric(beta_contact)) || is.na(as.numeric(beta_aerosol))) {
+        shinyalert("You must specify numeric values for beta (contact and aerosol).","error")
+        return()
+      }
+
+      if (isTRUE(input$enable_risk_classes)) {
+        proportion <- input[[paste0("risk_class_proportion_", i)]]
+        if(is.null(proportion) || proportion < 0 || proportion > 1) {
+          shinyalert("Error", paste0("Invalid proportion for ", class_name, " (must be 0-1)."), "error")
+          return()
+        }
+        total_prop <- total_prop + proportion
+      } else {
+        proportion <- total_prop <- 1
+      }
+
+      # Check gamma for all models
+      gamma_params <- check_distribution_parameters(input, paste0("gamma", suffix))
+      gamma_dist <- gamma_params[[1]]
+      gamma_time <- gamma_params[[2]]
+
+      if(is.null(gamma_dist) || is.null(gamma_time)) {
+        shinyalert("Error", paste0("Specify a value for gamma for ", class_name), "error")
+        return()
+      }
+
+      # Base list for this class
+      cls <- list(
+        name = class_name,
+        beta_contact = beta_contact,
+        beta_aerosol = beta_aerosol,
+        gamma_dist = gamma_dist,
+        gamma_time = gamma_time,
+        proportion = proportion
+      )
+
+      # Check alpha if model has E (exposed)
+      if(grepl("E", class_name)) {
+        alpha_params <- check_distribution_parameters(input, paste0("alpha", suffix))
+        if(any(sapply(alpha_params, is.null))) {
+          shinyalert("Error", paste0("Please specify alpha for ", class_name), "error")
+          return()
+        }
+        cls$alpha_dist <- alpha_params[[1]]
+        cls$alpha_time <- alpha_params[[2]]
+      }
+
+      # Check lambda if model has D (deaths)
+      if(grepl("D", class_name)) {
+        lambda_params <- check_distribution_parameters(input, paste0("lambda", suffix))
+        if(any(sapply(lambda_params, is.null))) {
+          shinyalert("Error", paste0("Please specify lambda for ", class_name), "error")
+          return()
+        }
+        cls$lambda_dist <- lambda_params[[1]]
+        cls$lambda_time <- lambda_params[[2]]
+      }
+
+      # Check nu if double S (end of immunity)
+      if(grepl("^([^S]*S[^S]*S[^S]*)$", class_name)) {
+        nu_params <- check_distribution_parameters(input, paste0("nu", suffix))
+        if(any(sapply(nu_params, is.null))) {
+          shinyalert("Error", paste0("Please specify nu for ", class_name), "error")
+          return()
+        }
+        cls$nu_dist <- nu_params[[1]]
+        cls$nu_time <- nu_params[[2]]
+      }
+
+      risk_classes[[i]] <- cls
+    }
+
+    # Check if proportions sum to ~1.0
+    if(isTRUE(input$enable_risk_classes) && abs(total_prop - 1.0) > 0.01) {
+      shinyalert("Error", paste0("The sum of all proportions must equal 1.0 (current sum: ", round(total_prop, 2), ")"), "error")
+      return()
+    }
+
+    ListParamsDisease = risk_classes
+    shinyalert("Success", paste0(num_classes, " risk classes saved successfully!"), "success", timer = 3000)
 
     canvasObjects$disease = ListParamsDisease
   })
 
   output$disease_model_value <- renderText({
     if(!is.null(canvasObjects$disease)){
-      text <- paste0("Disease model: ", canvasObjects$disease$Name, ". Beta (contact): ", canvasObjects$disease$beta_contact, ", Beta (aerosol): ", canvasObjects$disease$beta_aerosol, ", Gamma: ", canvasObjects$disease$gamma_time, " (", canvasObjects$disease$gamma_dist, ")")
-      if(!is.null(canvasObjects$disease$alpha_time)){
-        text <- paste0(text, ", Alpha: ", canvasObjects$disease$alpha_time, " (", canvasObjects$disease$alpha_dist, ")")}
-      if(!is.null(canvasObjects$disease$lambda_time)){
-        text <- paste0(text, ", Lambda: ", canvasObjects$disease$lambda_time, " (", canvasObjects$disease$lambda_dist, ")")
-      }
-      if(!is.null(canvasObjects$disease$nu_time)){
-        text <- paste0(text, ", Nu: ", canvasObjects$disease$nu_time, " (", canvasObjects$disease$nu_dist, ")")
-      }
-      if(!is.null(canvasObjects$risk_classes) && length(canvasObjects$risk_classes) > 0){
-        text <- paste0(text, " | Risk Classes: ", length(canvasObjects$risk_classes))
+      text <- paste0("Risk classes: ", length(canvasObjects$disease), "; Disease model: ", canvasObjects$disease[[1]]$name, ".")
+      for(i in 1:length(canvasObjects$disease)){
+        disease_risk_class <- canvasObjects$disease[[i]]
+
+        proportion <- disease_risk_class$proportion
+
+        text <- paste0(text, "Risk class ", i, ": Proportion: ", proportion, ", Beta (contact): ", disease_risk_class$beta_contact, ", Beta (aerosol): ", disease_risk_class$beta_aerosol, ", Gamma: ", disease_risk_class$gamma_time, " (", disease_risk_class$gamma_dist, ")")
+        if(!is.null(disease_risk_class$alpha_time)){
+          text <- paste0(text, ", Alpha: ", disease_risk_class$alpha_time, " (", disease_risk_class$alpha_dist, ")")}
+        if(!is.null(disease_risk_class$lambda_time)){
+          text <- paste0(text, ", Lambda: ", disease_risk_class$lambda_time, " (", disease_risk_class$lambda_dist, ")")
+        }
+        if(!is.null(disease_risk_class$nu_time)){
+          text <- paste0(text, ", Nu: ", disease_risk_class$nu_time, " (", disease_risk_class$nu_dist, ")")
+        }
       }
       text
-    }})
+    }
+  })
 
   #####  Risk Classes for Infectious States #####
 
@@ -3687,8 +3615,8 @@ server <- function(input, output,session) {
         class_uis <- lapply(1:num_classes, function(i) {
          # Pre-fill with existing data if available
           class_name <- if(!is.null(existing_data[[i]]$name)) existing_data[[i]]$name else paste0("Risk Class ", i)
-          beta_contact_val <- if(!is.null(existing_data[[i]]$beta_contact)) existing_data[[i]]$beta_contact else ifelse(i == 1, "0.024", "0.012")
-          beta_aerosol_val <- if(!is.null(existing_data[[i]]$beta_aerosol)) existing_data[[i]]$beta_aerosol else ifelse(i == 1, "410", "200")
+          beta_contact_val <- if(!is.null(existing_data[[i]]$beta_contact)) existing_data[[i]]$beta_contact else ifelse(i == 1, "0.024", "0.024")
+          beta_aerosol_val <- if(!is.null(existing_data[[i]]$beta_aerosol)) existing_data[[i]]$beta_aerosol else ifelse(i == 1, "410", "410")
           proportion_val <- if(!is.null(existing_data[[i]]$proportion)) existing_data[[i]]$proportion else round(1/num_classes, 2)
 
           div(
@@ -3741,7 +3669,7 @@ server <- function(input, output,session) {
                          )
                      ),
                      textInput(
-                       inputId = paste0("risk_class_beta_contact_", i),
+                       inputId = paste0("beta_contact_class_", i),
                        label = NULL,
                        value = beta_contact_val,
                        placeholder = "e.g., 0.024"
@@ -3757,7 +3685,7 @@ server <- function(input, output,session) {
                          )
                      ),
                      textInput(
-                       inputId = paste0("risk_class_beta_aerosol_", i),
+                       inputId = paste0("beta_aerosol_class_", i),
                        label = NULL,
                        value = beta_aerosol_val,
                        placeholder = "e.g., 410"

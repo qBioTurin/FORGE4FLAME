@@ -1227,48 +1227,60 @@ check <- function(canvasObjects, input, output, InfoApp){
     }
   }
 
-  if(is.null(canvasObjects$disease$beta_contact)){
-    shinyalert("Error", "You must insert the beta contact parameter (Infection page).", type = "error")
-    remove_modal_spinner()
-    return(NULL)
-  }
+  proportion <- 0
+  for(i in 1:length(canvasObjects$disease)){
+    disease_risk_class <- canvasObjects$disease[[i]]
+    disease_model <- canvasObjects$disease[[i]]$name
 
-  if(is.null(canvasObjects$disease$beta_aerosol)){
-    shinyalert("Error", "You must insert the beta aerosol parameter (Infection page).", type = "error")
-    remove_modal_spinner()
-    return(NULL)
-  }
+    proportion <- proportion + disease_risk_class$proportion
 
-  if(is.null(canvasObjects$disease$gamma_time)){
-    shinyalert("Error", "You must insert the gamma parameter (Infection page).", type = "error")
-    remove_modal_spinner()
-    return(NULL)
-  }
-
-  if(grepl("E", canvasObjects$disease$Name)){
-    if(is.null(canvasObjects$disease$alpha_time)){
-      shinyalert("Error", "You must insert the alpha parameter (Infection page).", type = "error")
+    if(is.null(disease_risk_class$beta_contact)){
+      shinyalert("Error", "You must insert the beta contact parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
-  }
 
-
-  if(grepl("D", canvasObjects$disease$Name)){
-    if(is.null(canvasObjects$disease$lambda_time)){
-      shinyalert("Error", "You must insert the lambda parameter (Infection page).", type = "error")
+    if(is.null(disease_risk_class$beta_aerosol)){
+      shinyalert("Error", "You must insert the beta aerosol parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
-  }
 
-
-  if(canvasObjects$disease$Name[length(canvasObjects$disease$Name)] == "S"){
-    if(is.null(canvasObjects$disease$nu_time)){
-      shinyalert("Error", "You must insert the nu parameter (Infection page).", type = "error")
+    if(is.null(disease_risk_class$gamma_time)){
+      shinyalert("Error", "You must insert the gamma parameter (Infection page).", type = "error")
       remove_modal_spinner()
       return(NULL)
     }
+
+    if(grepl("E", disease_model)){
+      if(is.null(disease_risk_class$alpha_time)){
+        shinyalert("Error", "You must insert the alpha parameter (Infection page).", type = "error")
+        remove_modal_spinner()
+        return(NULL)
+      }
+    }
+
+    if(grepl("D", disease_model)){
+      if(is.null(disease_risk_class$lambda_time)){
+        shinyalert("Error", "You must insert the lambda parameter (Infection page).", type = "error")
+        remove_modal_spinner()
+        return(NULL)
+      }
+    }
+
+    if(disease_model[length(disease_model)] == "S"){
+      if(is.null(disease_risk_class$nu_time)){
+        shinyalert("Error", "You must insert the nu parameter (Infection page).", type = "error")
+        remove_modal_spinner()
+        return(NULL)
+      }
+    }
+  }
+
+  if(abs(proportion - 1.0) > 0.01){
+    shinyalert("Error", "The sum of the proportions in each infection risk class must be equals to 1 (Infection page).", type = "error")
+    remove_modal_spinner()
+    return(NULL)
   }
 
   if (!(grepl("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", input$initial_time) || grepl("^\\d{1,2}$", input$initial_time))){

@@ -1113,6 +1113,7 @@ ui <- dashboardPage(
                            inputId = "save_values_disease_model",
                            label = "Save Parameters",
                            icon = icon("save"),
+                           style = "color: white;",
                            class = "btn-primary"
                          )
                        )
