@@ -3479,7 +3479,8 @@ server <- function(input, output,session) {
 
     for(i in 1:num_classes) {
       suffix <- if (isTRUE(input$enable_risk_classes)) paste0("_class_", i) else ""
-      class_name <- if (isTRUE(input$enable_risk_classes)) input[[paste0("risk_class_name_", i)]] else Name
+      risk_name <- if (isTRUE(input$enable_risk_classes)) input[[paste0("risk_class_name_", i)]] else "Risk class 1"
+      disease_model_name <- Name
 
       beta_contact <- gsub(",", ".", input[[paste0("beta_contact", suffix)]])
       beta_aerosol <- gsub(",", ".", input[[paste0("beta_aerosol", suffix)]])
@@ -3492,7 +3493,7 @@ server <- function(input, output,session) {
       if (isTRUE(input$enable_risk_classes)) {
         proportion <- input[[paste0("risk_class_proportion_", i)]]
         if(is.null(proportion) || proportion < 0 || proportion > 1) {
-          shinyalert("Error", paste0("Invalid proportion for ", class_name, " (must be 0-1)."), "error")
+          shinyalert("Error", paste0("Invalid proportion for ", risk_name, " (must be 0-1)."), "error")
           return()
         }
         total_prop <- total_prop + proportion
@@ -3506,13 +3507,14 @@ server <- function(input, output,session) {
       gamma_time <- gamma_params[[2]]
 
       if(is.null(gamma_dist) || is.null(gamma_time)) {
-        shinyalert("Error", paste0("Specify a value for gamma for ", class_name), "error")
+        shinyalert("Error", paste0("Specify a value for gamma for ", risk_name), "error")
         return()
       }
 
       # Base list for this class
       cls <- list(
-        name = class_name,
+        name = risk_name,
+        disease_model_name = disease_model_name,
         beta_contact = beta_contact,
         beta_aerosol = beta_aerosol,
         gamma_dist = gamma_dist,
@@ -3521,10 +3523,10 @@ server <- function(input, output,session) {
       )
 
       # Check alpha if model has E (exposed)
-      if(grepl("E", class_name)) {
+      if(grepl("E", disease_model_name)) {
         alpha_params <- check_distribution_parameters(input, paste0("alpha", suffix))
         if(any(sapply(alpha_params, is.null))) {
-          shinyalert("Error", paste0("Please specify alpha for ", class_name), "error")
+          shinyalert("Error", paste0("Please specify alpha for ", risk_name), "error")
           return()
         }
         cls$alpha_dist <- alpha_params[[1]]
@@ -3532,10 +3534,10 @@ server <- function(input, output,session) {
       }
 
       # Check lambda if model has D (deaths)
-      if(grepl("D", class_name)) {
+      if(grepl("D", disease_model_name)) {
         lambda_params <- check_distribution_parameters(input, paste0("lambda", suffix))
         if(any(sapply(lambda_params, is.null))) {
-          shinyalert("Error", paste0("Please specify lambda for ", class_name), "error")
+          shinyalert("Error", paste0("Please specify lambda for ", risk_name), "error")
           return()
         }
         cls$lambda_dist <- lambda_params[[1]]
@@ -3543,10 +3545,10 @@ server <- function(input, output,session) {
       }
 
       # Check nu if double S (end of immunity)
-      if(grepl("^([^S]*S[^S]*S[^S]*)$", class_name)) {
+      if(grepl("^([^S]*S[^S]*S[^S]*)$", disease_model_name)) {
         nu_params <- check_distribution_parameters(input, paste0("nu", suffix))
         if(any(sapply(nu_params, is.null))) {
-          shinyalert("Error", paste0("Please specify nu for ", class_name), "error")
+          shinyalert("Error", paste0("Please specify nu for ", risk_name), "error")
           return()
         }
         cls$nu_dist <- nu_params[[1]]
@@ -3570,7 +3572,7 @@ server <- function(input, output,session) {
 
   output$disease_model_value <- renderText({
     if(!is.null(canvasObjects$disease)){
-      text <- paste0("Risk classes: ", length(canvasObjects$disease), "; Disease model: ", canvasObjects$disease[[1]]$name, ".")
+      text <- paste0("Risk classes: ", length(canvasObjects$disease), "; Disease model: ", canvasObjects$disease[[1]]$disease_model_name, ".\n\n")
       for(i in 1:length(canvasObjects$disease)){
         disease_risk_class <- canvasObjects$disease[[i]]
 
@@ -3585,6 +3587,7 @@ server <- function(input, output,session) {
         if(!is.null(disease_risk_class$nu_time)){
           text <- paste0(text, ", Nu: ", disease_risk_class$nu_time, " (", disease_risk_class$nu_dist, ")")
         }
+        text <- paste0(text, "\n")
       }
       text
     }

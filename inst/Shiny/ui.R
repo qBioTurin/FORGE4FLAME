@@ -1006,9 +1006,9 @@ ui <- dashboardPage(
                 )
               ),
               column(
-                5,
+                7,
                 offset = 1,
-                textOutput("disease_model_value")
+                verbatimTextOutput("disease_model_value")
               )
             ),
             fluidRow(

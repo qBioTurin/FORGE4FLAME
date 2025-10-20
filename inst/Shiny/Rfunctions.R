@@ -1230,7 +1230,7 @@ check <- function(canvasObjects, input, output, InfoApp){
   proportion <- 0
   for(i in 1:length(canvasObjects$disease)){
     disease_risk_class <- canvasObjects$disease[[i]]
-    disease_model <- canvasObjects$disease[[i]]$name
+    disease_model <- canvasObjects$disease[[i]]$disease_model_name
 
     proportion <- proportion + disease_risk_class$proportion
 
