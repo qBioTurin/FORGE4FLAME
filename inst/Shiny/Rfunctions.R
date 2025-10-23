@@ -363,8 +363,10 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   if(!is.null(canvasObjects$disease)){
     if(length(canvasObjects$disease) > 1){
       updateCheckboxInput(session, "enable_risk_classes", value = TRUE)
-      # TO DO
+      updateSelectizeInput(session, "disease_model", selected = canvasObjects$disease[[1]]$disease_model_name)
+      updateNumericInput(session, "num_risk_classes", value = length(canvasObjects$disease))
 
+      print("TO DO")
     }
     else{
       disease_risk_class <- canvasObjects$disease[[1]]
