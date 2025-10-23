@@ -1601,7 +1601,7 @@ server <- function(input, output,session) {
 
     matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
 
-    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle") return()
+    if(!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle" || (room$center_x == 0 && room$center_y == 0)) return()
 
     valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), if(!is.null(canvasObjects$nodesINcanvas)) canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector) else NULL)
 
@@ -3647,17 +3647,6 @@ server <- function(input, output,session) {
                        min = 0,
                        max = 1,
                        step = 0.01
-                     )
-              ),
-              column(4,
-                     tags$div(
-                       style = "margin-top: 25px;",
-                       tags$span(
-                         style = "color: #7f8c8d; font-size: 12px;",
-                         icon("info-circle"),
-                         " Total proportion: ",
-                         textOutput(paste0("total_proportion_check_", i), inline = TRUE)
-                       )
                      )
               )
             ),

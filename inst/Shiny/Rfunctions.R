@@ -361,51 +361,59 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   selected = "SIR"
   if(!is.null(canvasObjects$disease)){
-    selected = canvasObjects$disease$Name
+    if(length(canvasObjects$disease) > 1){
+      updateCheckboxInput(session, "enable_risk_classes", value = TRUE)
+      # TO DO
 
-    updateTextInput(session, inputId = "beta_aerosol", value=canvasObjects$disease$beta_aerosol)
-    updateTextInput(session, inputId = "beta_contact", value=canvasObjects$disease$beta_contact)
-
-    params <- parse_distribution(canvasObjects$disease$gamma_time, canvasObjects$disease$gamma_dist)
-    gamma_dist <- canvasObjects$disease$gamma_dist
-    gamma_a <- params[[1]]
-    gamma_b <- params[[2]]
-    tab <- if(gamma_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-
-    update_distribution("gamma", gamma_dist, gamma_a, gamma_b, tab)
-
-
-    if(grepl("E", selected)){
-      params <- parse_distribution(canvasObjects$disease$alpha_time, canvasObjects$disease$alpha_dist)
-      alpha_dist <- canvasObjects$disease$alpha_dist
-      alpha_a <- params[[1]]
-      alpha_b <- params[[2]]
-      tab <- if(alpha_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-
-
-      update_distribution("alpha", alpha_dist, alpha_a, alpha_b, tab)
     }
+    else{
+      disease_risk_class <- canvasObjects$disease[[1]]
+      selected = disease_risk_class$disease_model_name
+
+      updateTextInput(session, inputId = "beta_aerosol", value=disease_risk_class$beta_aerosol)
+      updateTextInput(session, inputId = "beta_contact", value=disease_risk_class$beta_contact)
+
+      params <- parse_distribution(disease_risk_class$gamma_time, disease_risk_class$gamma_dist)
+      gamma_dist <- disease_risk_class$gamma_dist
+      gamma_a <- params[[1]]
+      gamma_b <- params[[2]]
+      tab <- if(gamma_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+
+      update_distribution("gamma", gamma_dist, gamma_a, gamma_b, tab)
 
 
-    if(grepl("D", selected)){
-      params <- parse_distribution(canvasObjects$disease$lambda_time, canvasObjects$disease$lambda_dist)
-      lambda_dist <- canvasObjects$disease$lambda_dist
-      lambda_a <- params[[1]]
-      lambda_b <- params[[2]]
-      tab <- if(lambda_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
-
-      update_distribution("lambda", lambda_dist, lambda_a, lambda_b, tab)
-    }
+      if(grepl("E", selected)){
+        params <- parse_distribution(disease_risk_class$alpha_time, disease_risk_class$alpha_dist)
+        alpha_dist <- disease_risk_class$alpha_dist
+        alpha_a <- params[[1]]
+        alpha_b <- params[[2]]
+        tab <- if(alpha_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
 
 
-    if(grepl("^([^S]*S[^S]*S[^S]*)$", selected[length(selected)])){
-      params <- parse_distribution(canvasObjects$disease$nu_time, canvasObjects$disease$nu_dist)
-      nu_dist <- canvasObjects$disease$nu_dist
-      nu_a <- params[[1]]
-      nu_b <- params[[2]]
-      tab <- if(nu_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+        update_distribution("alpha", alpha_dist, alpha_a, alpha_b, tab)
+      }
 
-      update_distribution("nu", nu_dist, nu_a, nu_b, tab)
+
+      if(grepl("D", selected)){
+        params <- parse_distribution(disease_risk_class$lambda_time, disease_risk_class$lambda_dist)
+        lambda_dist <- disease_risk_class$lambda_dist
+        lambda_a <- params[[1]]
+        lambda_b <- params[[2]]
+        tab <- if(lambda_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+
+        update_distribution("lambda", lambda_dist, lambda_a, lambda_b, tab)
+      }
+
+
+      if(grepl("^([^S]*S[^S]*S[^S]*)$", selected[length(selected)])){
+        params <- parse_distribution(disease_risk_class$nu_time, disease_risk_class$nu_dist)
+        nu_dist <- disease_risk_class$nu_dist
+        nu_a <- params[[1]]
+        nu_b <- params[[2]]
+        tab <- if(nu_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+
+        update_distribution("nu", nu_dist, nu_a, nu_b, tab)
+      }
     }
   }
 
