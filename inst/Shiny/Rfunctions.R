@@ -436,6 +436,9 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(session = session, "room_ventilation",
                        choices = roomsAvailable, selected = "")
 
+  updateNumericInput(session, inputId = "virus_severity", value = canvasObjects$virus_severity)
+  updateNumericInput(session, inputId = "virus_variant", value = canvasObjects$virus_variant)
+
   hideElement("outside_contagion_plot")
 
   if(!is.null(canvasObjects$outside_contagion)){
