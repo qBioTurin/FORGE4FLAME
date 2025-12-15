@@ -4,11 +4,15 @@ FROM rocker/shiny:latest
 RUN apt-get update && apt-get install -y \
     libfftw3-dev \
     libmagick++-dev \
+    libudunits2-dev \
+    libproj-dev \
+    libgeos-dev \
+    libgdal-dev \
     git \
     docker.io
 
 # Install necessary R packages
-RUN R -e "install.packages(c('remotes', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
+RUN R -e "install.packages(c('lubridate', 'remotes', 'shinyWidgets', 'shinydashboard', 'shinythemes', 'shinybusy', 'glue', 'readr', 'zip', 'sortable', 'stringr', 'ggplot2', 'tidyr', 'DT'))"
 
 # Install Bioconductor and dependencies
 RUN R -e "install.packages('BiocManager', repos='http://cran.rstudio.com/')"
@@ -19,7 +23,8 @@ RUN R -e "install.packages(c('devtools', 'pkgbuild', 'pkgload', 'rcmdcheck'), re
 
 # Install GitHub packages
 RUN R -e "remotes::install_github('ornelles/EBImageExtra', dependencies = TRUE, force = TRUE)"
-RUN R -e "remotes::install_github('qBioTurin/FORGE4FLAME', force=TRUE)"
+RUN R -e "remotes::install_github('r-spatial/sf', dependencies = TRUE, force = TRUE)"
+RUN R -e "remotes::install_github('qBioTurin/FORGE4FLAME@f4fv2.0', force=TRUE)"
 
 # Set working directory
 WORKDIR /usr/local/lib/R/site-library/FORGE4FLAME/

@@ -59,7 +59,6 @@ server <- function(input, output,session) {
                                  ),
                                  outside_contagion=NULL,
                                  virus_variant = 1,
-                                 virus_severity = 0,
                                  cancel_button_selected = FALSE,
                                  TwoDVisual = NULL,
                                  width = NULL,
@@ -3456,6 +3455,7 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     Name=input$disease_model
+    virus_severity=NULL
     beta_contact=NULL
     beta_aerosol=NULL
     gamma_time=NULL
@@ -3481,6 +3481,13 @@ server <- function(input, output,session) {
       suffix <- if (isTRUE(input$enable_risk_classes)) paste0("_class_", i) else ""
       risk_name <- if (isTRUE(input$enable_risk_classes)) input[[paste0("risk_class_name_", i)]] else "Risk class 1"
       disease_model_name <- Name
+
+      virus_severity <- gsub(",", ".", input[[paste0("virus_severity", suffix)]])
+
+      if((virus_severity) > 1 || (virus_severity) < 0){
+        shinyalert("Error", "Virus severity must be  in [0, 1].", type = "error")
+        return()
+      }
 
       beta_contact <- gsub(",", ".", input[[paste0("beta_contact", suffix)]])
       beta_aerosol <- gsub(",", ".", input[[paste0("beta_aerosol", suffix)]])
@@ -3515,6 +3522,7 @@ server <- function(input, output,session) {
       cls <- list(
         name = risk_name,
         disease_model_name = disease_model_name,
+        virus_severity = virus_severity,
         beta_contact = beta_contact,
         beta_aerosol = beta_aerosol,
         gamma_dist = gamma_dist,
@@ -3631,7 +3639,7 @@ server <- function(input, output,session) {
               )
             ),
             fluidRow(
-              column(4,
+              column(6,
                      textInput(
                        inputId = paste0("risk_class_name_", i),
                        label = "Class Name:",
@@ -3639,7 +3647,7 @@ server <- function(input, output,session) {
                        placeholder = paste0("e.g., High Risk, Low Risk")
                      )
               ),
-              column(4,
+              column(6,
                      numericInput(
                        inputId = paste0("risk_class_proportion_", i),
                        label = HTML("Proportion of Infected <i>(0-1)</i>:"),
@@ -3648,6 +3656,20 @@ server <- function(input, output,session) {
                        max = 1,
                        step = 0.01
                      )
+              )
+            ),
+            fluidRow(
+              column(
+                width = 6,
+                div(class = "icon-container",
+                    h5(tags$b("Virus severity: "), icon("info-circle")),
+                    div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
+                ),
+                numericInput(
+                  inputId = paste0("virus_severity_", i),
+                  label = NULL,
+                  value = 0.22, max = 1, min = 0
+                )
               )
             ),
             fluidRow(
@@ -4146,27 +4168,19 @@ server <- function(input, output,session) {
       canvasObjects$agents_whatif = new_data
     }
   })
+
   observeEvent(input$save_virus,{
-
     req(input$virus_variant)
-    req(input$virus_severity)
 
-    if((input$virus_severity) > 1 || (input$virus_severity) < 0){
-      shinyalert("Error", "Virus severity must be  in [0, 1].", type = "error")
-      return()
-    }
     if((input$virus_variant) < 0){
       shinyalert("Error", "Virus variant must be > 0.", type = "error")
       return()
     }
 
     canvasObjects$virus_variant <-  input$virus_variant
-    canvasObjects$virus_severity <-  input$virus_severity
   })
   observeEvent(input$save_initial_infected,{
     canvasObjects$initial_infected -> initial_infected
-    req(input$virus_variant)
-    req(input$virus_severity)
 
     if(is.na(as.integer(input$initial_infected_global)) || as.integer(input$initial_infected_global) < 0){
       shinyalert("Error", "Initial infected must be a number greater or equal (>=) 0.", type = "error")
@@ -4293,8 +4307,7 @@ server <- function(input, output,session) {
   })
 
   output$virus_info <- renderDT({
-    datatable( data.frame(Variant = canvasObjects$virus_variant,
-                          Severity = canvasObjects$virus_severity),
+    datatable( data.frame(Variant = canvasObjects$virus_variant),
                options = list(searching = FALSE, info = FALSE,paging = FALSE,
                               sort = TRUE, scrollX = TRUE, scrollY = TRUE))
   })

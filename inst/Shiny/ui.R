@@ -1071,6 +1071,15 @@ ui <- dashboardPage(
             )
           )
         ),
+        # fluidRow(
+        #   box(
+        #     width = 12,
+        #     collapsible = T,
+        #     collapsed = T,
+        #     title = h3("Details on contagion processes"),
+        #     html()
+        #   )
+        # ),
         fluidRow(
           box(
             width = 12,
@@ -1139,6 +1148,20 @@ ui <- dashboardPage(
                                 "These parameters apply uniformly to all agents."
                          ),
                          fluidRow(
+                           column(
+                             width = 6,
+                             div(class = "icon-container",
+                                 h5(tags$b("Virus severity: "), icon("info-circle")),
+                                 div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
+                             ),
+                             numericInput(
+                               inputId = "virus_severity",
+                               label = NULL,
+                               value = 0.22, max = 1, min = 0
+                             )
+                           )
+                         ),
+                         fluidRow(
                            column(6,
                                   div(class = "icon-container",
                                       tags$label(icon("info-circle"), " β", tags$sub("contact"), ":"),
@@ -1151,7 +1174,6 @@ ui <- dashboardPage(
                                   textInput(
                                     "beta_contact",
                                     label = NULL,
-                                    width = "100px",
                                     value = 0.024
                                   )
                            ),
@@ -1167,7 +1189,6 @@ ui <- dashboardPage(
                                   textInput(
                                     "beta_aerosol",
                                     label = NULL,
-                                    width = "100px",
                                     value = 410
                                   )
                            )
@@ -1769,19 +1790,19 @@ ui <- dashboardPage(
                           value = 1, min =0
                         )
                       ),
-                      column(
-                        offset = 1,
-                        width = 2,
-                        div(class = "icon-container",
-                            h5(tags$b("Virus severity: "), icon("info-circle")),
-                            div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
-                        ),
-                        numericInput(
-                          inputId = "virus_severity",
-                          label = NULL,
-                          value = 0.22, max = 1, min = 0
-                        )
-                      ),
+                      # column(
+                      #   offset = 1,
+                      #   width = 2,
+                      #   div(class = "icon-container",
+                      #       h5(tags$b("Virus severity: "), icon("info-circle")),
+                      #       div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
+                      #   ),
+                      #   numericInput(
+                      #     inputId = "virus_severity",
+                      #     label = NULL,
+                      #     value = 0.22, max = 1, min = 0
+                      #   )
+                      # ),
                       column(1, offset=11, actionButton("save_virus", "Save"))
                     ))
               ),
