@@ -1071,15 +1071,15 @@ ui <- dashboardPage(
             )
           )
         ),
-        # fluidRow(
-        #   box(
-        #     width = 12,
-        #     collapsible = T,
-        #     collapsed = T,
-        #     title = h3("Details on contagion processes"),
-        #     html()
-        #   )
-        # ),
+        fluidRow(
+          box(
+            width = 12,
+            collapsible = T,
+            collapsed = T,
+            title = h3("Details on contagion processes"),
+            html()
+          )
+        ),
         fluidRow(
           box(
             width = 12,
