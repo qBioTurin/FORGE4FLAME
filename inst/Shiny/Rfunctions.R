@@ -422,6 +422,12 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(inputId = "disease_model",
                        selected = selected)
 
+  updateNumericInput(session, "ngen_base", value = canvasObjects$virus_parameters$ngen_base)
+  updateNumericInput(session, "vl", value = canvasObjects$virus_parameters$vl)
+  updateNumericInput(session, "decay_rate", value = canvasObjects$virus_parameters$decay_rate)
+  updateNumericInput(session, "gravitational_settling_rate", value = canvasObjects$virus_parameters$gravitational_settling_rate)
+  updateNumericInput(session, "inhalation_rate_pure", value = canvasObjects$virus_parameters$inhalation_rate_pure)
+
   updateTextInput(session, inputId = "seed", value = canvasObjects$starting$seed)
   updateRadioButtons(session, inputId = "initial_day", selected = canvasObjects$starting$day)
   updateTextInput(session, inputId = "nrun", value = canvasObjects$starting$nrun)
@@ -437,7 +443,6 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
                        choices = roomsAvailable, selected = "")
 
   updateNumericInput(session, inputId = "virus_severity", value = canvasObjects$virus_severity)
-  updateNumericInput(session, inputId = "virus_variant", value = canvasObjects$virus_variant)
 
   hideElement("outside_contagion_plot")
 
@@ -818,43 +823,64 @@ update_distribution <- function(id, dist, a, b, tab){
 FromToMatrices.generation = function(WHOLEmodel){
   maxN = as.numeric(WHOLEmodel$starting$simulation_days)
 
-  ## defualt values
-  default_params = data.frame(
-    Measure = "Ventilation",
-    Type = "Global",
-    Parameters = "0",
-    From = 1,
-    To = maxN,
-    stringsAsFactors = FALSE
-  )
-
-  WHOLEmodel$rooms_whatif = rbind(default_params, WHOLEmodel$rooms_whatif)
-
   MeasuresFromTo <- NULL
   ## From_to matrix generation rooms
   if(!is.null(WHOLEmodel$roomsINcanvas)){
     rooms = WHOLEmodel$roomsINcanvas %>% mutate(Type= paste0(type,"-",area)) %>% select(Type) %>% distinct() %>% pull()
     rooms_fromto= matrix(0,ncol = maxN, nrow = length(rooms), dimnames = list(rooms = rooms, days= 1:maxN))
 
+    room_default <- data.frame(
+      Measure = c("Ventilation"),
+      Type = "Global",
+      Parameters = c( "Ventilation: 0; Sterilisation: 0; Air: 100"),
+      From = 1,
+      To = maxN,
+      stringsAsFactors = FALSE
+    )
+
+    WHOLEmodel$rooms_whatif = rbind(room_default,WHOLEmodel$rooms_whatif)
     MeasuresFromTo = lapply( unique(WHOLEmodel$rooms_whatif$Measure),function(m,fromto){
-      rooms_whatif = WHOLEmodel$rooms_whatif %>% filter(Measure == m)
+      rooms_whatif = WHOLEmodel$rooms_whatif %>% filter(Measure == m) %>% rename(Name = Type)
 
-      global = rooms_whatif %>% filter(Type == "Global")
-      if(dim(global)[1] >0){
-        for(i in seq_along(global[,1])){
-          glob_specific = global[i,]
-          fromto[,glob_specific$From:glob_specific$To] = glob_specific$Parameters
-        }
-      }
+      params = str_split(rooms_whatif[,"Parameters"],pattern = "; ")%>%
+        as.data.frame() %>%
+        t %>%
+        data.frame(stringsAsFactors = F)
 
-      room_specific = rooms_whatif %>% filter(Type != "Global")
-      if(dim(room_specific)[1] >0){
-        for(i in seq_along(room_specific[,1])){
-          r_specific = room_specific[i,]
-          fromto[r_specific$Type,r_specific$From:r_specific$To] = r_specific$Parameters
+      colnames(params)= str_split(params[1,],pattern = ": ")%>%
+        as.data.frame() %>%
+        t %>%
+        data.frame(stringsAsFactors = F) %>% pull(1)
+      rownames(params) = NULL
+
+      for(j in 1:nrow(params))
+        params[j,] = gsub(x = params[j,],replacement = "",pattern = paste0(paste0(colnames(params),": "),collapse = "||"))
+
+      rooms_whatif = cbind(rooms_whatif %>% select(-Parameters), params)
+
+      fromto = lapply(names(params),function(i, fromto_p){
+        r_specific = rooms_whatif[,c("Name","From","To",i) ]
+
+        global = r_specific %>% filter(Name == "Global")
+        if(dim(global)[1] >0){
+          for(ii in seq_along(global[,1])){
+            glob_specific = global[ii,]
+            fromto_p[,glob_specific$From:glob_specific$To] = glob_specific[,i]
+          }
         }
-      }
-      fromto = cbind(rooms,fromto) # put rooms name as first column
+
+        room_specific = r_specific %>% filter(Name != "Global")
+        if(dim(room_specific)[1] >0){
+          for(ii in seq_along(room_specific[,1])){
+            room_specific = room_specific[ii,]
+            fromto_p[room_specific$Name,room_specific$From:room_specific$To] = room_specific[,i]
+          }
+        }
+        fromto_p = cbind(rooms,fromto_p) # put rooms name as first column
+        return(fromto_p)
+      },fromto_p = fromto)
+      names(fromto)= names(params)
+
       return(fromto)
     },fromto = rooms_fromto)
     names(MeasuresFromTo) = unique(WHOLEmodel$rooms_whatif$Measure)
@@ -876,7 +902,7 @@ FromToMatrices.generation = function(WHOLEmodel){
                       paste0("Dist.Days: No quarantine, 0, 0; Q.Room: ", (WHOLEmodel$roomsINcanvas %>% filter(grepl("^Spawnroom", type)))$type[1], "-", (WHOLEmodel$roomsINcanvas %>% filter(grepl("^Spawnroom", type)))$area[1], "; Sensitivity: 1; Specificity: 1; Dist: No swab, 0, 0 "),
                       "First: 0; Second: 0" ),
       From = 1,
-      To = WHOLEmodel$starting$simulation_days,
+      To = maxN,
       stringsAsFactors = FALSE
     )
 

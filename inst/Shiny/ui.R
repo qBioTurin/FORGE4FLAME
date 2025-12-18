@@ -1076,8 +1076,104 @@ ui <- dashboardPage(
             width = 12,
             collapsible = T,
             collapsed = T,
-            title = h3("Details on contagion processes"),
-            html()
+            title = h3("Details on contagion processes (to fix)"),
+            withMathJax(),
+
+            h3(tags$b("Close-range contacts")),
+             HTML("
+              <p>
+              The probability of a successful contagious contact is associated with each
+              susceptible pedestrian agent (\\(S_i\\)) that remains for \\(d\\) minutes within
+              an area \\(\\mathbf{A} = 3.46\\,\\mathrm{m}^2\\) surrounding an infected agent.
+              We consider a circular area with radius \\(1.05\\,\\mathrm{m}\\).
+              </p>
+
+              <p>
+              The probability is given by:
+              </p>
+
+              $$
+              P_{S_i,d} = 1 - \\left(1 - \\frac{P_{\\text{transmission}}}{\\mathbf{A}}\\right)^d
+              $$
+
+              <p>
+              where the per-minute transmission probability is
+              </p>
+
+              $$
+              P_{\\text{transmission}} = c_r \\cdot C(t_{\\text{symptomatic}})
+              $$
+
+              <p>
+              with \\(c_r = 0.024\\) for COVID-19 (reduced by 47\\% when using a mask), and
+              </p>
+
+              $$
+              C(t_{\\text{symptomatic}}) =
+              \\begin{cases}
+                2^{-t_{\\text{symptomatic}}}, & \\text{if symptomatic} \\\\
+                0.01, & \\text{otherwise}
+              \\end{cases}
+              $$
+
+              <p>
+              The per-minute probability of infection is therefore
+              </p>
+
+              $$
+              P_{S_i} = \\frac{c_r \\cdot C(t_{\\text{symptomatic}})}{\\mathbf{A}}
+              $$
+
+              <p>
+              Over \\(n\\) minutes, the infection process follows a Bernoulli sequence:
+              </p>
+
+              $$
+              P(X \\ge 1) = 1 - (1 - p)^n
+              $$
+              "),
+
+            h3(tags$b("Aerosol transmission")),
+
+              HTML("
+              <p>
+              Aerosol transmission is based on the quanta concentration in each room.
+              The probability of infection is:
+              </p>
+
+              $$
+              P_{S_i} = 1 - e^{-N_{\\text{virus}} / k_p}
+              $$
+
+              <p>
+              where \\(k_p = 410\\) for COVID-19 and \\(N_{\\text{virus}}\\) is the number
+              of inhaled quanta:
+              </p>
+
+              $$
+              \\mathrm{d}N_{\\text{virus}} =
+              (1 - \\eta_{\\text{mask}}) \\, C(t) \\, Q_{\\text{inh}} \\, \\mathrm{d}t
+              $$
+              "),
+
+              h3(tags$b("Combination of contact and aerosol probabilities")),
+              HTML("
+              <br>
+              <p>
+              Let's call \\(P_{S_i}^C\\) and \\(P_{S_i}^A\\) the per-step probabilities of getting the infection
+              through contact and aerosol, respectively. We have two independent Binomial random variables
+              \\(X_C\\) and \\(X_A\\).
+              <br>
+              In each step, we can generate a single random number combining the two
+              probabilities in this way:
+              </p>
+
+              $$
+              P = 1 - P(X_C = 0, X_A = 0)
+                = 1 - (1 - P_{S_i}^C)(1 - P_{S_i}^A)
+                = P_{S_i}^C + P_{S_i}^A - P_{S_i}^C P_{S_i}^A
+              $$
+              ")
           )
         ),
         fluidRow(
@@ -1243,6 +1339,96 @@ ui <- dashboardPage(
               )
             )
           )
+        ),
+        fluidRow(
+          box(
+            width = 12,
+            collapsible = T,
+            collapsed = F,
+            title = h3("Detailed virus parameters"),
+            fluidRow(
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "ngen_base",
+                  label = div(class = "icon-container",
+                              h5(tags$b("Exhalation rate pure: "), icon("info-circle")),
+                              div(class = "icon-text", "It depends on the upward air velocity and the aerosol cut-off diameter of the modelled virus. The default values is took from [2].")
+                  ),
+                  value = 0.589,
+                  min = 0
+                )
+              ),
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "vl",
+                  label = div(class = "icon-container",
+                              h5(tags$b("Viral load: "), icon("info-circle")),
+                              div(class = "icon-text", "Viral load at the sputum of the infected person. The default values is took from [2].")
+                  ),
+                  value = 9,
+                  min = 1,
+                  step = 1
+                )
+              ),
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "decay_rate",
+                  label = div(class = "icon-container",
+                              h5(tags$b("Decay rate: "), icon("info-circle")),
+                              div(class = "icon-text", "Decay rate of the modelled virus. The default values is took from [2].")
+                  ),
+                  value = 0.636,
+                  min = 0
+                )
+              )
+            ),
+            fluidRow(
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "gravitational_settling_rate",
+                  label = div(class = "icon-container",
+                              h5(tags$b("Gravitational settling rate: "), icon("info-circle")),
+                              div(class = "icon-text", "Gravitational settling rate. The default values is took from [2].")
+                  ),
+                  value = 0.39,
+                  min = 0
+                )
+              ),
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "inhalation_rate_pure",
+                  label = div(class = "icon-container",
+                              h5(tags$b("Inhalation rate pure: "), icon("info-circle")),
+                              div(class = "icon-text", "The default values is took from [2].")
+                  ),
+                  value = 0.521,
+                  min = 0
+                )
+              ),
+              column(3,offset = 2,
+                     tags$div(
+                       style = "margin-top: 20px; text-align: right;",
+                       actionButton(
+                         inputId = "save_values_virus_parameters",
+                         label = "Save Parameters",
+                         icon = icon("save"),
+                         style = "color: white;",
+                         class = "btn-primary"
+                       )
+                     )
+              )
+            )
+          )
         )
       ),
       ## Tab setting ####
@@ -1383,7 +1569,7 @@ ui <- dashboardPage(
               ),
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
-                    title = h3("Ventilation"),
+                    title = h3("Ventilation & Sterilisation"),
                     fluidRow(
                       column(
                         offset = 1,
@@ -1414,14 +1600,56 @@ ui <- dashboardPage(
                                       h5(tags$b("Ventilation (in ACH): "), icon("info-circle")),
                                       div(class = "icon-text", "For instance, 3 Air Changes per Hour (ACH) means that in 1 hour 300.000 L (or analogous 300 squared meters) of external air are entered into the considered room.")
                           ),
-                          choices = c("0 (no ventilation)", "0.3 (poorly ventilated)", "1 (domestic)", "3 (offices/schools)", "5 (well ventilated)", "10 (typical maximum)", "20 (hospital setting)"),
+                          choices = c("0 (no ventilation)", "0.3 (poorly ventilated)", "1 (domestic)", "3 (offices/schools)", "5 (well ventilated)", "10 (typical maximum)", "20 (hosp0l setting)", "Custom value"),
                           selected = "0 (no ventilation)"
+                        )
+                      ),
+                      conditionalPanel(
+                        condition = 'input.ventilation_params == "Custom value"',
+                        column(
+                          width = 2,
+                          numericInput(
+                            inputId = "ventilation_params_custom",
+                            label = "Custom ventilation (in ACH):",
+                            min = 0,
+                            value = 0
+                          )
+                        )
+                      ),
+                      column(
+                        width = 2,
+                        numericInput(
+                          inputId = "ventilation_air",
+                          label = div(class = "icon-container",
+                                      h5(tags$b("Air supplied from outside (%): "), icon("info-circle")),
+                                      div(class = "icon-text", "The fraction of supplied air that originates from outside (the remaining fraction of air will be recirculated through the filter, if any).")
+                          ),
+                          value = 100,
+                          min = 0,
+                          max = 100
+                        )
+                      )
+                    ),
+                    fluidRow(
+                      column(
+                        width = 2,
+                        offset = 3,
+                        numericInput(
+                          inputId = "sterilisation_params",
+                          label = div(class = "icon-container",
+                                      h5(tags$b("Sterilisation filtration efficacy (%): "), icon("info-circle")),
+                                      div(class = "icon-text", "For instance, HEPA filters 99.95% of particles that are 0.3 microns, ePM1 filters 90% in particles 0.3 micron to 1 micron in size (PM1), ePM2.5 filters 90% in particles 0.3 micron to 2.5 micron in size (PM2.5), ePM10 filters 90% in particles 0.3 micron to 10 micron in size (PM10), ISO coarse filters < 50% in PM10.")
+                          ),
+                          value = 0,
+                          min = 0,
+                          max = 100
                         )
                       ),
                       column(1, numericInput(inputId = "ventilation_time_from", label = "From (day):", value = 1, min = 1)),
                       column(1, numericInput(inputId = "ventilation_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1,offset=11, actionButton("save_ventilation", "Save"))
-                    ))
+                    )
+                  )
               ),
               fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
@@ -1513,7 +1741,6 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(1, offset=3, numericInput(inputId = "vaccination_time_from", label = "At (day):", value = 1, min = 1)),
-                      #column(1, numericInput(inputId = "vaccination_time_to", label = "To (day):", value = 10, min = 1)),
                       column(1,offset=11, actionButton("save_vaccination", "Save"))
                     )
                 )
@@ -1775,7 +2002,7 @@ ui <- dashboardPage(
               ),
               fluidRow(
                 box(width = 12, collapsed = F,collapsible = T,
-                    title = h3("Virus"),
+                    title = h3("Variant"),
                     fluidRow(
                       column(
                         offset = 1,

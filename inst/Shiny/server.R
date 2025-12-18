@@ -58,7 +58,7 @@ server <- function(input, output,session) {
                                    stringsAsFactors = FALSE
                                  ),
                                  outside_contagion=NULL,
-                                 virus_variant = 1,
+                                 virus_parameters = data.frame(virus_variant=1, ngen_base=0.589, vl=9, decay_rate=0.636, gravitational_settling_rate=0.39, inhalation_rate_pure=0.521),
                                  cancel_button_selected = FALSE,
                                  TwoDVisual = NULL,
                                  width = NULL,
@@ -3574,6 +3574,48 @@ server <- function(input, output,session) {
     canvasObjects$disease = ListParamsDisease
   })
 
+  observeEvent(input$save_values_virus_parameters,{
+    disable("rds_generation")
+    disable("flamegpu_connection")
+
+    ngen_base <- input$ngen_base
+    vl <- input$vl
+    decay_rate <- input$decay_rate
+    gravitational_settling_rate <- input$gravitational_settling_rate
+    inhalation_rate_pure <- input$inhalation_rate_pure
+
+    if(is.null(ngen_base) || !is.numeric(ngen_base) || ngen_base < 0){
+      shinyalert("Error", "The exhalation rate pure must be a number greater than 0.", "error")
+      return()
+    }
+
+    if(is.null(vl) || !is.numeric(vl) || vl < 0){
+      shinyalert("Error", "The viral load must be a number greater than 0.", "error")
+      return()
+    }
+
+    if(is.null(decay_rate) || !is.numeric(decay_rate) || decay_rate < 0){
+      shinyalert("Error", "The decay rate must be a number greater than 0.", "error")
+      return()
+    }
+
+    if(is.null(gravitational_settling_rate) || !is.numeric(gravitational_settling_rate) || gravitational_settling_rate < 0){
+      shinyalert("Error", "The gravitational settling rate must be a number greater than 0.", "error")
+      return()
+    }
+
+    if(is.null(inhalation_rate_pure) || !is.numeric(inhalation_rate_pure) || inhalation_rate_pure < 0){
+      shinyalert("Error", "The inhalation rate pure must be a number greater than 0.", "error")
+      return()
+    }
+
+    canvasObjects$virus_parameters$ngen_base <- ngen_base
+    canvasObjects$virus_parameters$vl <- vl
+    canvasObjects$virus_parameters$decay_rate <- decay_rate
+    canvasObjects$virus_parameters$gravitational_settling_rate <- gravitational_settling_rate
+    canvasObjects$virus_parameters$inhalation_rate_pure <- inhalation_rate_pure
+  })
+
   output$disease_model_value <- renderText({
     if(!is.null(canvasObjects$disease)){
       text <- paste0("Risk classes: ", length(canvasObjects$disease), "; Disease model: ", canvasObjects$disease[[1]]$disease_model_name, ".\n\n")
@@ -3884,6 +3926,28 @@ server <- function(input, output,session) {
       return()
     }
 
+    if(input$ventilation_params == "Custom value"){
+      if(is.null(input$ventilation_params_custom) || !is.numeric(input$ventilation_params_custom) || input$ventilation_params_custom < 0){
+        shinyalert("Error", paste0("The custom ventilation value must be a number greater than 0."), type = "error")
+        return()
+      }
+    }
+
+    if(is.null(input$ventilation_air) || !is.numeric(input$ventilation_air) || input$ventilation_air < 0 || input$ventilation_air > 100){
+      shinyalert("Error", paste0("The fraction of air supplied from outside must be a number in [0, 100]."), type = "error")
+      return()
+    }
+
+    if(is.null(input$sterilisation_params) || !is.numeric(input$sterilisation_params) || input$sterilisation_params < 0 || input$sterilisation_params > 100){
+      shinyalert("Error", paste0("The sterilisation filtration efficacy must be a number in [0, 100]."), type = "error")
+      return()
+    }
+
+    if(input$sterilisation_params == 0 && input$ventilation_air < 100){
+      shinyalert("Error", paste0("The fraction of air supplied from outside must be equals to 100 if no air filter is active."), type = "error")
+      return()
+    }
+
     ventilation = switch(input$ventilation_params,
                          "0 (no ventilation)" = 0,
                          "0.3 (poorly ventilated)" = 0.3,
@@ -3891,14 +3955,15 @@ server <- function(input, output,session) {
                          "3 (offices/schools)" = 3,
                          "5 (well ventilated)" = 5,
                          "10 (typical maximum)" = 10,
-                         "20 (hospital setting)" = 20)
+                         "20 (hospital setting)" = 20,
+                         "Custom value" = input$ventilation_params_custom)
 
     new_data = add_data(measure = "Ventilation",
-                        parameters = paste(ventilation),
+                        parameters = paste0("Ventilation: ", ventilation, "; Sterilisation: ", input$sterilisation_params, "; Air: ", input$ventilation_air),
                         type = ifelse(input$ventilation_type != "Global", input$room_ventilation, "Global"),
                         from = input$ventilation_time_from,
                         to = input$ventilation_time_to,
-                        data = rooms_whatif )
+                        data = rooms_whatif)
 
     if( !is.null(new_data) ){
       canvasObjects$rooms_whatif = new_data
@@ -4173,7 +4238,7 @@ server <- function(input, output,session) {
       return()
     }
 
-    canvasObjects$virus_variant <-  input$virus_variant
+    canvasObjects$virus_parameters$virus_variant <- input$virus_variant
   })
   observeEvent(input$save_initial_infected,{
     canvasObjects$initial_infected -> initial_infected
@@ -4303,7 +4368,7 @@ server <- function(input, output,session) {
   })
 
   output$virus_info <- renderDT({
-    datatable( data.frame(Variant = canvasObjects$virus_variant),
+    datatable( data.frame(Variant = canvasObjects$virus_parameters$virus_variant),
                options = list(searching = FALSE, info = FALSE,paging = FALSE,
                               sort = TRUE, scrollX = TRUE, scrollY = TRUE))
   })
@@ -4479,6 +4544,9 @@ server <- function(input, output,session) {
       for(i in 1:nrow(canvasObjects$agents_whatif)){
         if(canvasObjects$agents_whatif[i, "To"] == old_simulation_days)
           canvasObjects$agents_whatif[i, "To"] <- simulation_days
+
+        if(canvasObjects$agents_whatif[i, "From"] > simulation_days)
+          canvasObjects$agents_whatif[i, "From"] <- simulation_days
       }
     }
 
@@ -4486,6 +4554,9 @@ server <- function(input, output,session) {
       for(i in 1:nrow(canvasObjects$rooms_whatif)){
         if(canvasObjects$rooms_whatif[i, "To"] == old_simulation_days)
           canvasObjects$rooms_whatif[i, "To"] <- simulation_days
+
+        if(canvasObjects$rooms_whatif[i, "From"] == simulation_days)
+          canvasObjects$rooms_whatif[i, "From"] <- simulation_days
       }
     }
 
