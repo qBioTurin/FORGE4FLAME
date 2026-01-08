@@ -3704,7 +3704,7 @@ server <- function(input, output,session) {
                     div(class = "icon-text", "Probability to show sever symptoms. In [4] you can find an example for the Covid-19.")
                 ),
                 numericInput(
-                  inputId = paste0("virus_severity_", i),
+                  inputId = paste0("virus_severity_class_", i),
                   label = NULL,
                   value = 0.22, max = 1, min = 0
                 )
