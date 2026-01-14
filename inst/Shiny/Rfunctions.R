@@ -502,11 +502,12 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
     #if(InfoApp$oldAgentType == "Time window"){
       for(i in names(NumShifts)) {
         removeTab(inputId = "Shift_tabs", target = i)
+        removeUI(selector = paste0("Time_tabs_", i))
       }
     #}
     #else if(InfoApp$oldAgentType == "Daily Rate"){
-      for(i in NumTabs) {
-        removeTab(inputId = "Rate_tabs", target = paste0("slot_", i))
+      for(j in NumTabs) {
+        removeTab(inputId = "Rate_tabs", target = paste0("slot_", j), session = session)
       }
     #}
   }
@@ -636,8 +637,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       rate_dist <- unique(df$RateDist)
       rate_a <- params[[1]]
       rate_b <- params[[2]]
-      if(i == min(slots))
-        tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
+      tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
 
       appendTab(inputId = "Rate_tabs",
                 tabPanel(paste0(i," slot"),
@@ -656,11 +656,11 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                          )
                 )
       )
+      showTab(inputId = paste0("DistTime_tabs_daily_rate_", i), target = tab, select = T)
 
       # update_distribution(paste0("daily_rate_", i), rate_dist, rate_a, rate_b, tab)
     }
     showTab(inputId = "Rate_tabs", target = paste0("slot_", slots[1]), select = T)
-    showTab(inputId = paste0("DistTime_tabs_daily_rate_", slots[1]), target = tab, select = T)
     # if(tab == "StocTime_tab")
     #   updateSelectInput(inputId = paste0("DistStoc_id_daily_rate_", slots[1]), selected = rate_dist)
   }
@@ -1173,6 +1173,7 @@ check <- function(canvasObjects, input, output, InfoApp){
         filter(FlowID == df)
 
       rooms_type <- unique(df_local$Room)
+      browser()
 
       if(length(rooms_type) <= 1){
         shinyalert(
@@ -1389,11 +1390,12 @@ check <- function(canvasObjects, input, output, InfoApp){
 }
 
 first_missing_number <- function(arr) {
+  arr <- as.integer(arr)
   arr <- sort(unique(arr))
   for (i in seq_along(arr)) {
     if (arr[i] != i) {
-      return(i)
+      return(i+1)
     }
   }
-  return(max(arr) + 1)
+  return(length(arr) + 1)
 }

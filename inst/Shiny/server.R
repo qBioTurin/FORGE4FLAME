@@ -2765,7 +2765,7 @@ server <- function(input, output,session) {
     InfoApp$NumTabsTimeSlot = sort(c(InfoApp$NumTabsTimeSlot, NumTabs))
     appendTab(inputId = "Rate_tabs",
               tabPanel(paste0(NumTabs," slot"),
-                       value = paste0(NumTabs," slot"),
+                       value = paste0("slot_", NumTabs),
                        tags$b("Entrance rate:"),
                        get_distribution_panel(paste0("daily_rate_", NumTabs)),
                        #textInput(inputId = paste0("EntranceRate_", NumTabs), label = "Entrance rate:", placeholder = "Daily entrance rate", value = ""),
