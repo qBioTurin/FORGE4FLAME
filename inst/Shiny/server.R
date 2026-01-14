@@ -2760,7 +2760,7 @@ server <- function(input, output,session) {
     InfoApp$NumTabsTimeSlot = sort(c(InfoApp$NumTabsTimeSlot, NumTabs))
     appendTab(inputId = "Rate_tabs",
               tabPanel(paste0(NumTabs," slot"),
-                       value = paste0(NumTabs," slot"),
+                       value = paste0("slot_", NumTabs),
                        tags$b("Entrance rate:"),
                        get_distribution_panel(paste0("daily_rate_", NumTabs)),
                        #textInput(inputId = paste0("EntranceRate_", NumTabs), label = "Entrance rate:", placeholder = "Daily entrance rate", value = ""),
@@ -2921,14 +2921,18 @@ server <- function(input, output,session) {
                             ExitTime = ExitTimeRate,
                             RateDist = new_dist,
                             RateTime = new_time,
-                            Days = input[[paste0("selectedDaysRate_",index)]])
+                            Days = input[[paste0("selectedDaysRate_",index)]],
+                            Shift = "1 shift",
+                            NumAgent = 0)
           }else{
             df = data.frame(Name = paste0(index, " slot"),
                             EntryTime = NA ,
                             ExitTime = NA,
                             RateDist = NA,
                             RateTime = NA,
-                            Days = NA)
+                            Days = NA,
+                            Shift = NA,
+                            NumAgent = NA)
           }
 
           new_entry_time = unique(df$EntryTime)
