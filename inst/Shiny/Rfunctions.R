@@ -1173,7 +1173,6 @@ check <- function(canvasObjects, input, output, InfoApp){
         filter(FlowID == df)
 
       rooms_type <- unique(df_local$Room)
-      browser()
 
       if(length(rooms_type) <= 1){
         shinyalert(
