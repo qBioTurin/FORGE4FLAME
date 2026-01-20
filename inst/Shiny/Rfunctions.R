@@ -182,7 +182,6 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
   roomNames = canvasObjects$rooms
 
-
   if(!is.null(canvasObjects$roomsINcanvas)){
     rooms = canvasObjects$roomsINcanvas %>% filter(CanvasID == canvas)
     for(i in rooms$ID){

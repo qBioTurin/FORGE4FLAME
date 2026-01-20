@@ -4679,12 +4679,32 @@ server <- function(input, output,session) {
       return()  # Exit the event if no valid directory path is selected
     }
 
-    if(length(dirPath) != 0 ){
-      output$dirPath <- renderText({dirPath})
+    postprocObjects$dirPath <- dirPath
+
+    missing_files <- sapply(required_files, function(f) {
+      length(list.files(postprocObjects$dirPath, pattern = paste0("^", f, "$"),
+                        recursive = TRUE, full.names = TRUE)) == 0
+    })
+
+    if(any(missing_files)){
+      shinyalert(
+        title = "Error",
+        text = paste("The following required files are missing (even in subfolders):\n",
+                     paste(names(missing_files)[missing_files], collapse = "\n")),
+        type = "error"
+      )
+      postprocObjects$dirPath <- NULL
+      return()
     }
+
+
+    output$dirPath <- renderText({dirPath})
+
+
   }, ignoreInit = TRUE)
 
   observeEvent(input$LoadFolderPostProc_Button,{
+
     is_docker_compose <- Sys.getenv("DOCKER_COMPOSE") == "ON"
     if(is_docker_compose){
       req(input$Folder_Selection_Compose_cell_clicked$value)
@@ -4692,6 +4712,22 @@ server <- function(input, output,session) {
     }
     else{
       dirname <- req(input$dir)
+    }
+
+    missing_files <- sapply(required_files, function(f) {
+      length(list.files(postprocObjects$dirPath, pattern = paste0("^", f, "$"),
+                        recursive = TRUE, full.names = TRUE)) == 0
+    })
+
+    if(any(missing_files)){
+      shinyalert(
+        title = "Error",
+        text = paste("The following required files are missing (even in subfolders):\n",
+                     paste(names(missing_files)[missing_files], collapse = "\n")),
+        type = "error"
+      )
+      postprocObjects$dirPath <- NULL
+      return()
     }
 
     if(is.null(canvasObjects$roomsINcanvas)){
@@ -4782,6 +4818,9 @@ server <- function(input, output,session) {
 
           f$Folder <- basename(dirname(file))
           return(f)
+        } else {
+          shinyalert("Warning", sprintf("File '%s' not found. Skipping.", file), type = "warning")
+          return()
         }
         return(NULL)
       }
