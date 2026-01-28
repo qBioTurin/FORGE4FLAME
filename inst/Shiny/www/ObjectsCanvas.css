@@ -1,0 +1,26 @@
+#objectsCanvasContainer {
+  width: 89%;
+  height: 79vh;
+  overflow: scroll;
+  position: relative;
+  border: 3px solid #667eea;
+  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+}
+
+#ObjectsBackground {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    cursor: default;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#ObjectsCanvas {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    cursor: crosshair;
+    border-radius: 8px;
+}
