@@ -645,7 +645,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
       rate_dist <- unique(df$RateDist)
       rate_a <- params[[1]]
       rate_b <- params[[2]]
-      #if(i == min(slots))
+
       tab <- if(rate_dist == "Deterministic") "DetTime_tab" else "StocTime_tab"
 
       appendTab(inputId = "Rate_tabs",

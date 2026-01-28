@@ -344,16 +344,16 @@ ui <- dashboardPage(
               padding: 0;",
             lapply(
               list(
-                list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
-                list(title = "Rooms", desc = "Define new room types.", img = "Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
-                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
-                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
-                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "Infection.png", tab = "infection", icon = "viruses", color = "#9b59b6"),
-                list(title = "What-If", desc = "Perform what-if analysis with countermeasures.", img = "Countermeasures.png", tab = "whatif", icon = "question", color = "#1abc9c"),
-                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "Configuration.png", tab = "configuration", icon = "flag-checkered", color = "#34495e"),
-                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "Run.png", tab = "run", icon = "play", color = "#e67e22"),
-                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "Settings.png", tab = "settings", icon = "cogs", color = "#95a5a6"),
-                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "2DVisualisation.png", tab = "post_process", icon = "file-video", color = "#c0392b")
+                list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "images/Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
+                list(title = "Rooms", desc = "Define new room types.", img = "images/Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
+                list(title = "Agents", desc = "Define agent types and their movement logic.", img = "images/Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
+                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "images/Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
+                list(title = "Infection", desc = "Define the disease model used in simulation.", img = "images/Infection.png", tab = "infection", icon = "viruses", color = "#9b59b6"),
+                list(title = "What-If", desc = "Perform what-if analysis with countermeasures.", img = "images/Countermeasures.png", tab = "whatif", icon = "question", color = "#1abc9c"),
+                list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "images/Configuration.png", tab = "configuration", icon = "flag-checkered", color = "#34495e"),
+                list(title = "Run", desc = "Execute the simulation with defined parameters.", img = "images/Run.png", tab = "run", icon = "play", color = "#e67e22"),
+                list(title = "Settings", desc = "Adjust canvas size, load, and save models.", img = "images/Settings.png", tab = "settings", icon = "cogs", color = "#95a5a6"),
+                list(title = "Post Processing", desc = "Analyze simulation outputs with 2D visualization.", img = "images/2DVisualisation.png", tab = "post_process", icon = "file-video", color = "#c0392b")
               ),
               function(card) {
                 div(
@@ -672,6 +672,174 @@ ui <- dashboardPage(
                      uiOutput("AreaColors")
               )
             )
+          )
+        )
+      ),
+      ## Tab objects in rooms ####
+      tabItem(
+        tabName = "objects_in_rooms",
+        fluidRow(
+          box(
+            title = h3("Select Room and Add Objects"),
+            width = 12,
+            collapsible = TRUE,
+            fluidRow(
+              column(3, offset = 1,
+                     selectInput(
+                       inputId = "select_room_for_objects",
+                       label = "Select Room:",
+                       choices = c(""),
+                       selected = ""
+                     )
+              ),
+                column(3,
+                       selectInput(
+                         inputId = "copy_objects_from_room",
+                         label = div(icon("copy"), " Copy Objects From:"),
+                         choices = c(""),
+                         selected = ""
+                       )
+                ),
+                column(2,
+                       actionButton(
+                         inputId = "copy_objects_btn",
+                         label = "Copy All Objects",
+                         icon = icon("clone"),
+                         style = "margin-top: 25px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                       )
+                ),
+              column(2,
+                     htmlOutput("room_dimensions_info")
+              )
+                # column(4,
+                #        p(style = "margin-top: 30px; color: #f5576c; font-style: italic; font-size: 12px;",
+                #          icon("info-circle"), " Copy all objects from another room to the selected room")
+                # )
+            ),
+            fluidRow(
+              column(4, offset = 1,
+                     selectizeInput(
+                       inputId = "select_object_type",
+                       label = div(icon("list"), " Select Existing Object Type:"),
+                       choices = c(""),
+                       options = list(placeholder = "Choose a predefined object or enter new")
+                     )
+              ),
+              column(7,
+                     p(style = "margin-top: 30px; color: #667eea; font-style: italic;",
+                       icon("info-circle"), " Select an existing object type or define a new one below")
+              )
+            ),
+            fluidRow(
+              column(3, offset = 1,
+                     textInput(
+                       inputId = "object_name",
+                       label = "Object Name:",
+                       placeholder = "e.g., Desk, Table"
+                     )
+              ),
+              column(2,
+                     numericInput(
+                       inputId = "object_width",
+                       label = "Width (meters):",
+                       value = 1,
+                       min = 0.5,
+                       step = 0.5
+                     )
+              ),
+              column(2,
+                     numericInput(
+                       inputId = "object_length",
+                       label = "Length (meters):",
+                       value = 1,
+                       min = 0.5,
+                       step = 0.5
+                     )
+              ),
+              column(2,
+                     colourInput(
+                       inputId = "object_color",
+                       label = "Color:",
+                       value = "#FF6B6B"
+                     )
+              )
+            ),
+            fluidRow(
+              column(2, offset = 1,
+                     checkboxInput(
+                       inputId = "object_is_obstacle",
+                       label = div(icon("ban"), " Is Obstacle?"),
+                       value = TRUE
+                     )
+              ),
+              column(3,
+                     conditionalPanel(
+                       condition = "!input.object_is_obstacle",
+                       numericInput(
+                         inputId = "object_capacity",
+                         label = div(icon("users"), " Agent Capacity:"),
+                         value = 1,
+                         min = 1,
+                         step = 1
+                       )
+                     )
+              ),
+              column(4,
+                     conditionalPanel(
+                       condition = "!input.object_is_obstacle",
+                       p(style = "margin-top: 30px; color: #667eea; font-style: italic; font-size: 12px;",
+                         icon("info-circle"), " Number of agents that can use this object (e.g., 1 for a chair)")
+                     )
+              ),
+              column(1,
+                     actionButton(
+                       inputId = "add_object_to_room",
+                       label = "Add",
+                       icon = icon("plus-circle"),
+                       style = "margin-top: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                     )
+              )
+            ),
+            p(),
+            fluidRow(
+              box(
+                title = h3("Objects in Selected Room"),
+                width = 10,offset = 1,
+                collapsible = TRUE,
+                collapsed = TRUE,
+                fluidRow(
+                  column(12,
+                         DT::dataTableOutput("objects_table")
+                  )
+                ),
+                fluidRow(
+                  column(3, offset = 1,
+                         actionButton(
+                           inputId = "remove_selected_object",
+                           label = "Remove Selected",
+                           icon = icon("trash-alt"),
+                           style = "margin-top: 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
+                         )
+                  ),
+                  column(3,
+                         actionButton(
+                           inputId = "clear_all_objects",
+                           label = "Clear All Objects",
+                           icon = icon("broom"),
+                           style = "margin-top: 10px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
+                         )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        fluidRow(
+          column(12,
+                 # Include the ObjectsCanvas files
+                 includeCSS(system.file("Shiny","www/ObjectsCanvas.css", package = "FORGE4FLAME")),
+                 includeHTML(system.file("Shiny","www/ObjectsCanvas.html", package = "FORGE4FLAME")),
+                 includeScript(system.file("Shiny","www/ObjectsCanvas.js", package = "FORGE4FLAME"))
           )
         )
       ),
@@ -1014,49 +1182,49 @@ ui <- dashboardPage(
             fluidRow(
               conditionalPanel(condition = 'input.disease_model == "SIR"',
                                img(
-                                 src = "SIR.png",
+                                 src = "images/SIR.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SIRD"',
                                img(
-                                 src = "SIRD.png",
+                                 src = "images/SIRD.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SEIR"',
                                img(
-                                 src = "SEIR.png",
+                                 src = "images/SEIR.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SEIRD"',
                                img(
-                                 src = "SEIRD.png",
+                                 src = "images/SEIRD.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SIRS"',
                                img(
-                                 src = "SIRS.png",
+                                 src = "images/SIRS.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SIRDS"',
                                img(
-                                 src = "SIRDS.png",
+                                 src = "images/SIRDS.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SEIRS"',
                                img(
-                                 src = "SEIRS.png",
+                                 src = "images/SEIRS.png",
                                  height = 300,
                                  class = "center-block"
                                )),
               conditionalPanel(condition = 'input.disease_model == "SEIRDS"',
                                img(
-                                 src = "SEIRDS.png",
+                                 src = "images/SEIRDS.png",
                                  height = 300,
                                  class = "center-block"
                                )

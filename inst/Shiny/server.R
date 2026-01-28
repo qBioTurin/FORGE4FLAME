@@ -6044,4 +6044,359 @@ server <- function(input, output,session) {
   output$log_content <- renderText({
     paste(file_data(), collapse = "\n")
   })
+
+
+  #### Objects in Rooms Section ####
+
+  # Initialize reactive values for objects
+  canvasObjects$roomObjects <- list()
+  canvasObjects$definedObjectTypes <- data.frame(
+    Name = character(),
+    Width = numeric(),
+    Length = numeric(),
+    Color = character(),
+    stringsAsFactors = FALSE
+  )
+
+  # Update room selector for objects
+  observe({
+    if (!is.null(canvasObjects$rooms)) {
+      room_choices <- canvasObjects$rooms$Name
+      updateSelectInput(session, "select_room_for_objects",
+                       choices = c("", room_choices))
+      updateSelectInput(session, "copy_objects_from_room",
+                       choices = c("", room_choices))
+    }
+  })
+
+  # Update object type selector
+  observe({
+    if (nrow(canvasObjects$definedObjectTypes) > 0) {
+      object_choices <- c("", canvasObjects$definedObjectTypes$Name)
+      updateSelectizeInput(session, "select_object_type",
+                          choices = object_choices)
+    }
+  })
+
+  # Display room dimensions when room is selected
+  output$room_dimensions_info <- renderUI({
+    req(input$select_room_for_objects)
+    if (input$select_room_for_objects == "") return(NULL)
+
+    room_data <- canvasObjects$rooms %>%
+      filter(Name == input$select_room_for_objects)
+
+    if (nrow(room_data) > 0) {
+      HTML(paste0(
+        "<strong>Room: </strong>", room_data$Name, "<br/>",
+        "<strong>Width: </strong>", room_data$w, " m<br/>",
+        "<strong>Length: </strong>", room_data$l, " m<br/>",
+        "<strong>Height: </strong>", room_data$h, " m<br/>",
+        "<strong>Type: </strong>", room_data$type
+      ))
+    }
+  })
+
+  # When an object type is selected, populate the form fields
+  observeEvent(input$select_object_type, {
+    req(input$select_object_type)
+    if (input$select_object_type == "") return()
+
+    # Find the object type in defined objects
+    obj_type <- canvasObjects$definedObjectTypes %>%
+      filter(Name == input$select_object_type)
+
+    if (nrow(obj_type) > 0) {
+      updateTextInput(session, "object_name", value = obj_type$Name)
+      updateNumericInput(session, "object_width", value = obj_type$Width)
+      updateNumericInput(session, "object_length", value = obj_type$Length)
+      updateColourInput(session, "object_color", value = obj_type$Color)
+      updateCheckboxInput(session, "object_is_obstacle", value = obj_type$IsObstacle)
+      if (!obj_type$IsObstacle) {
+        updateNumericInput(session, "object_capacity", value = obj_type$Capacity)
+      }
+    }
+  })
+
+  # Update canvas when room is selected
+  observeEvent(input$select_room_for_objects, {
+    req(input$select_room_for_objects)
+    if (input$select_room_for_objects == "") return()
+
+    room_data <- canvasObjects$rooms %>%
+      filter(Name == input$select_room_for_objects)
+
+    if (nrow(room_data) > 0) {
+      # Get existing objects for this room
+      existing_objects <- if (!is.null(canvasObjects$roomObjects[[input$select_room_for_objects]])) {
+        canvasObjects$roomObjects[[input$select_room_for_objects]]
+      } else {
+        list()
+      }
+
+      # Send room data to JavaScript
+      session$sendCustomMessage("setRoomForObjects", list(
+        width = room_data$w,
+        length = room_data$l,
+        height = room_data$h,
+        objects = existing_objects
+      ))
+    }
+  })
+
+  # Copy objects from another room
+  observeEvent(input$copy_objects_btn, {
+    req(input$select_room_for_objects)
+    req(input$copy_objects_from_room)
+
+    if (input$select_room_for_objects == "") {
+      shinyalert("Please select a destination room first.", type = "error")
+      return()
+    }
+
+    if (input$copy_objects_from_room == "") {
+      shinyalert("Please select a room to copy from.", type = "error")
+      return()
+    }
+
+    if (input$select_room_for_objects == input$copy_objects_from_room) {
+      shinyalert("Cannot copy objects from the same room.", type = "error")
+      return()
+    }
+
+    # Get source room objects
+    source_objects <- canvasObjects$roomObjects[[input$copy_objects_from_room]]
+
+    if (is.null(source_objects) || length(source_objects) == 0) {
+      shinyalert("The selected room has no objects to copy.", type = "warning")
+      return()
+    }
+
+    # Get destination room data
+    dest_room_data <- canvasObjects$rooms %>%
+      filter(Name == input$select_room_for_objects)
+
+    # Check if objects fit in destination room
+    valid_objects <- list()
+    skipped_objects <- character()
+
+    for (obj in source_objects) {
+      if (obj$width <= dest_room_data$w && obj$length <= dest_room_data$l) {
+        valid_objects <- append(valid_objects, list(obj))
+      } else {
+        skipped_objects <- c(skipped_objects, obj$name)
+      }
+    }
+
+    if (length(valid_objects) == 0) {
+      shinyalert("None of the objects from the source room fit in the destination room.", type = "error")
+      return()
+    }
+
+    # Send all valid objects to JavaScript
+    for (obj in valid_objects) {
+      session$sendCustomMessage("addObjectToCanvas", list(
+        name = obj$name,
+        width = obj$width,
+        length = obj$length,
+        color = obj$color,
+        isObstacle = ifelse(is.null(obj$isObstacle), FALSE, obj$isObstacle),
+        capacity = obj$capacity,
+        x = 0.5,
+        y = 0.5
+      ))
+    }
+
+    # Show success message
+    if (length(skipped_objects) > 0) {
+      shinyalert(paste0("Copied ", length(valid_objects), " objects successfully. Skipped ",
+                       length(skipped_objects), " objects that were too large: ",
+                       paste(skipped_objects, collapse = ", ")), type = "info")
+    } else {
+      shinyalert(paste0("Successfully copied ", length(valid_objects), " objects from ",
+                       input$copy_objects_from_room, " to ", input$select_room_for_objects),
+                type = "success")
+    }
+
+    # Clear source selector
+    updateSelectInput(session, "copy_objects_from_room", selected = "")
+  })
+
+  # Add object to room
+  observeEvent(input$add_object_to_room, {
+    req(input$select_room_for_objects)
+    req(input$object_name)
+    req(input$object_width)
+    req(input$object_length)
+
+    if (input$select_room_for_objects == "") {
+      shinyalert("Please select a room first.", type = "error")
+      return()
+    }
+
+    if (input$object_name == "") {
+      shinyalert("Please enter an object name.", type = "error")
+      return()
+    }
+
+    if (input$object_width <= 0 || input$object_length <= 0) {
+      shinyalert("Object width and length must be greater than 0.", type = "error")
+      return()
+    }
+
+    # Validate capacity for non-obstacles
+    if (!input$object_is_obstacle) {
+      if (is.na(input$object_capacity) || input$object_capacity < 1) {
+        shinyalert("Agent capacity must be at least 1 for non-obstacle objects.", type = "error")
+        return()
+      }
+    }
+
+    room_data <- canvasObjects$rooms %>%
+      filter(Name == input$select_room_for_objects)
+
+    if (input$object_width > room_data$w || input$object_length > room_data$l) {
+      shinyalert(paste0("Object dimensions cannot exceed room dimensions (",
+                       room_data$w, "m × ", room_data$l, "m)."), type = "error")
+      return()
+    }
+
+    # Add to defined object types if not already present
+    obj_name <- input$object_name
+    existing_obj <- canvasObjects$definedObjectTypes %>%
+      filter(Name == obj_name)
+
+    if (nrow(existing_obj) == 0) {
+      # Add new object type to global list
+      new_obj_type <- data.frame(
+        Name = obj_name,
+        Width = input$object_width,
+        Length = input$object_length,
+        Color = input$object_color,
+        IsObstacle = input$object_is_obstacle,
+        Capacity = ifelse(input$object_is_obstacle, NA, input$object_capacity),
+        stringsAsFactors = FALSE
+      )
+      canvasObjects$definedObjectTypes <- rbind(
+        canvasObjects$definedObjectTypes,
+        new_obj_type
+      )
+    }
+
+    # Send object to JavaScript canvas
+    session$sendCustomMessage("addObjectToCanvas", list(
+      name = input$object_name,
+      width = input$object_width,
+      length = input$object_length,
+      color = input$object_color,
+      isObstacle = input$object_is_obstacle,
+      capacity = ifelse(input$object_is_obstacle, NA, input$object_capacity),
+      x = 0.5,  # Default position (snapped to grid)
+      y = 0.5   # Default position (snapped to grid)
+    ))
+
+    # Clear inputs
+    updateTextInput(session, "object_name", value = "")
+    updateSelectizeInput(session, "select_object_type", selected = "")
+  })
+
+
+  # Update objects data when canvas changes
+  observeEvent(input$objects_updated, {
+    req(input$select_room_for_objects)
+
+    if (input$select_room_for_objects != "") {
+      canvasObjects$roomObjects[[input$select_room_for_objects]] <- input$objects_updated$objects
+    }
+  })
+
+  # Display objects table
+  output$objects_table <- DT::renderDataTable({
+    req(input$select_room_for_objects)
+
+    if (input$select_room_for_objects == "" ||
+        is.null(canvasObjects$roomObjects[[input$select_room_for_objects]])) {
+      return(data.frame(
+        Name = character(),
+        X = numeric(),
+        Y = numeric(),
+        Width = numeric(),
+        Length = numeric(),
+        Color = character(),
+        Obstacle = logical(),
+        Capacity = integer(),
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    objects_list <- canvasObjects$roomObjects[[input$select_room_for_objects]]
+
+    if (length(objects_list) == 0) {
+      return(data.frame(
+        Name = character(),
+        X = numeric(),
+        Y = numeric(),
+        Width = numeric(),
+        Length = numeric(),
+        Color = character(),
+        Obstacle = logical(),
+        Capacity = integer(),
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    objects_df <- do.call(rbind, lapply(objects_list, function(obj) {
+      data.frame(
+        Name = obj$name,
+        X = round(obj$x, 2),
+        Y = round(obj$y, 2),
+        Width = obj$width,
+        Length = obj$length,
+        Color = obj$color,
+        Obstacle = ifelse(is.null(obj$isObstacle), FALSE, obj$isObstacle),
+        Capacity = ifelse(is.null(obj$capacity) || is.na(obj$capacity), NA, obj$capacity),
+        stringsAsFactors = FALSE
+      )
+    }))
+
+    DT::datatable(
+      objects_df,
+      selection = 'single',
+      options = list(
+        pageLength = 10,
+        searching = TRUE,
+        ordering = TRUE
+      )
+    )
+  })
+
+  # Remove selected object
+  observeEvent(input$remove_selected_object, {
+    req(input$select_room_for_objects)
+    req(input$objects_table_rows_selected)
+
+    selected_row <- input$objects_table_rows_selected - 1  # JavaScript uses 0-based indexing
+
+    session$sendCustomMessage("removeObjectFromCanvas", selected_row)
+  })
+
+  # Clear all objects
+  observeEvent(input$clear_all_objects, {
+    req(input$select_room_for_objects)
+
+    shinyalert(
+      title = "Clear All Objects",
+      text = "Are you sure you want to remove all objects from this room?",
+      type = "warning",
+      showCancelButton = TRUE,
+      confirmButtonText = "Yes, clear all",
+      cancelButtonText = "Cancel",
+      callbackR = function(value) {
+        if (value) {
+          session$sendCustomMessage("clearAllObjects", list())
+          canvasObjects$roomObjects[[input$select_room_for_objects]] <- list()
+        }
+      }
+    )
+  })
 }
