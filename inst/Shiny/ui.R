@@ -2569,15 +2569,26 @@ ui <- dashboardPage(
                                                  label = "Normalize (Percentage)",
                                                  value = FALSE)
                             ),
-                            column(2,
-                                   checkboxInput("diseaseEvol_facetAgent",
-                                                 label = "Facet by Agent Type",
-                                                 value = FALSE)
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric == 'disease_states'",
+                              column(2,
+                                     checkboxInput("diseaseEvol_facetAgent",
+                                                   label = "Facet by Agent Type",
+                                                   value = FALSE)
+                              ),
+                              column(2,
+                                     checkboxInput("diseaseEvol_facetState",
+                                                   label = "Facet by Disease State",
+                                                   value = FALSE)
+                              )
                             ),
-                            column(2,
-                                   checkboxInput("diseaseEvol_facetState",
-                                                 label = "Facet by Disease State",
-                                                 value = FALSE)
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric == 'aerosol'",
+                              column(2,
+                                     checkboxInput("diseaseEvol_facetRoom",
+                                                   label = "Facet by Room",
+                                                   value = FALSE)
+                              )
                             ),
                             column(3,
                                    checkboxInput("diseaseEvol_showRibbon",
@@ -2665,6 +2676,17 @@ ui <- dashboardPage(
                                                                                                           "Cumulative #Contacts" = "CumulContact",
                                                                                                           "Aerosol" = "Aerosol",
                                                                                                           "Cumulative Aerosol" = "CumulAerosol"))
+                            ),
+                            conditionalPanel(
+                              condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
+                              column(2,
+                                     numericInput("visualColor_maxValue",
+                                                  label = div(class = "icon-container",
+                                                              h5(tags$b("Max Legend Value: "), icon("info-circle")),
+                                                              div(class = "icon-text", "Set a custom maximum value for the color legend. Leave empty or set to 0 to use the data maximum.")),
+                                                  value = NA,
+                                                  min = 0)
+                              )
                             ),
                             column(2,
                                    radioButtons("visualLabel_select","Show in the plot:",
@@ -2756,22 +2778,22 @@ ui <- dashboardPage(
                                   h3("Further Information about the Model", icon("info-circle")),
                                   div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
                     ),
-                    fluidRow(
-                      column(5,offset = 2,
-                             selectInput("Room_Counters_A_C_selectize",choices = "",
-                                         label = div(class = "icon-container", style="margin-top:20px",
-                                                     h3("Choice of the room:", icon("info-circle")),
-                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
-                                         )
-                             )
-                      )
-                    ),
+                    # fluidRow(
+                    #   column(5,offset = 2,
+                    #          selectInput("Room_Counters_A_C_selectize",choices = "",
+                    #                      label = div(class = "icon-container", style="margin-top:20px",
+                    #                                  h3("Choice of the room:", icon("info-circle")),
+                    #                                  div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
+                    #                      )
+                    #          )
+                    #   )
+                    # ),
                     fluidRow(
                       column(10,
-                             plotOutput("A_C_CountersPlot", width = "100%", height = "600px")
+                             plotOutput("CountersPlot", width = "100%", height = "600px")
                       ),
                       column(2,
-                             checkboxGroupInput("A_C_CountersDisease_radioButt",
+                             checkboxGroupInput("CountersDisease_radioButt",
                                                 choices = c("Mean curves", "Area from all simulations"),
                                                 label = "Show:",selected = character()
                              )

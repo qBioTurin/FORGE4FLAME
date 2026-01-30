@@ -5570,6 +5570,8 @@ server <- function(input, output,session) {
     ribbon_alpha <- input$diseaseEvol_alpha
     plot_type <- input$diseaseEvol_plotType
     options <- input$diseaseEvol_options
+    facet_room <- if (metric_type == "aerosol") input$diseaseEvol_facetRoom else FALSE
+    if (is.null(facet_room)) facet_room <- FALSE
 
     # Get the appropriate data
     if (metric_type == "contacts") {
@@ -5594,22 +5596,32 @@ server <- function(input, output,session) {
       )
     }
 
-    # Get simulation filter
-    sim_filter <- input$diseaseEvol_simulation
-    if (is.null(sim_filter) || "All" %in% sim_filter) {
-      sim_filter <- unique(df_raw$Folder)
+    # Create RoomID column for aerosol data
+    if (metric_type == "aerosol") {
+      df_raw <- df_raw %>%
+        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
     }
 
-    # Filter simulations
-    df_raw <- df_raw %>% filter(Folder %in% sim_filter)
+    # Get simulation filter
+    sim_filter <- input$diseaseEvol_simulation
+    if (!"All" %in% sim_filter && length(sim_filter) > 0) {
+      df_raw <- df_raw %>% filter(Folder %in% sim_filter)
+    }
 
     # Get room/floor filters
     room_filter <- input$diseaseEvol_room
     floor_filter <- input$diseaseEvol_floor
 
     if (!is.null(room_filter) && !"All" %in% room_filter) {
-      df_raw <- df_raw %>% filter(Name %in% room_filter)
+      if (metric_type == "contacts") {
+        df_raw <- df_raw %>%
+          mutate(RoomID = paste0(Name, " (", type, " - ", area, ")")) %>%
+          filter(RoomID %in% room_filter)
+      } else {
+        df_raw <- df_raw %>% filter(RoomID %in% room_filter)
+      }
     }
+
     if (!is.null(floor_filter) && !"All" %in% floor_filter) {
       df_raw <- df_raw %>% filter(CanvasID %in% floor_filter)
     }
@@ -5644,7 +5656,7 @@ server <- function(input, output,session) {
         group_by(Folder, time_granular) %>%
         summarise(Value = n(), .groups = "drop")
     } else {
-      # Aggregate aerosol concentration
+      # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
       df <- df_raw %>%
         mutate(time_granular = case_when(
           granularity == "step" ~ time,
@@ -5654,9 +5666,19 @@ server <- function(input, output,session) {
           granularity == "week" ~ floor(time * step / 604800),
           granularity == "month" ~ floor(time * step / 2592000),
           TRUE ~ time
-        )) %>%
-        group_by(Folder, time_granular) %>%
-        summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+        ))
+
+      if (facet_room) {
+        # Group by RoomID to keep rooms separate
+        df <- df %>%
+          group_by(Folder, time_granular, RoomID) %>%
+          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+      } else {
+        # Aggregate across all rooms
+        df <- df %>%
+          group_by(Folder, time_granular) %>%
+          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+      }
     }
 
     n_sims <- length(unique(df$Folder))
@@ -5674,60 +5696,112 @@ server <- function(input, output,session) {
     # Build the plot
     if (n_sims > 1 && aggregate_mode != "individual") {
       # Aggregate statistics across simulations
-      agg_stats <- df %>%
-        group_by(time_granular) %>%
-        summarise(
-          Mean = mean(Value, na.rm = TRUE),
-          SD = sd(Value, na.rm = TRUE),
-          SE = SD / sqrt(n()),
-          Min = min(Value, na.rm = TRUE),
-          Max = max(Value, na.rm = TRUE),
-          CI_lower = Mean - 1.96 * SE,
-          CI_upper = Mean + 1.96 * SE,
-          .groups = "drop"
-        )
+      if (facet_room && "RoomID" %in% names(df)) {
+        agg_stats <- df %>%
+          group_by(time_granular, RoomID) %>%
+          summarise(
+            Mean = mean(Value, na.rm = TRUE),
+            SD = sd(Value, na.rm = TRUE),
+            SE = SD / sqrt(n()),
+            Min = min(Value, na.rm = TRUE),
+            Max = max(Value, na.rm = TRUE),
+            CI_lower = Mean - 1.96 * SE,
+            CI_upper = Mean + 1.96 * SE,
+            .groups = "drop"
+          )
+      } else {
+        agg_stats <- df %>%
+          group_by(time_granular) %>%
+          summarise(
+            Mean = mean(Value, na.rm = TRUE),
+            SD = sd(Value, na.rm = TRUE),
+            SE = SD / sqrt(n()),
+            Min = min(Value, na.rm = TRUE),
+            Max = max(Value, na.rm = TRUE),
+            CI_lower = Mean - 1.96 * SE,
+            CI_upper = Mean + 1.96 * SE,
+            .groups = "drop"
+          )
+      }
 
-      p <- ggplot(agg_stats, aes(x = time_granular))
+      if (facet_room && "RoomID" %in% names(agg_stats)) {
+        p <- ggplot(agg_stats, aes(x = time_granular, color = RoomID, fill = RoomID))
+      } else {
+        p <- ggplot(agg_stats, aes(x = time_granular))
+      }
 
       # Add ribbon based on aggregate mode
       if (show_ribbon) {
         if (aggregate_mode == "mean_sd") {
-          p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
-                               fill = metric_color, alpha = ribbon_alpha)
+          if (facet_room && "RoomID" %in% names(agg_stats)) {
+            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD, group = RoomID),
+                                 alpha = ribbon_alpha, color = NA)
+          } else {
+            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
+                                 fill = metric_color, alpha = ribbon_alpha)
+          }
         } else if (aggregate_mode == "mean_ci") {
-          p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
-                               fill = metric_color, alpha = ribbon_alpha)
+          if (facet_room && "RoomID" %in% names(agg_stats)) {
+            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper, group = RoomID),
+                                 alpha = ribbon_alpha, color = NA)
+          } else {
+            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
+                                 fill = metric_color, alpha = ribbon_alpha)
+          }
         } else if (aggregate_mode == "minmax") {
-          p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
-                               fill = metric_color, alpha = ribbon_alpha)
+          if (facet_room && "RoomID" %in% names(agg_stats)) {
+            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max, group = RoomID),
+                                 alpha = ribbon_alpha, color = NA)
+          } else {
+            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
+                                 fill = metric_color, alpha = ribbon_alpha)
+          }
         }
       }
 
       # Add line
-      p <- p + geom_line(aes(y = Mean), color = metric_color, linewidth = 1.2)
-
-      if ("points" %in% options) {
-        p <- p + geom_point(aes(y = Mean), color = metric_color, size = 2)
+      if (facet_room && "RoomID" %in% names(agg_stats)) {
+        p <- p + geom_line(aes(y = Mean, group = RoomID), linewidth = 1.2)
+        if ("points" %in% options) {
+          p <- p + geom_point(aes(y = Mean), size = 2)
+        }
+      } else {
+        p <- p + geom_line(aes(y = Mean), color = metric_color, linewidth = 1.2)
+        if ("points" %in% options) {
+          p <- p + geom_point(aes(y = Mean), color = metric_color, size = 2)
+        }
       }
 
       title_text <- paste0(title_text, " (", n_sims, " simulations)")
 
     } else {
       # Individual lines for each simulation
-      p <- ggplot(df, aes(x = time_granular, y = Value, group = Folder))
-
-      if (n_sims > 1) {
-        p <- p + geom_line(aes(color = Folder), linewidth = 0.8, alpha = 0.7)
+      if (facet_room && "RoomID" %in% names(df)) {
+        p <- ggplot(df, aes(x = time_granular, y = Value, color = RoomID, group = interaction(Folder, RoomID)))
+        p <- p + geom_line(linewidth = 0.8, alpha = 0.7)
         if ("points" %in% options) {
-          p <- p + geom_point(aes(color = Folder), size = 1.5, alpha = 0.7)
+          p <- p + geom_point(size = 1.5, alpha = 0.7)
         }
       } else {
-        p <- p + geom_line(color = metric_color, linewidth = 1.2)
-        if ("points" %in% options) {
-          p <- p + geom_point(color = metric_color, size = 2)
+        p <- ggplot(df, aes(x = time_granular, y = Value, group = Folder))
+        if (n_sims > 1) {
+          p <- p + geom_line(aes(color = Folder), linewidth = 0.8, alpha = 0.7)
+          if ("points" %in% options) {
+            p <- p + geom_point(aes(color = Folder), size = 1.5, alpha = 0.7)
+          }
+        } else {
+          p <- p + geom_line(color = metric_color, linewidth = 1.2)
+          if ("points" %in% options) {
+            p <- p + geom_point(color = metric_color, size = 2)
+          }
+          title_text <- paste0(title_text, " (", unique(df$Folder), ")")
         }
-        title_text <- paste0(title_text, " (", unique(df$Folder), ")")
       }
+    }
+
+    # Apply faceting if enabled
+    if (facet_room && "RoomID" %in% names(df)) {
+      p <- p + facet_wrap(~ RoomID, scales = "free_y")
     }
 
     # Apply theme and labels
@@ -6118,9 +6192,6 @@ server <- function(input, output,session) {
       DT::formatStyle(columns = 1:ncol(summary_df), fontSize = '14px')
   })
 
-  output$A_C_CountersPlot<- renderPlot({
-    ggplot()+labs(title = "Please select a room")
-  })
   counters_colorsNames <- c( "Agents birth", "Agents deaths", "Agents in quarantine",
                              "Number of swabs", "Number of agents infected \noutside the environment")
   counters_colors = viridisLite::turbo(n = length(counters_colorsNames))
@@ -6178,127 +6249,6 @@ server <- function(input, output,session) {
 
   })
 
-  observe( {
-    info <- input$PostProc_table_cell_clicked
-    folder = req(info$value)
-    days <- req(postprocObjects$Model$starting$simulation_days)
-
-    CountersDisease_radioButt = input$A_C_CountersDisease_radioButt
-    req(input$Room_Counters_A_C_selectize != "")
-    df <- req(postprocObjects$A_C_COUNTERS )
-
-
-    Room <- input$Room_Counters_A_C_selectize
-    Room = str_split(string = Room, pattern = "\\s ; \\s")[[1]]
-
-    counters_colorsNames <- c("Contacts", "Virus concentration")
-    names(df)[which(names(df) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
-
-    # Define the maximum hour value
-    MAX_HOUR <- as.numeric(input$simulation_days) * 24
-
-    df = df %>%
-      filter(Folder == folder, CanvasID == Room[1],area == Room[2], Name == Room[3], ID ==  gsub(Room[4],replacement = "",pattern = "ID  ") ) %>%
-      select(-CanvasID,-Name,-area,-type,-ID) %>%
-      select(-Folder) %>%
-      complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Contacts = 0, `Virus concentration` = 0)) %>%
-      tidyr::gather(-hour, value =  "Number", key = "Counters")
-    A_C_counters_colors = c("#E5D05AFF","#DEF5E5FF")
-
-
-    max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
-    divisor <- 24 * (as.integer(max_day / 20) + 1)
-
-    pl = ggplot() +
-      scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
-    if(!is.null(CountersDisease_radioButt)){
-      names(postprocObjects$A_C_COUNTERS)[which(names(postprocObjects$A_C_COUNTERS) %in% c("contact_counts", "virus_concentration"))] = counters_colorsNames
-
-      # Create a complete dataframe with all hours from 0 to MAX_HOUR for each Folder
-      DfStat = postprocObjects$A_C_COUNTERS %>%
-        filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
-        select(-CanvasID,-Name,-area,-type,-Folder) %>%
-        group_by(hour) %>%
-        summarise(Mean_contacts = mean(Contacts),
-                  MinV_contacts = min(Contacts),
-                  MaxV_contacts = max(Contacts),
-                  Mean_aerosol = mean(`Virus concentration`),
-                  MinV_aerosol = min(`Virus concentration`),
-                  MaxV_aerosol = max(`Virus concentration`)) %>%
-        complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Mean_contacts = 0, MinV_contacts = 0, MaxV_contacts = 0, Mean_aerosol = 0, MinV_aerosol = 0, MaxV_aerosol = 0)) %>%
-        pivot_longer(cols = c(MinV_contacts, MaxV_contacts, MinV_aerosol, MaxV_aerosol),
-                     names_to = c("Variable", "Counters"),
-                     names_pattern = "(MinV|MaxV)_(.*)",
-                     values_to = "Value") %>%
-        pivot_wider(names_from = Variable, values_from = Value) %>%
-        mutate(Counters = if_else(Counters == "contacts", "Contacts","Virus concentration"))
-
-      average_trajectory <- postprocObjects$A_C_COUNTERS %>%
-        filter( CanvasID == Room[1],area == Room[2], Name == Room[3] ) %>%
-        select(-CanvasID,-Name,-area,-type,-Folder) %>%
-        group_by(hour) %>%
-        summarise(
-          Contacts = mean(Contacts, na.rm = TRUE),
-          `Virus concentration` = mean(`Virus concentration`, na.rm = TRUE)
-        ) %>%
-        ungroup() %>%
-        complete(hour = full_seq(0:MAX_HOUR, 1), fill = list(Contacts = 0, `Virus concentration` = 0))
-
-      average_trajectory <- average_trajectory %>%
-        pivot_longer(cols = c(Contacts, `Virus concentration`),
-                     names_to = "Counters",
-                     values_to = "Value")
-
-      if("Area from all simulations" %in% CountersDisease_radioButt){
-        max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
-        divisor <- 24 * (as.integer(max_day / 20) + 1)
-
-        DfStat <- DfStat %>%
-          complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
-
-        pl = pl +
-          geom_ribbon(data = DfStat,
-                      aes(x = hour, ymin = MinV, ymax = MaxV, group= Counters, fill = Counters),alpha = 0.4)+
-          scale_fill_manual(values = A_C_counters_colors,
-                            limits = names(A_C_counters_colors),
-                            labels = names(A_C_counters_colors),
-                            drop = FALSE) +
-          scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
-      }
-
-      if("Mean curves" %in% CountersDisease_radioButt){
-        max_day = max(seq(0,MAX_HOUR, by= 24 )/24)
-        divisor <- 24 * (as.integer(max_day / 20) + 1)
-
-        average_trajectory <- average_trajectory %>%
-          complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
-
-        pl = pl + geom_line(data = average_trajectory,
-                            aes(x = hour, y = Value, group= Counters, col = Counters, linetype = "Mean Curves"))+
-          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed")) +
-          scale_x_continuous(name = "Day", breaks = seq(0,MAX_HOUR, by= divisor ), labels = seq(0,MAX_HOUR, by= divisor )/24)
-      }
-
-    }
-
-    df <- df %>%
-      complete(hour = 0:MAX_HOUR, Counters, fill = list(Value = 0))
-
-    pl = pl +
-      geom_line(data = df, aes(x = hour, y = Number,col = Counters, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="",col="Variable",fill="Variable", x = "Hours", linetype="Type")+
-      scale_color_manual(values = A_C_counters_colors,
-                         limits = names(A_C_counters_colors),
-                         labels = names(A_C_counters_colors),
-                         drop = FALSE)+
-      theme_fancy()+ facet_wrap(~Counters,scales = "free")
-
-
-    output$A_C_CountersPlot <- renderPlot({
-      pl
-    })
-
-  })
 
   output$DownloadPostProc_Button <- downloadHandler(
     filename = function() {
@@ -6372,9 +6322,6 @@ server <- function(input, output,session) {
         select(-Folder)
 
       simulation_log = simulation_log %>%
-        filter(y != 10000)
-
-      simulation_log = simulation_log %>%
         group_by(id) %>%
         arrange(time) %>%
         #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
@@ -6384,6 +6331,9 @@ server <- function(input, output,session) {
       postprocObjects$simulation_log_folder = simulation_log
 
       remove_modal_spinner()
+
+      simulation_log = simulation_log %>%
+        filter(y != 10000)
 
       ## updating slider and selectize
       step = as.numeric(postprocObjects$Model$starting$step)
@@ -6446,6 +6396,7 @@ server <- function(input, output,session) {
     (plot_output_list)
   })
 
+  ### EMOJI shapes ####
   # Dynamic UI for agent shape and emoji selectors
   # Load emoGG emoji database for emoji mode
   emojiDatabase <- reactive({
@@ -6475,10 +6426,10 @@ server <- function(input, output,session) {
       rename(code = code_transformed) %>%
       ungroup()
   })
-  
+
   # Reactive value to store emoji assignments for each agent type
   emojiAssignments <- reactiveVal(list())
-  
+
   # Initialize emoji assignments when agent types are loaded
   observe({
     agentTypes <- postprocObjects$agentTypes
@@ -6499,28 +6450,28 @@ server <- function(input, output,session) {
       emojiAssignments(current)
     }
   })
-  
+
   # Search emojis by keyword
   output$emojiSearchResults <- renderUI({
     req(input$agentVisualMode == "emojis")
     searchTerm <- input$emojiSearchKeyword
     emojiDB <- emojiDatabase()
-    
+
     if(is.null(searchTerm) || nchar(trimws(searchTerm)) < 2) {
-      return(tags$p(style = "color: #888; font-style: italic;", 
+      return(tags$p(style = "color: #888; font-style: italic;",
                     "Enter at least 2 characters to search..."))
     }
-    
+
     # Search in emoji names and keywords
     searchTerm <- tolower(trimws(searchTerm))
     matches <- emojiDB %>%
       filter(grepl(searchTerm, tolower(emoji)) | grepl(searchTerm, tolower(keywords))) %>%
       head(30)  # Limit results
-    
+
     if(nrow(matches) == 0) {
       return(tags$p(style = "color: #cc0000;", "No emojis found for '", searchTerm, "'"))
     }
-    
+
     # Create clickable emoji buttons
     emojiButtons <- lapply(seq_len(nrow(matches)), function(i) {
       row <- matches[i, ]
@@ -6529,24 +6480,24 @@ server <- function(input, output,session) {
         label = row$emoji,
         style = "font-size: 24px; padding: 8px 12px; margin: 3px; background-color: #fff; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;",
         title = paste0(row$emoji, " (", row$code, ")\nKeywords: ", row$keywords),
-        onclick = sprintf("Shiny.setInputValue('selectedEmojiCode', '%s', {priority: 'event'}); Shiny.setInputValue('selectedEmojiName', '%s', {priority: 'event'});", 
+        onclick = sprintf("Shiny.setInputValue('selectedEmojiCode', '%s', {priority: 'event'}); Shiny.setInputValue('selectedEmojiName', '%s', {priority: 'event'});",
                           row$code, row$emoji)
       )
     })
-    
+
     tagList(
-      tags$p(style = "margin-bottom: 5px; color: #666;", 
+      tags$p(style = "margin-bottom: 5px; color: #666;",
              paste0("Found ", nrow(matches), " emojis. Click to select:")),
       tags$div(style = "max-height: 200px; overflow-y: auto; padding: 5px; background-color: #fafafa; border-radius: 5px;",
                emojiButtons)
     )
   })
-  
+
   # Handle emoji selection from search
   observeEvent(input$selectedEmojiCode, {
     req(input$selectedEmojiCode)
     req(input$emojiAgentSelector)
-    
+
     selectedAgent <- input$emojiAgentSelector
     if(selectedAgent != "") {
       current <- emojiAssignments()
@@ -6555,7 +6506,7 @@ server <- function(input, output,session) {
         emoji = input$selectedEmojiName
       )
       emojiAssignments(current)
-      
+
       # Show confirmation
       showNotification(
         paste0("Assigned ", input$selectedEmojiName, " to ", selectedAgent),
@@ -6564,13 +6515,13 @@ server <- function(input, output,session) {
       )
     }
   })
-  
+
   # Render emoji assignments table
   output$emojiAssignmentsTable <- renderTable({
     agentTypes <- req(postprocObjects$agentTypes)
     assignments <- emojiAssignments()
     emojiDB <- emojiDatabase()
-    
+
     data.frame(
       Agent = agentTypes,
       Emoji = sapply(agentTypes, function(a) {
@@ -6593,7 +6544,7 @@ server <- function(input, output,session) {
       stringsAsFactors = FALSE
     )
   }, striped = TRUE, hover = TRUE, bordered = TRUE)
-  
+
   output$agentShapeSelectors <- renderUI({
     agentTypes <- req(postprocObjects$agentTypes)
     visualMode <- input$agentVisualMode
@@ -6610,11 +6561,11 @@ server <- function(input, output,session) {
             " 1) Select an agent type, 2) Search for an emoji by keyword, 3) Click the emoji to assign it."
           )
         ),
-        
+
         # Agent selector and search in a row
         fluidRow(
           column(4,
-                 selectInput("emojiAgentSelector", 
+                 selectInput("emojiAgentSelector",
                              label = tags$span(icon("user"), " Select Agent Type:"),
                              choices = agentTypes,
                              selected = agentTypes[1],
@@ -6627,7 +6578,7 @@ server <- function(input, output,session) {
                            width = "100%")
           )
         ),
-        
+
         # Search results
         fluidRow(
           column(12,
@@ -6637,7 +6588,7 @@ server <- function(input, output,session) {
                  )
           )
         ),
-        
+
         # Current assignments table
         tags$hr(),
         tags$h5(icon("list"), " Current Emoji Assignments:"),
@@ -6645,11 +6596,11 @@ server <- function(input, output,session) {
           style = "max-height: 250px; overflow-y: auto;",
           tableOutput("emojiAssignmentsTable")
         ),
-        
+
         # Quick suggestions
         tags$hr(),
         tags$details(
-          tags$summary(style = "cursor: pointer; color: #666; font-size: 12px;", 
+          tags$summary(style = "cursor: pointer; color: #666; font-size: 12px;",
                        icon("lightbulb"), " Suggested keywords for epidemic simulations"),
           tags$div(
             style = "padding: 10px; background-color: #f5f5f5; border-radius: 5px; margin-top: 5px;",
@@ -6663,11 +6614,11 @@ server <- function(input, output,session) {
           )
         )
       )
-      
+
       helpSection <- NULL
       header <- NULL
       ui_list <- list(emojiUI)
-      
+
     } else {
       # Shape mode - use ggplot2 shapes
       shapeChoices <- c("Circle (filled)" = 16, "Square (filled)" = 15, "Triangle (filled)" = 17,
@@ -6709,6 +6660,7 @@ server <- function(input, output,session) {
       updateSelectInput(session = session, "visualAgentID_select", choices = c("All",sort(idAgents)),selected = "All")
     }
   })
+  ### END EMOJI shapes ####
 
   observe({
     info <- input$PostProc_table_cell_clicked
@@ -6838,22 +6790,32 @@ server <- function(input, output,session) {
       }
 
       if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
-        MinCol =0
+        MinCol = 0
+
+        # Calculate data max
         if(colorFeat == "Aerosol"){
-          MaxCol = max(postprocObjects$AEROSOL_std %>%
+          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
                          filter(Folder == folder) %>% pull(virus_concentration))
         }else if(colorFeat == "CumulContact"){
-          MaxCol = max(postprocObjects$CONTACT_std %>%
+          dataMaxCol = max(postprocObjects$CONTACT_std %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID,ID)   %>%
                          count() %>%
                          pull(n) )
         }else if(colorFeat == "CumulAerosol"){
-          MaxCol = max(postprocObjects$AEROSOL_std %>%
+          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
                          filter(Folder == folder) %>%
                          group_by(type,area,Name,CanvasID,ID) %>%
                          mutate(virus_concentration = cumsum(virus_concentration)) %>%
                          pull(virus_concentration))
+        }
+
+        # Check if custom max value is provided
+        customMax <- input$visualColor_maxValue
+        if (!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+          MaxCol <- customMax
+        } else {
+          MaxCol <- dataMaxCol
         }
 
         sc_fill <- scale_fill_gradient(low = "blue", high = "red",
@@ -6892,6 +6854,7 @@ server <- function(input, output,session) {
         facet_wrap(~CanvasID,ncol = 2) +
         theme_bw() +
         theme(legend.position = "bottom",
+              legend.direction = "vertical",
               axis.text = element_text(size = 16),
               axis.title = element_text(size = 20, face = "bold"),
               plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
@@ -6961,9 +6924,9 @@ server <- function(input, output,session) {
         # Emoji mode: Get emoji codes from emojiAssignments reactive
         defaultEmojiCodes <- c("1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
                                "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d")
-        
+
         assignments <- emojiAssignments()
-        
+
         customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
           at <- agentTypesInLog[i]
           if(!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
@@ -7145,6 +7108,14 @@ server <- function(input, output,session) {
       } else {
         title <- labs(title = paste0(days+1, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"),
                       x = "", y = "", color = "Disease state", shape = "Agent type")
+      }
+
+      customMax <- input$visualColor_maxValue
+      if (!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+        MaxCol <- customMax
+        pl = pl + scale_fill_gradient(low = "blue", high = "red",
+                                       limits=c(0,MaxCol),
+                                       guide = "colourbar")
       }
 
       output[["plot_map"]] <- renderPlot({ pl + title })
