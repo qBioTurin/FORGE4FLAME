@@ -2468,23 +2468,153 @@ ui <- dashboardPage(
                 )
               ),
               fluidRow(
+                box(width = 12, collapsed = FALSE, collapsible = TRUE,
+                    title = div(class = "icon-container", style="margin-top:20px",
+                                h3("Disease State Evolution", icon("chart-line")),
+                                div(class = "icon-text", "Visualise how disease states (S, E, I, R, D) evolve over time with customizable filters for granularity, agent type, and room.")
+                    ),
+                    fluidRow(
+                      box(width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
+                          title = div(class = "icon-container",
+                                      h4("Filters", icon("filter")),
+                                      div(class = "icon-text", "Customize the visualization by filtering data.")
+                          ),
+                          fluidRow(
+                            column(2,
+                                   selectInput("diseaseEvol_granularity",
+                                               label = "Time Granularity:",
+                                               choices = c("Step" = "step", "Minute" = "minute", "Hour" = "hour",
+                                                           "Day" = "day", "Week" = "week", "Month" = "month"),
+                                               selected = "day")
+                            ),
+                            column(2,
+                                   selectizeInput("diseaseEvol_agentType",
+                                                  label = "Agent Type:",
+                                                  choices = c("All"),
+                                                  selected = "All",
+                                                  multiple = TRUE,
+                                                  options = list(plugins = list('remove_button')))
+                            ),
+                            column(3,
+                                   selectizeInput("diseaseEvol_room",
+                                                  label = "Room/Position:",
+                                                  choices = c("All"),
+                                                  selected = "All",
+                                                  multiple = TRUE,
+                                                  options = list(plugins = list('remove_button')))
+                            ),
+                            column(2,
+                                   selectizeInput("diseaseEvol_floor",
+                                                  label = "Floor:",
+                                                  choices = c("All"),
+                                                  selected = "All",
+                                                  multiple = TRUE,
+                                                  options = list(plugins = list('remove_button')))
+                            ),
+                            column(2,
+                                   selectizeInput("diseaseEvol_states",
+                                                  label = "Disease States:",
+                                                  choices = c("All"),
+                                                  selected = "All",
+                                                  multiple = TRUE,
+                                                  options = list(plugins = list('remove_button')))
+                            ),
+                            column(1,
+                                   div(style = "padding-top: 25px;",
+                                       actionButton("diseaseEvol_reset", "Reset", icon = icon("refresh"),
+                                                    class = "btn-warning btn-sm")
+                                   )
+                            )
+                          ),
+                          fluidRow(
+                            column(2,
+                                   selectInput("diseaseEvol_measureType",
+                                               label = "Measure Type:",
+                                               choices = c("Final State in Period" = "final_state",
+                                                           "All States in Period" = "all_states"),
+                                               selected = "all_states")
+                            ),
+                            column(3,
+                                   selectizeInput("diseaseEvol_simulation",
+                                                  label = "Simulation(s):",
+                                                  choices = c("All (Aggregate)" = "All"),
+                                                  selected = "All",
+                                                  multiple = TRUE,
+                                                  options = list(plugins = list('remove_button')))
+                            ),
+                            column(2,
+                                   radioButtons("diseaseEvol_aggregateMode",
+                                                label = "Multi-Simulation Mode:",
+                                                choices = c("Mean ± SD" = "mean_sd",
+                                                            "Mean ± 95% CI" = "mean_ci",
+                                                            "Min/Max Range" = "minmax",
+                                                            "Individual Lines" = "individual"),
+                                                selected = "mean_sd")
+                            ),
+                            column(3,
+                                   radioButtons("diseaseEvol_plotType",
+                                                label = "Plot Type:",
+                                                choices = c("Line" = "line", "Bar" = "bar"),
+                                                selected = "line",
+                                                inline = TRUE)
+                            ),
+                            column(3,
+                                   checkboxGroupInput("diseaseEvol_options",
+                                                      label = "Display Options:",
+                                                      choices = c("Show Points" = "points", "Show Legend" = "legend"),
+                                                      selected = "legend",
+                                                      inline = TRUE)
+                            )
+                          ),
+                          fluidRow(
+                            column(2,
+                                   checkboxInput("diseaseEvol_normalize",
+                                                 label = "Normalize (Percentage)",
+                                                 value = FALSE)
+                            ),
+                            column(2,
+                                   checkboxInput("diseaseEvol_facetAgent",
+                                                 label = "Facet by Agent Type",
+                                                 value = FALSE)
+                            ),
+                            column(2,
+                                   checkboxInput("diseaseEvol_facetState",
+                                                 label = "Facet by Disease State",
+                                                 value = FALSE)
+                            ),
+                            column(3,
+                                   checkboxInput("diseaseEvol_showRibbon",
+                                                 label = "Show Uncertainty Ribbon",
+                                                 value = TRUE)
+                            ),
+                            column(3,
+                                   sliderInput("diseaseEvol_alpha",
+                                               label = "Ribbon Transparency:",
+                                               min = 0.1, max = 0.5, value = 0.3, step = 0.05)
+                            )
+                          )
+                      )
+                    ),
+                    fluidRow(
+                      column(12,
+                             plotOutput("DiseaseStateEvolutionPlot", width = "100%", height = "600px")
+                      )
+                    ),
+                    div(style = "height:20px"),
+                    fluidRow(
+                      column(12,
+                             h4("Summary Statistics"),
+                             DT::dataTableOutput("DiseaseStateSummaryTable")
+                      )
+                    )
+                )
+              ),
+              fluidRow(
                 box(width = 12,collapsed = T,collapsible = T,
                     title =   div(class = "icon-container", style="margin-top:20px",
                                   h3("Disease Visualisation", icon("info-circle")),
                                   div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
                     ),
-                    fluidRow(
-                      column(10,
-                             plotOutput("EvolutionPlot", width = "100%", height = "800px")
-                      ),
-                      column(2,
-                             checkboxGroupInput("EvolutionDisease_radioButt",
-                                                choices = c("Mean curves", "Area from all simulations"),
-                                                label = "Show:",selected = character()
-                             )
-                      )
-                    ),
-                    div(style = "height:10px"),
                     fluidRow(
                       column(10,
                              plotOutput("CountersPlot", width = "100%", height = "800px")

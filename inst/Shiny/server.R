@@ -1653,8 +1653,9 @@ server <- function(input, output,session) {
       paste0('model', Sys.Date(), '.zip')
     },
     content = function(file) {
-      canvasObjects$TwoDVisual <- NULL
-      canvasObjects$plot_2D <- NULL
+      postprocObjects$simulation_log_folder <- NULL
+      postprocObjects$simulation_log <- NULL
+      postprocObjects$plot_2D <- NULL
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
 
@@ -1707,8 +1708,9 @@ server <- function(input, output,session) {
     }
     canvasObjects$matricesCanvas <- matricesCanvas
 
-    canvasObjects$TwoDVisual <- NULL
-    canvasObjects$plot_2D <- NULL
+    postprocObjects$simulation_log <- NULL
+    postprocObjects$simulation_log_folder <- NULL
+    postprocObjects$plot_2D <- NULL
 
     model = reactiveValuesToList(canvasObjects)
 
@@ -4653,6 +4655,7 @@ server <- function(input, output,session) {
   postprocObjects = reactiveValues(DirPath = NULL,
                                    evolutionCSV = NULL,
                                    Filter_evolutionCSV = NULL,
+                                   AGENT_POSITION_AND_STATUS = NULL,
                                    CONTACTcsv = NULL,
                                    CONTACTmatrix = NULL,
                                    AEROSOLcsv = NULL,
@@ -4665,8 +4668,7 @@ server <- function(input, output,session) {
                                    Model = NULL
   )
 
-  required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv",
-                      "evolution.csv" )
+  required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv")
   # Allow user to select a folder
 
   vols = F4FgetVolumes(exclude = "")
@@ -4834,7 +4836,7 @@ server <- function(input, output,session) {
 
       # List of files and column names
       file_info <- list(
-        list(name = "evolutionCSV", file = "evolution.csv", cols = NULL),
+        list(name = "AGENT_POSITION_AND_STATUS", file = "AGENT_POSITION_AND_STATUS.csv", cols = c( "time", "id", "agent_type", "x", "y", "z","disease_state", "room_id")),
         list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents births", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
         list(name = "AEROSOLcsv", file = "AEROSOL.csv", cols = c("time", "virus_concentration", "room_id")),
         list(name = "CONTACTcsv", file = "CONTACT.csv", cols = c("time", "agent_id1", "agent_id2", "room_id")),
@@ -4862,13 +4864,36 @@ server <- function(input, output,session) {
     shinyalert("Success", "Everything is loaded!", type = "success", 1000)
   })
 
+  observe({
+    req(postprocObjects$FLAGmodelLoaded)
+    dir = req(postprocObjects$dirPath)
+    Mapping = req(postprocObjects$Mapping)
+    isolate({
+      roomsINcanvas = req(canvasObjects$roomsINcanvas)
+      roomsINcanvas = roomsINcanvas %>% mutate( coord = ifelse(type == "Fillingroom", paste0(x+ceiling(w/2),"-", y+ceiling(h/2),"-", CanvasID), paste0(center_x,"-", center_y,"-", CanvasID)))
+      rooms_id = roomsINcanvas$Name
+      names(rooms_id) = roomsINcanvas$coord
+
+      Mapping = Mapping %>% mutate( CanvasID = canvasObjects$floors$Name[( y / 10 )+1] ,
+                                                    coord = paste0(x,"-", z ,"-",CanvasID),
+                                                    Name = rooms_id[coord] )
+
+      Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name))
+
+      postprocObjects$MappingID_room = merge(roomsINcanvas %>% select(-ID, -typeID),
+                                             Mapping %>% select(-y,-coord) %>% rename(center_x = x, center_y = z),all.x = T)
+
+      postprocObjects$Mapping = Mapping %>% select(-coord,-x,-y,-z)
+    })
+  })
+
   #### query ####
   observe({
     CONTACTcsv = req(postprocObjects$CONTACTcsv)
     CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
     AEROSOLcsv = req(postprocObjects$AEROSOLcsv)
     req(postprocObjects$FLAGmodelLoaded)
-
+    req(postprocObjects$MappingID_room)
     show_modal_spinner(text = "We are preparing everything.")
 
     isolate({
@@ -4882,20 +4907,7 @@ server <- function(input, output,session) {
 
       AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
 
-      roomsINcanvas = roomsINcanvas %>% mutate( coord = ifelse(type == "Fillingroom", paste0(x+ceiling(w/2),"-", y+ceiling(h/2),"-", CanvasID), paste0(center_x,"-", center_y,"-", CanvasID)))
-      rooms_id = roomsINcanvas$Name
-      names(rooms_id) = roomsINcanvas$coord
-
-      Mapping = postprocObjects$Mapping %>% mutate( CanvasID = canvasObjects$floors$Name[( y / 10 )+1] ,
-                                                    coord = paste0(x,"-", z ,"-",CanvasID),
-                                                    Name = rooms_id[coord] )
-
-      Mapping = merge(Mapping,roomsINcanvas %>% select(coord, type, area, Name))
-
-      postprocObjects$MappingID_room = merge(roomsINcanvas %>% select(-ID, -typeID),
-                                             Mapping %>% select(-y,-coord) %>% rename(center_x = x, center_y = z),all.x = T)
-
-      Mapping = Mapping %>% select(-coord,-x,-y,-z)
+      Mapping = req(postprocObjects$Mapping)
 
       postprocObjects$AEROSOL_std  =  merge(Mapping , AEROSOLcsv, by.x = "ID", by.y = "room_id" )
 
@@ -4998,7 +5010,8 @@ server <- function(input, output,session) {
     df <- req(postprocObjects$evolutionCSV )
     show_modal_spinner()
 
-    name_cols <- colnames(df%>% select(-Folder))
+    # i want to add the slider about the agent
+    name_cols <- colnames(df%>% select(-Folder, -agent_type))
     sliders = lapply(name_cols, function(col) {
       values = unique(df[[col]])
       if(col == "Day") values <- values[-c(length(values))]
@@ -5045,64 +5058,824 @@ server <- function(input, output,session) {
 
   })
 
+  ##### Processing AGENT_POSITION_AND_STATUS
 
-  # Observe table edit and validate input
-  observe( {
-    info <- input$PostProc_table_cell_clicked
-    folder = req(info$value)
+  observe({
+    AGENT_POSITION_AND_STATUS = req( postprocObjects$AGENT_POSITION_AND_STATUS )
+    canvasObjects = req( canvasObjects )
 
-    EvolutionDisease_radioButt = input$EvolutionDisease_radioButt
-    df <- req(postprocObjects$evolutionCSV )
+    isolate({
 
-    df = df %>% filter(Folder == folder) %>% select(-Folder) %>%
-      tidyr::gather(-Day, value =  "Number", key = "Compartments")
+      floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
 
-    fixed_colors <- c("Susceptible" = "green", "Exposed" = "blue", "Infected" = "red", "Recovered" = "purple", "Died" = "black")
+      Nfloors = length(floors$CanvasID)
+      simulation_log = AGENT_POSITION_AND_STATUS %>%
+        select(time, id, agent_type, x, y, z, room_id, disease_state,Folder) %>%
+        filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
 
-    pl = ggplot()
-    if(!is.null(EvolutionDisease_radioButt)){
-      DfStat = postprocObjects$evolutionCSV %>%
-        tidyr::gather(-Day,-Folder, value =  "Number", key = "Compartments") %>%
-        group_by( Day,Compartments ) %>%
-        summarise(Mean = mean(Number),
-                  MinV = min(Number),
-                  MaxV = max(Number) )
+      floors$y = seq(0,10*(Nfloors-1),by = 10)
+      #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
 
-      if("Area from all simulations" %in% EvolutionDisease_radioButt){
-        pl = pl +
-          geom_ribbon(data = DfStat,
-                      aes(x = Day, ymin = MinV,ymax = MaxV, group= Compartments, fill = Compartments),alpha = 0.4)+
-          scale_fill_manual(values = fixed_colors,
-                            limits = names(fixed_colors),
-                            labels = names(fixed_colors),
-                            drop = FALSE)
+      simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
+        mutate(time = as.numeric(time)) %>%
+        filter(!is.na(time))
+
+      simulation_log = simulation_log %>%
+        group_by(id,Folder) %>%
+        arrange(time) %>%
+        #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
+        tidyr::fill(agent_type, x, y, z,room_id, CanvasID, Order,disease_state,Folder, .direction = "down") %>%
+        ungroup()
+
+      # add agent names to the simulation log!
+      if(!is.null(names(canvasObjects$agents))){
+        agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
+        agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
+        canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
+        simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
       }
 
-      if("Mean curves" %in% EvolutionDisease_radioButt){
-        pl = pl + geom_line(data = DfStat,
-                            aes(x = Day, y = Mean, group= Compartments, col = Compartments, linetype = "Mean Curves"))+
-          scale_linetype_manual(values = c("Simulation" = "solid","Mean Curves" = "dashed"))
-      }
-
-    }
-    pl = pl +
-      geom_line(data = df, aes(x = Day, y = Number,col = Compartments, linetype = "Simulation" ), linewidth=1.5)+
-      labs(y="Actual number of individuals",col="Compartments", linetype="Type")+
-      scale_color_manual(values = fixed_colors,
-                         limits = names(fixed_colors),
-                         labels = names(fixed_colors),
-                         drop = FALSE) +
-      theme_fancy()
+      simulation_log = simulation_log %>%
+        mutate(disease_state = c("S", "E", "I", "R", "D")[disease_state + 1],
+               CanvasID = ifelse( y == 10000, "Outside", CanvasID))
 
 
-    output$EvolutionPlot <- renderPlot({
-      pl
+      # merge(simulation_log, postprocObjects$Mapping %>% rename(id_room = ID) ) %>%
+      #   select(-x,-y,-z) -> canvasObjects$simulation_log
+
+      postprocObjects$evolutionCSV <- simulation_log %>%
+        select(time, disease_state, Folder,agent_type) %>% distinct() %>% group_by(Folder, time, disease_state,agent_type) %>%
+        summarise(Number = n()) %>%
+        tidyr::pivot_wider(names_from = disease_state, values_from = Number, values_fill = 0) %>%
+        ungroup() %>%
+        arrange(Folder, time) %>%
+        rename(Day = time)
+
+      # Store full simulation log for enhanced disease evolution plot
+      postprocObjects$simulation_log_full <- simulation_log
     })
   })
 
-  output$EvolutionPlot <-  output$CountersPlot<- renderPlot({
-    ggplot()+labs(title = "Please select from the table which simulation to plot")
+  ##### Disease State Evolution - Enhanced Visualization #####
+
+  # Update filter choices when simulation_log is available
+  observe({
+    simulation_log <- req(postprocObjects$simulation_log_full)
+    Mapping <- req(postprocObjects$Mapping)
+
+    isolate({
+      # Get unique agent types
+      agent_types <- unique(simulation_log$agent_type)
+      agent_types <- agent_types[!is.na(agent_types)]
+      updateSelectizeInput(session, "diseaseEvol_agentType",
+                           choices = c("All", sort(agent_types)),
+                           selected = "All")
+
+      # Create composite room identifier (Name - type - area) for unique room selection
+      Mapping_with_id <- Mapping %>%
+        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+
+      # Get unique rooms with composite identifier
+      room_choices <- unique(Mapping_with_id$RoomID)
+      room_choices <- room_choices[!is.na(room_choices)]
+      updateSelectizeInput(session, "diseaseEvol_room",
+                           choices = c("All", sort(room_choices)),
+                           selected = "All")
+
+      # Get unique floors
+      floors_list <- unique(simulation_log$CanvasID)
+      floors_list <- floors_list[!is.na(floors_list)]
+      updateSelectizeInput(session, "diseaseEvol_floor",
+                           choices = c("All", sort(floors_list)),
+                           selected = "All")
+
+      # Get disease states based on model
+      disease_model <- canvasObjects$disease[[1]]$disease_model_name
+      if (is.null(disease_model)) disease_model <- "SIR"
+      states <- strsplit(disease_model, "")[[1]]
+      state_names <- c("S" = "Susceptible", "E" = "Exposed", "I" = "Infected", "R" = "Recovered", "D" = "Died")
+      state_choices <- setNames(states, state_names[states])
+      updateSelectizeInput(session, "diseaseEvol_states",
+                           choices = c("All", state_choices),
+                           selected = "All")
+
+      # Get unique simulations (folders)
+      folders <- unique(simulation_log$Folder)
+      folders <- folders[!is.na(folders)]
+      n_sims <- length(folders)
+      updateSelectizeInput(session, "diseaseEvol_simulation",
+                           choices = c("All (Aggregate)" = "All", setNames(folders, paste0("Sim: ", folders))),
+                           selected = "All")
+    })
   })
+
+  # Reset filters button
+  observeEvent(input$diseaseEvol_reset, {
+    updateSelectizeInput(session, "diseaseEvol_agentType", selected = "All")
+    updateSelectizeInput(session, "diseaseEvol_room", selected = "All")
+    updateSelectizeInput(session, "diseaseEvol_floor", selected = "All")
+    updateSelectizeInput(session, "diseaseEvol_states", selected = "All")
+    updateSelectizeInput(session, "diseaseEvol_simulation", selected = "All")
+    updateSelectInput(session, "diseaseEvol_granularity", selected = "day")
+    updateSelectInput(session, "diseaseEvol_measureType", selected = "all_states")
+    updateRadioButtons(session, "diseaseEvol_plotType", selected = "line")
+    updateRadioButtons(session, "diseaseEvol_aggregateMode", selected = "mean_sd")
+    updateCheckboxGroupInput(session, "diseaseEvol_options", selected = "legend")
+    updateCheckboxInput(session, "diseaseEvol_normalize", value = FALSE)
+    updateCheckboxInput(session, "diseaseEvol_facetAgent", value = FALSE)
+    updateCheckboxInput(session, "diseaseEvol_facetState", value = FALSE)
+    updateCheckboxInput(session, "diseaseEvol_showRibbon", value = TRUE)
+    updateSliderInput(session, "diseaseEvol_alpha", value = 0.3)
+  })
+
+  # Observer to enable/disable aggregation mode based on number of simulations
+  observe({
+    simulation_log <- postprocObjects$simulation_log_full
+    if (is.null(simulation_log)) return()
+
+    # Count unique folders (simulations)
+    folders <- unique(simulation_log$Folder)
+    n_sims <- length(folders[!is.na(folders)])
+
+    # If only one simulation, disable aggregation options (force individual mode)
+    if (n_sims <= 1) {
+      shinyjs::disable("diseaseEvol_aggregateMode")
+      shinyjs::disable("diseaseEvol_showRibbon")
+      shinyjs::disable("diseaseEvol_alpha")
+      updateRadioButtons(session, "diseaseEvol_aggregateMode", selected = "individual")
+    } else {
+      shinyjs::enable("diseaseEvol_aggregateMode")
+      shinyjs::enable("diseaseEvol_showRibbon")
+      shinyjs::enable("diseaseEvol_alpha")
+    }
+  })
+
+  # Reactive to prepare filtered data for disease evolution plot
+  diseaseEvol_data <- reactive({
+    simulation_log <- req(postprocObjects$simulation_log_full)
+    Mapping <- req(postprocObjects$Mapping)
+
+    # Get the step size in seconds from starting settings
+    step_seconds <- as.numeric(canvasObjects$starting$step)
+    if (is.null(step_seconds) || is.na(step_seconds)) step_seconds <- 60  # default to 60 seconds
+
+    # Get simulation days to calculate the complete time range
+    simulation_days <- as.numeric(canvasObjects$starting$simulation_days)
+    if (is.null(simulation_days) || is.na(simulation_days)) simulation_days <- 30  # default to 30 days
+    
+    # Calculate total simulation time in seconds
+    total_simulation_seconds <- simulation_days * 86400  # days to seconds
+
+    # Check if we need a specific folder or all
+    selected_sims <- input$diseaseEvol_simulation
+
+    # Use simulation_log_full which has the raw time column
+    if ("All" %in% selected_sims || is.null(selected_sims) || length(selected_sims) == 0) {
+      sim_data <- simulation_log
+    } else {
+      sim_data <- simulation_log %>%
+        filter(Folder %in% selected_sims)
+    }
+
+    # If room filter is applied, we need to join with room names
+    # Track if multiple rooms are selected for faceting
+    multiple_rooms_selected <- FALSE
+
+    if (!"All" %in% input$diseaseEvol_room && length(input$diseaseEvol_room) > 0) {
+      multiple_rooms_selected <- length(input$diseaseEvol_room) > 1
+
+      # Create composite room identifier in Mapping to match the selected values
+      Mapping_with_id <- Mapping %>%
+        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+
+      # Filter Mapping to get the selected rooms
+      selected_rooms <- Mapping_with_id %>%
+        filter(RoomID %in% input$diseaseEvol_room)
+
+      # Join simulation data with Mapping to get room info
+      # First merge to get room_id match, keeping RoomID for faceting
+      sim_data <- sim_data %>%
+        inner_join(
+          selected_rooms %>% select(ID, RoomID, Name, type, area),
+          by = c("room_id" = "ID")
+        )
+    }
+
+    # Apply agent type filter
+    if (!"All" %in% input$diseaseEvol_agentType && length(input$diseaseEvol_agentType) > 0) {
+      sim_data <- sim_data %>% filter(agent_type %in% input$diseaseEvol_agentType)
+    }
+
+    # Apply floor filter
+    if (!"All" %in% input$diseaseEvol_floor && length(input$diseaseEvol_floor) > 0) {
+      sim_data <- sim_data %>% filter(CanvasID %in% input$diseaseEvol_floor)
+    }
+
+    # Apply disease state filter
+    if (!"All" %in% input$diseaseEvol_states && length(input$diseaseEvol_states) > 0) {
+      sim_data <- sim_data %>% filter(disease_state %in% input$diseaseEvol_states)
+    }
+
+    # Get the selected granularity
+    granularity <- input$diseaseEvol_granularity
+
+    # Calculate time column based on selected granularity
+    # time column represents the step number, so we need to convert:
+    # actual_seconds = time * step_seconds
+    sim_data <- sim_data %>%
+      mutate(
+        time_granular = case_when(
+          granularity == "step"   ~ time,
+          granularity == "minute" ~ floor((time * step_seconds) / 60),
+          granularity == "hour"   ~ floor((time * step_seconds) / 3600),
+          granularity == "day"    ~ floor((time * step_seconds) / 86400),
+          granularity == "week"   ~ floor((time * step_seconds) / 604800),
+          granularity == "month"  ~ floor((time * step_seconds) / 2592000),  # ~30 days
+          TRUE ~ time
+        )
+      )
+
+    # Calculate max_time_granular based on simulation_days and granularity
+    max_time_granular <- switch(granularity,
+      "step"   = floor(total_simulation_seconds / step_seconds),
+      "minute" = floor(total_simulation_seconds / 60),
+      "hour"   = floor(total_simulation_seconds / 3600),
+      "day"    = simulation_days,
+      "week"   = floor(simulation_days / 7),
+      "month"  = floor(simulation_days / 30),
+      simulation_days
+    )
+
+    # Get measure type selection
+    measure_type <- input$diseaseEvol_measureType
+    if (is.null(measure_type)) measure_type <- "all_states"
+
+    # Check if RoomID column exists (multiple rooms selected)
+    has_room <- "RoomID" %in% names(sim_data) && multiple_rooms_selected
+
+    # Get all disease states for complete expansion
+    disease_model <- canvasObjects$disease[[1]]$disease_model_name
+    if (is.null(disease_model)) disease_model <- "SIR"
+    all_disease_states <- strsplit(disease_model, "")[[1]]
+
+    # Aggregate based on granularity, measure type, and room
+    if (input$diseaseEvol_facetAgent && !"All" %in% input$diseaseEvol_agentType) {
+      # With agent type faceting
+      if (measure_type == "final_state") {
+        # Final State: Take only the last time point within each granular period for each agent
+        if (has_room) {
+          agg_data <- sim_data %>%
+            select(Folder, time, time_granular, id, disease_state, agent_type, RoomID) %>%
+            group_by(Folder, time_granular, id, RoomID) %>%
+            filter(time == max(time)) %>%
+            ungroup() %>%
+            select(-time) %>%
+            group_by(Folder, time_granular, disease_state, agent_type, RoomID) %>%
+            summarise(Count = n(), .groups = "drop")
+        } else {
+          agg_data <- sim_data %>%
+            select(Folder, time, time_granular, id, disease_state, agent_type) %>%
+            group_by(Folder, time_granular, id) %>%
+            filter(time == max(time)) %>%
+            ungroup() %>%
+            select(-time) %>%
+            group_by(Folder, time_granular, disease_state, agent_type) %>%
+            summarise(Count = n(), .groups = "drop")
+        }
+
+      } else {
+        # All States: Count all unique agent-state combinations within each granular period
+        if (has_room) {
+          agg_data <- sim_data %>%
+            select(Folder, time_granular, id, disease_state, agent_type, RoomID) %>%
+            distinct() %>%
+            group_by(Folder, time_granular, disease_state, agent_type, RoomID) %>%
+            summarise(Count = n(), .groups = "drop")
+        } else {
+          agg_data <- sim_data %>%
+            select(Folder, time_granular, id, disease_state, agent_type) %>%
+            distinct() %>%
+            group_by(Folder, time_granular, disease_state, agent_type) %>%
+            summarise(Count = n(), .groups = "drop")
+        }
+      }
+
+      # Complete the time range from 0 to max_time_granular for all combinations
+      # Get unique folders and agent types
+      folders <- unique(agg_data$Folder)
+      agent_types_in_data <- unique(agg_data$agent_type)
+      
+      if (has_room) {
+        rooms_in_data <- unique(agg_data$RoomID)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = 0:max_time_granular,
+          disease_state = all_disease_states,
+          agent_type = agent_types_in_data,
+          RoomID = rooms_in_data,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = 0:max_time_granular,
+          disease_state = all_disease_states,
+          agent_type = agent_types_in_data,
+          stringsAsFactors = FALSE
+        )
+      }
+      
+      agg_data <- complete_grid %>%
+        left_join(agg_data, by = names(complete_grid)) %>%
+        mutate(Count = ifelse(is.na(Count), 0, Count))
+
+    } else {
+      # Without agent type faceting
+      if (measure_type == "final_state") {
+        # Final State: Take only the last time point within each granular period for each agent
+        if (has_room) {
+          agg_data <- sim_data %>%
+            select(Folder, time, time_granular, id, disease_state, RoomID) %>%
+            group_by(Folder, time_granular, id, RoomID) %>%
+            filter(time == max(time)) %>%
+            ungroup() %>%
+            select(-time) %>%
+            group_by(Folder, time_granular, disease_state, RoomID) %>%
+            summarise(Count = n(), .groups = "drop")
+        } else {
+          agg_data <- sim_data %>%
+            select(Folder, time, time_granular, id, disease_state) %>%
+            group_by(Folder, time_granular, id) %>%
+            filter(time == max(time)) %>%
+            ungroup() %>%
+            select(-time) %>%
+            group_by(Folder, time_granular, disease_state) %>%
+            summarise(Count = n(), .groups = "drop")
+        }
+      } else {
+        # All States: Count all unique agent-state combinations within each granular period
+        if (has_room) {
+          agg_data <- sim_data %>%
+            select(Folder, time_granular, id, disease_state, RoomID) %>%
+            distinct() %>%
+            group_by(Folder, time_granular, disease_state, RoomID) %>%
+            summarise(Count = n(), .groups = "drop")
+        } else {
+          agg_data <- sim_data %>%
+            select(Folder, time_granular, id, disease_state) %>%
+            distinct() %>%
+            group_by(Folder, time_granular, disease_state) %>%
+            summarise(Count = n(), .groups = "drop")
+        }
+      }
+
+      # Complete the time range from 0 to max_time_granular for all combinations
+      # Get unique folders
+      folders <- unique(agg_data$Folder)
+      
+      if (has_room) {
+        rooms_in_data <- unique(agg_data$RoomID)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = 0:max_time_granular,
+          disease_state = all_disease_states,
+          RoomID = rooms_in_data,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = 0:max_time_granular,
+          disease_state = all_disease_states,
+          stringsAsFactors = FALSE
+        )
+      }
+      
+      agg_data <- complete_grid %>%
+        left_join(agg_data, by = names(complete_grid)) %>%
+        mutate(Count = ifelse(is.na(Count), 0, Count))
+    }
+
+
+
+    # Normalize if requested (per simulation and room if applicable)
+    if (input$diseaseEvol_normalize) {
+      if (input$diseaseEvol_facetAgent && !"All" %in% input$diseaseEvol_agentType) {
+        if (has_room) {
+          agg_data <- agg_data %>%
+            group_by(Folder, time_granular, agent_type, RoomID) %>%
+            mutate(Count = Count / sum(Count) * 100) %>%
+            ungroup()
+        } else {
+          agg_data <- agg_data %>%
+            group_by(Folder, time_granular, agent_type) %>%
+            mutate(Count = Count / sum(Count) * 100) %>%
+            ungroup()
+        }
+      } else {
+        if (has_room) {
+          agg_data <- agg_data %>%
+            group_by(Folder, time_granular, RoomID) %>%
+            mutate(Count = Count / sum(Count) * 100) %>%
+            ungroup()
+        } else {
+          agg_data <- agg_data %>%
+            group_by(Folder, time_granular) %>%
+            mutate(Count = Count / sum(Count) * 100) %>%
+            ungroup()
+        }
+      }
+    }
+
+    # Store has_room flag in the data for later use in faceting
+    attr(agg_data, "has_room") <- has_room
+
+    # Convert disease_state to factor with proper ordering based on disease model
+    disease_model <- canvasObjects$disease[[1]]$disease_model_name
+    if (is.null(disease_model)) disease_model <- "SIR"
+
+    # Define the canonical order of disease states
+    all_states_order <- c("S", "E", "I", "R", "D")
+    # Get the states present in the disease model (in order)
+    model_states <- strsplit(disease_model, "")[[1]]
+    # Keep only states that are in the canonical order
+    state_levels <- all_states_order[all_states_order %in% model_states]
+
+    # Convert disease_state to factor with proper levels
+    agg_data <- agg_data %>%
+      mutate(disease_state = factor(disease_state, levels = state_levels))
+
+    agg_data
+  })
+
+  # Render the Disease State Evolution plot
+  output$DiseaseStateEvolutionPlot <- renderPlot({
+    df <- tryCatch(diseaseEvol_data(), error = function(e) NULL)
+
+    if (is.null(df) || nrow(df) == 0) {
+      return(
+        ggplot() +
+          annotate("text", x = 0.5, y = 0.5, label = "Please wait for simulation data to load.\nFilters will be populated automatically.",
+                   size = 6, color = "white") +
+          theme_void() +
+          theme(plot.background = element_rect(fill = "#2b2b2b", color = NA))
+      )
+    }
+
+    granularity <- input$diseaseEvol_granularity
+    plot_type <- input$diseaseEvol_plotType
+    options <- input$diseaseEvol_options
+    aggregate_mode <- input$diseaseEvol_aggregateMode
+    show_ribbon <- input$diseaseEvol_showRibbon
+    ribbon_alpha <- input$diseaseEvol_alpha
+
+    # Get disease model colors
+    disease_model <- canvasObjects$disease[[1]]$disease_model_name
+    if (is.null(disease_model)) disease_model <- "SIR"
+
+    # Enhanced color palette for disease states
+    state_colors <- c("S" = "#2ecc71", "E" = "#3498db", "I" = "#e74c3c", "R" = "#9b59b6", "D" = "#34495e")
+    state_labels <- c("S" = "Susceptible", "E" = "Exposed", "I" = "Infected", "R" = "Recovered", "D" = "Died")
+
+    # Get the factor levels from the data (already properly ordered)
+    present_states <- levels(df$disease_state)
+    # Filter to only states that have data
+    present_states <- present_states[present_states %in% unique(as.character(df$disease_state))]
+    state_colors <- state_colors[present_states]
+    state_labels <- state_labels[present_states]
+
+    # Create x-axis label based on granularity
+    x_label <- switch(granularity,
+                      "step" = "Time (Steps)",
+                      "minute" = "Time (Minutes)",
+                      "hour" = "Time (Hours)",
+                      "day" = "Time (Days)",
+                      "week" = "Time (Weeks)",
+                      "month" = "Time (Months)",
+                      "Time")
+
+    y_label <- if(input$diseaseEvol_normalize) "Percentage (%)" else "Number of Agents"
+
+    # Check number of simulations
+    n_sims <- length(unique(df$Folder))
+
+    # Get measure type for subtitle
+    measure_type <- input$diseaseEvol_measureType
+    if (is.null(measure_type)) measure_type <- "all_states"
+    measure_label <- if(measure_type == "final_state") "Final State in Period" else "All States in Period"
+
+    # Determine plot title
+    if (n_sims > 1) {
+      title_text <- paste0("Disease State Evolution (", n_sims, " simulations)")
+    } else {
+      title_text <- paste0("Disease State Evolution (", unique(df$Folder), ")")
+    }
+
+    # Prepare data based on aggregation mode
+    if (n_sims > 1 && aggregate_mode != "individual") {
+      # Aggregate across simulations
+      # Check if room (RoomID) is in the data
+      has_room_in_df <- "RoomID" %in% names(df)
+
+      if (input$diseaseEvol_facetAgent && "agent_type" %in% names(df)) {
+        if (has_room_in_df) {
+          agg_stats <- df %>%
+            group_by(time_granular, disease_state, agent_type, RoomID) %>%
+            summarise(
+              Mean = mean(Count, na.rm = TRUE),
+              SD = sd(Count, na.rm = TRUE),
+              SE = SD / sqrt(n()),
+              Min = min(Count, na.rm = TRUE),
+              Max = max(Count, na.rm = TRUE),
+              CI_lower = Mean - 1.96 * SE,
+              CI_upper = Mean + 1.96 * SE,
+              n_sims = n(),
+              .groups = "drop"
+            )
+        } else {
+          agg_stats <- df %>%
+            group_by(time_granular, disease_state, agent_type) %>%
+            summarise(
+              Mean = mean(Count, na.rm = TRUE),
+              SD = sd(Count, na.rm = TRUE),
+              SE = SD / sqrt(n()),
+              Min = min(Count, na.rm = TRUE),
+              Max = max(Count, na.rm = TRUE),
+              CI_lower = Mean - 1.96 * SE,
+              CI_upper = Mean + 1.96 * SE,
+              n_sims = n(),
+              .groups = "drop"
+            )
+        }
+      } else {
+        if (has_room_in_df) {
+          agg_stats <- df %>%
+            group_by(time_granular, disease_state, RoomID) %>%
+            summarise(
+              Mean = mean(Count, na.rm = TRUE),
+              SD = sd(Count, na.rm = TRUE),
+              SE = SD / sqrt(n()),
+              Min = min(Count, na.rm = TRUE),
+              Max = max(Count, na.rm = TRUE),
+              CI_lower = Mean - 1.96 * SE,
+              CI_upper = Mean + 1.96 * SE,
+              n_sims = n(),
+              .groups = "drop"
+            )
+        } else {
+          agg_stats <- df %>%
+            group_by(time_granular, disease_state) %>%
+            summarise(
+              Mean = mean(Count, na.rm = TRUE),
+              SD = sd(Count, na.rm = TRUE),
+              SE = SD / sqrt(n()),
+              Min = min(Count, na.rm = TRUE),
+              Max = max(Count, na.rm = TRUE),
+              CI_lower = Mean - 1.96 * SE,
+              CI_upper = Mean + 1.96 * SE,
+              n_sims = n(),
+              .groups = "drop"
+            )
+        }
+      }
+
+      # Handle NA values
+      agg_stats <- agg_stats %>%
+        mutate(
+          SD = ifelse(is.na(SD), 0, SD),
+          SE = ifelse(is.na(SE), 0, SE),
+          CI_lower = ifelse(is.na(CI_lower), Mean, CI_lower),
+          CI_upper = ifelse(is.na(CI_upper), Mean, CI_upper)
+        )
+
+      # Calculate ribbon bounds based on mode
+      if (aggregate_mode == "mean_sd") {
+        agg_stats <- agg_stats %>%
+          mutate(
+            ymin = pmax(Mean - SD, 0),
+            ymax = Mean + SD
+          )
+        subtitle_text <- paste0(measure_label, " | Mean ± Standard Deviation")
+      } else if (aggregate_mode == "mean_ci") {
+        agg_stats <- agg_stats %>%
+          mutate(
+            ymin = pmax(CI_lower, 0),
+            ymax = CI_upper
+          )
+        subtitle_text <- paste0(measure_label, " | Mean ± 95% Confidence Interval")
+      } else if (aggregate_mode == "minmax") {
+        agg_stats <- agg_stats %>%
+          mutate(
+            ymin = Min,
+            ymax = Max
+          )
+        subtitle_text <- paste0(measure_label, " | Min/Max Range")
+      }
+
+      # Base plot with aggregated data
+      pl <- ggplot(agg_stats, aes(x = time_granular, color = disease_state, fill = disease_state))
+
+      # Add ribbon for uncertainty
+      if (show_ribbon && plot_type == "line") {
+        pl <- pl + geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = ribbon_alpha, color = NA)
+      }
+
+      # Add plot type
+      if (plot_type == "line") {
+        pl <- pl + geom_line(aes(y = Mean), linewidth = 1.2)
+        if ("points" %in% options) {
+          pl <- pl + geom_point(aes(y = Mean), size = 2.5)
+        }
+      } else if (plot_type == "bar") {
+        pl <- pl + geom_col(aes(y = Mean), position = "dodge", alpha = 0.8)
+        if (show_ribbon) {
+          pl <- pl + geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                                    position = position_dodge(width = 0.9),
+                                    width = 0.25, alpha = 0.7)
+        }
+      }
+
+    } else {
+      # Individual simulations or single simulation
+      subtitle_text <- if(n_sims > 1) {
+        paste0(measure_label, " | Individual Simulation Trajectories")
+      } else {
+        measure_label
+      }
+
+      pl <- ggplot(df, aes(x = time_granular, y = Count, color = disease_state, fill = disease_state))
+
+      if (n_sims > 1) {
+        # Multiple individual lines
+        pl <- pl + aes(group = interaction(disease_state, Folder))
+
+        if (plot_type == "line") {
+          pl <- pl + geom_line(aes(linetype = Folder), linewidth = 0.8, alpha = 0.7)
+          if ("points" %in% options) {
+            pl <- pl + geom_point(size = 1.5, alpha = 0.7)
+          }
+        } else if (plot_type == "bar") {
+          pl <- pl + geom_col(aes(group = Folder), position = position_dodge2(preserve = "single"), alpha = 0.6)
+        }
+      } else {
+        # Single simulation
+        if (plot_type == "line") {
+          pl <- pl + geom_line(linewidth = 1.2)
+          if ("points" %in% options) {
+            pl <- pl + geom_point(size = 2.5)
+          }
+        } else if (plot_type == "bar") {
+          pl <- pl + geom_col(position = "dodge", alpha = 0.8)
+        }
+      }
+    }
+
+    # Apply colors and labels
+    pl <- pl +
+      scale_color_manual(values = state_colors, labels = state_labels, name = "Disease State") +
+      scale_fill_manual(values = state_colors, labels = state_labels, name = "Disease State") +
+      labs(x = x_label, y = y_label, title = title_text, subtitle = subtitle_text) +
+      theme_fancy()
+
+    # Handle legend visibility
+    if (!"legend" %in% options) {
+      pl <- pl + theme(legend.position = "none")
+    }
+
+    # Faceting options
+    facet_agent <- input$diseaseEvol_facetAgent && "agent_type" %in% names(df)
+    facet_state <- input$diseaseEvol_facetState
+    facet_room <- "RoomID" %in% names(df)  # Automatic faceting when multiple rooms selected
+
+    # Build facet formula based on active facets
+    if (facet_room) {
+      if (facet_agent && facet_state) {
+        # Facet by room, agent type, and disease state
+        pl <- pl + facet_grid(disease_state ~ RoomID + agent_type, scales = "free_y")
+      } else if (facet_agent) {
+        # Facet by room and agent type
+        pl <- pl + facet_grid(RoomID ~ agent_type, scales = "free_y")
+      } else if (facet_state) {
+        # Facet by room and disease state
+        pl <- pl + facet_grid(disease_state ~ RoomID, scales = "free_y")
+      } else {
+        # Facet by room only (default when multiple rooms selected)
+        pl <- pl + facet_wrap(~RoomID, scales = "free_y")
+      }
+    } else {
+      if (facet_agent && facet_state) {
+        # Facet by both agent type and disease state
+        pl <- pl + facet_grid(disease_state ~ agent_type, scales = "free_y")
+      } else if (facet_agent) {
+        # Facet by agent type only
+        pl <- pl + facet_wrap(~agent_type, scales = "free_y")
+      } else if (facet_state) {
+        # Facet by disease state only
+        pl <- pl + facet_wrap(~disease_state, scales = "free_y")
+      }
+    }
+
+    pl
+  })
+
+  # Render summary statistics table
+  output$DiseaseStateSummaryTable <- DT::renderDataTable({
+    df <- tryCatch(diseaseEvol_data(), error = function(e) NULL)
+
+    if (is.null(df) || nrow(df) == 0) {
+      return(DT::datatable(data.frame(Message = "No data available")))
+    }
+
+    granularity <- input$diseaseEvol_granularity
+    n_sims <- length(unique(df$Folder))
+    aggregate_mode <- input$diseaseEvol_aggregateMode
+
+    # Map state letters to full names
+    state_labels <- c("S" = "Susceptible", "E" = "Exposed", "I" = "Infected", "R" = "Recovered", "D" = "Died")
+
+    # Calculate summary statistics
+    if (n_sims > 1 && aggregate_mode != "individual") {
+      # Multi-simulation summary - aggregate across simulations first, then summarize
+      if (input$diseaseEvol_facetAgent && "agent_type" %in% names(df)) {
+        # First get per-simulation totals
+        sim_totals <- df %>%
+          group_by(Folder, disease_state, agent_type) %>%
+          summarise(Total = sum(Count, na.rm = TRUE), .groups = "drop")
+
+        summary_df <- sim_totals %>%
+          group_by(disease_state, agent_type) %>%
+          summarise(
+            `N Simulations` = n(),
+            `Mean (across sims)` = round(mean(Total, na.rm = TRUE), 2),
+            `SD (across sims)` = round(sd(Total, na.rm = TRUE), 2),
+            `Min (across sims)` = round(min(Total, na.rm = TRUE), 2),
+            `Max (across sims)` = round(max(Total, na.rm = TRUE), 2),
+            `CV %` = round(sd(Total, na.rm = TRUE) / mean(Total, na.rm = TRUE) * 100, 2),
+            .groups = "drop"
+          ) %>%
+          rename(`Disease State` = disease_state, `Agent Type` = agent_type)
+      } else {
+        # First get per-simulation totals
+        sim_totals <- df %>%
+          group_by(Folder, disease_state) %>%
+          summarise(Total = sum(Count, na.rm = TRUE), .groups = "drop")
+
+        summary_df <- sim_totals %>%
+          group_by(disease_state) %>%
+          summarise(
+            `N Simulations` = n(),
+            `Mean (across sims)` = round(mean(Total, na.rm = TRUE), 2),
+            `SD (across sims)` = round(sd(Total, na.rm = TRUE), 2),
+            `Min (across sims)` = round(min(Total, na.rm = TRUE), 2),
+            `Max (across sims)` = round(max(Total, na.rm = TRUE), 2),
+            `CV %` = round(sd(Total, na.rm = TRUE) / mean(Total, na.rm = TRUE) * 100, 2),
+            .groups = "drop"
+          ) %>%
+          rename(`Disease State` = disease_state)
+      }
+
+      # Replace NA CV% with 0
+      summary_df$`CV %`[is.na(summary_df$`CV %`)] <- 0
+
+    } else {
+      # Single simulation or individual mode - per time point statistics
+      if (input$diseaseEvol_facetAgent && "agent_type" %in% names(df)) {
+        summary_df <- df %>%
+          group_by(disease_state, agent_type) %>%
+          summarise(
+            `Mean (per time unit)` = round(mean(Count, na.rm = TRUE), 2),
+            `SD (per time unit)` = round(sd(Count, na.rm = TRUE), 2),
+            `Min` = min(Count, na.rm = TRUE),
+            `Max` = max(Count, na.rm = TRUE),
+            `Total` = sum(Count, na.rm = TRUE),
+            .groups = "drop"
+          ) %>%
+          rename(`Disease State` = disease_state, `Agent Type` = agent_type)
+      } else {
+        summary_df <- df %>%
+          group_by(disease_state) %>%
+          summarise(
+            `Mean (per time unit)` = round(mean(Count, na.rm = TRUE), 2),
+            `SD (per time unit)` = round(sd(Count, na.rm = TRUE), 2),
+            `Min` = min(Count, na.rm = TRUE),
+            `Max` = max(Count, na.rm = TRUE),
+            `Total` = sum(Count, na.rm = TRUE),
+            .groups = "drop"
+          ) %>%
+          rename(`Disease State` = disease_state)
+      }
+    }
+
+    # Map state letters to full names
+    summary_df$`Disease State` <- state_labels[summary_df$`Disease State`]
+
+    DT::datatable(summary_df,
+                  options = list(pageLength = 10, dom = 't', scrollX = TRUE),
+                  rownames = FALSE) %>%
+      DT::formatStyle(columns = 1:ncol(summary_df), fontSize = '14px')
+  })
+
+
   output$A_C_CountersPlot<- renderPlot({
     ggplot()+labs(title = "Please select a room")
   })
@@ -5162,6 +5935,7 @@ server <- function(input, output,session) {
     })
 
   })
+
   observe( {
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
@@ -5350,51 +6124,18 @@ server <- function(input, output,session) {
     disable("flamegpu_connection")
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
+    req(postprocObjects$simulation_log) -> simulation_log
 
     isolate({
       show_modal_spinner()
-
-      CSVdatapath = paste0(postprocObjects$dirPath, "/" , folder,"/AGENT_POSITION_AND_STATUS.csv")
-
-      dataframe <- read_csv(CSVdatapath)
-      colnames(dataframe) <- c( "time", "id", "agent_type", "x", "y", "z",
-                                "disease_state")
-
-
-      floors = canvasObjects$floors %>% arrange(Order) %>% rename(CanvasID = Name)
-
-      Nfloors = length(floors$CanvasID)
-      simulation_log = dataframe %>%
-        select(time, id, agent_type, x, y, z, disease_state) %>%
-        filter(y %in% seq(0,10*(Nfloors-1),by = 10) | y == 10000)
-
-      floors$y = seq(0,10*(Nfloors-1),by = 10)
-      #simulation_log %>% filter(y != 10000) %>% select(y)  %>% distinct() %>% arrange()
-
-      simulation_log = merge(simulation_log, floors %>% select(-ID), all.x = TRUE) %>%
-        mutate(time = as.numeric(time)) %>%
-        filter(!is.na(time))
-
       simulation_log = simulation_log %>%
-        group_by(id) %>%
-        arrange(time) %>%
-        #tidyr::complete(time = tidyr::full_seq(time, 1)) %>%
-        tidyr::fill(agent_type, x, y, z, CanvasID, Order,disease_state, .direction = "down") %>%
-        ungroup() #%>%
-      #filter(y != 10000)
-
-      # add agent names to the simulation log!
-      if(!is.null(names(canvasObjects$agents))){
-        agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
-        agent_with_daily_rate<- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
-        canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
-        simulation_log = simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type+1])
-      }
-
-      canvasObjects$TwoDVisual <- simulation_log
+        filter(Folder == folder) %>%
+        select(-Folder)
 
       simulation_log = simulation_log %>%
         filter(y != 10000)
+
+      postprocObjects$simulation_log_folder = simulation_log
 
       remove_modal_spinner()
 
@@ -5417,7 +6158,7 @@ server <- function(input, output,session) {
   animationStep <- debounce(reactive({input$animationStep}), 1000L)
 
   observeEvent(animationStep(),{
-    req(canvasObjects$TwoDVisual)
+    req(postprocObjects$simulation_log_folder)
 
     if(is.na(input$animationStep) || input$animationStep == "") {
       shinyalert("Error", "The time step cannot be less than 1 sec.", type = "error")
@@ -5429,7 +6170,7 @@ server <- function(input, output,session) {
       return()
     }
 
-    if( input$animationStep > max(canvasObjects$TwoDVisual$time)* as.numeric(postprocObjects$Model$starting$step) ) {
+    if( input$animationStep > max(postprocObjects$simulation_log_folder$time)* as.numeric(postprocObjects$Model$starting$step) ) {
       shinyalert("Error", "The time step cannot be greater than the maximum time of the simulation.",type = "error")
       return()
     }
@@ -5437,17 +6178,17 @@ server <- function(input, output,session) {
     updateSliderInput("animation", session = session, value = input$animation, step =  input$animationStep)
   })
   observeEvent(input$next_step_visual, {
-    req(canvasObjects$TwoDVisual)
+    req(postprocObjects$simulation_log_folder)
 
     new_val <- min(input$animation +  input$animationStep,
-                   max(canvasObjects$TwoDVisual$time)* as.numeric(postprocObjects$Model$starting$step) )
+                   max(postprocObjects$simulation_log_folder$time)* as.numeric(postprocObjects$Model$starting$step) )
 
     updateSliderInput(session, "animation", value = new_val)
   })
 
   output$TwoDMapPlots <- renderUI({
-    simulation_log = req(canvasObjects$TwoDVisual)
-    num_floors_in_canvas <- unique(simulation_log$CanvasID)
+    simulation_log_folder = req(postprocObjects$simulation_log_folder)
+    num_floors_in_canvas <- unique(simulation_log_folder$CanvasID)
 
     H = length(num_floors_in_canvas)*300
     plot_output_list <- plotOutput(outputId = "plot_map", height = paste0(H,"px") )
@@ -5457,7 +6198,7 @@ server <- function(input, output,session) {
 
   # Render each plot individually
   observeEvent(input$visualAgent_select,{
-    simulation_log = req(canvasObjects$TwoDVisual)
+    simulation_log = req(postprocObjects$simulation_log_folder)
 
     if(input$visualAgent_select != "All"){
       idAgents = simulation_log %>% filter(agent_type == input$visualAgent_select) %>% select(id) %>% distinct() %>% pull()
@@ -5671,7 +6412,7 @@ server <- function(input, output,session) {
       #                        size = 4)
       # }
 
-      canvasObjects$plot_2D <- pl
+      postprocObjects$plot_2D <- pl
 
     })
 
@@ -5681,8 +6422,8 @@ server <- function(input, output,session) {
     info <- input$PostProc_table_cell_clicked
     folder = req(info$value)
 
-    pl = req(canvasObjects$plot_2D)
-    simulation_log = req(canvasObjects$TwoDVisual)
+    pl = req(postprocObjects$plot_2D)
+    simulation_log = req(postprocObjects$simulation_log_folder)
     timeIn <- req(input$animation)
     colorFeat = input$visualColor_select
     visualAgent = input$visualAgent_select
@@ -5930,8 +6671,9 @@ server <- function(input, output,session) {
     }
     canvasObjects$matricesCanvas <- matricesCanvas
 
-    canvasObjects$TwoDVisual <- NULL
-    canvasObjects$plot_2D <- NULL
+    postprocObjects$simulation_log_folder <- NULL
+    postprocObjects$simulation_log <- NULL
+    postprocObjects$plot_2D <- NULL
 
     model = reactiveValuesToList(canvasObjects)
     model_RDS = model
