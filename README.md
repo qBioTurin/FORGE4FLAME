@@ -52,6 +52,7 @@ if(!requireNamespace ("remotes " , quietly = TRUE))
 
 library (remotes)
 install_github ("ornelles/EBImageExtra")
+install_github("dill/emoGG")
 ```
 
 ### FLAMEGPU2 

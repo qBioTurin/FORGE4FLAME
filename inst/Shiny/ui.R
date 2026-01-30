@@ -2445,33 +2445,15 @@ ui <- dashboardPage(
                       column(width = 4, offset = 1, style = "margin-top: 20px;",
                              DT::dataTableOutput("Folder_Selection_Compose")
                       )
-                    ),
-                    conditionalPanel(
-                      condition = "input.dir != 'NULL'",
-                      fluidRow(
-                        column(width = 6,
-                               div(class = "icon-container", style="margin-top:20px",
-                                   h4("Query on Disease Status", icon("info-circle")),
-                                   div(class = "icon-text", "Find the simulations with defined specification on the disease.")
-                               ),
-                               uiOutput("PostProc_filters")
-                        ),
-                        column(width = 5,
-                               div(class = "icon-container", style="margin-top:20px",
-                                   h4("Resulting Simulations", icon("info-circle")),
-                                   div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
-                               ),
-                               DT::dataTableOutput("PostProc_table")
-                        )
-                      )
                     )
                 )
               ),
+              # Disease State Evolution - Visualise disease progression
               fluidRow(
                 box(width = 12, collapsed = FALSE, collapsible = TRUE,
                     title = div(class = "icon-container", style="margin-top:20px",
                                 h3("Disease State Evolution", icon("chart-line")),
-                                div(class = "icon-text", "Visualise how disease states (S, E, I, R, D) evolve over time with customizable filters for granularity, agent type, and room.")
+                                div(class = "icon-text", "Visualise how disease states (S, E, I, R, D), contacts, or aerosol evolve over time with customizable filters for granularity, agent type, and room.")
                     ),
                     fluidRow(
                       box(width = 12, status = "info", solidHeader = TRUE, collapsible = TRUE,
@@ -2480,6 +2462,14 @@ ui <- dashboardPage(
                                       div(class = "icon-text", "Customize the visualization by filtering data.")
                           ),
                           fluidRow(
+                            column(2,
+                                   selectInput("diseaseEvol_metric",
+                                               label = "Metric:",
+                                               choices = c("Disease States" = "disease_states",
+                                                           "Contacts" = "contacts",
+                                                           "Aerosol" = "aerosol"),
+                                               selected = "disease_states")
+                            ),
                             column(2,
                                    selectInput("diseaseEvol_granularity",
                                                label = "Time Granularity:",
@@ -2511,13 +2501,16 @@ ui <- dashboardPage(
                                                   multiple = TRUE,
                                                   options = list(plugins = list('remove_button')))
                             ),
-                            column(2,
-                                   selectizeInput("diseaseEvol_states",
-                                                  label = "Disease States:",
-                                                  choices = c("All"),
-                                                  selected = "All",
-                                                  multiple = TRUE,
-                                                  options = list(plugins = list('remove_button')))
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric == 'disease_states'",
+                              column(2,
+                                     selectizeInput("diseaseEvol_states",
+                                                    label = "Disease States:",
+                                                    choices = c("All"),
+                                                    selected = "All",
+                                                    multiple = TRUE,
+                                                    options = list(plugins = list('remove_button')))
+                              )
                             ),
                             column(1,
                                    div(style = "padding-top: 25px;",
@@ -2527,12 +2520,16 @@ ui <- dashboardPage(
                             )
                           ),
                           fluidRow(
-                            column(2,
-                                   selectInput("diseaseEvol_measureType",
-                                               label = "Measure Type:",
-                                               choices = c("Final State in Period" = "final_state",
-                                                           "All States in Period" = "all_states"),
-                                               selected = "all_states")
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric == 'disease_states'",
+                              column(2,
+                                     selectInput("diseaseEvol_measureType",
+                                                 label = "Measure Type:",
+                                                 choices = c("Final State in Period" = "final_state",
+                                                             "All States in Period" = "all_states",
+                                                             "State Changes in Period" = "state_changes"),
+                                                 selected = "all_states")
+                              )
                             ),
                             column(3,
                                    selectizeInput("diseaseEvol_simulation",
@@ -2609,43 +2606,26 @@ ui <- dashboardPage(
                     )
                 )
               ),
+              # Query on Disease Status - Filter simulations based on disease criteria
               fluidRow(
-                box(width = 12,collapsed = T,collapsible = T,
-                    title =   div(class = "icon-container", style="margin-top:20px",
-                                  h3("Disease Visualisation", icon("info-circle")),
-                                  div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
+                box(width = 12, collapsed = FALSE, collapsible = TRUE,
+                    title = div(class = "icon-container", style="margin-top:20px",
+                                h3("Query on Disease Status", icon("filter")),
+                                div(class = "icon-text", "Find and filter simulations based on disease status criteria. Select a simulation to visualise its details in the boxes below.")
                     ),
-                    fluidRow(
-                      column(10,
-                             plotOutput("CountersPlot", width = "100%", height = "800px")
-                      ),
-                      column(2,
-                             checkboxGroupInput("CountersDisease_radioButt",
-                                                choices = c("Mean curves", "Area from all simulations"),
-                                                label = "Show:",selected = character()
-                             )
-                      )
-                    ),
-                    div(style = "height:10px"),
-                    fluidRow(
-                      column(5,offset = 2,
-                             selectInput("Room_Counters_A_C_selectize",choices = "",
-                                         label = div(class = "icon-container", style="margin-top:20px",
-                                                     h3("Choice of the room:", icon("info-circle")),
-                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
-                                         )
-                             )
-                      )
-                    ),
-                    fluidRow(
-                      column(10,
-                             plotOutput("A_C_CountersPlot", width = "100%")
-                      ),
-                      column(2,
-                             checkboxGroupInput("A_C_CountersDisease_radioButt",
-                                                choices = c("Mean curves", "Area from all simulations"),
-                                                label = "Show:",selected = character()
-                             )
+                    conditionalPanel(
+                      condition = "input.dir != 'NULL'",
+                      fluidRow(
+                        column(width = 6,
+                               uiOutput("PostProc_filters")
+                        ),
+                        column(width = 5,
+                               div(class = "icon-container", style="margin-top:20px",
+                                   h4("Resulting Simulations", icon("info-circle")),
+                                   div(class = "icon-text", "Click on a simulation row to visualise its disease dynamics in the plots below.")
+                               ),
+                               DT::dataTableOutput("PostProc_table")
+                        )
                       )
                     )
                 )
@@ -2722,6 +2702,45 @@ ui <- dashboardPage(
                       column(12,
                              uiOutput("TwoDMapPlots", width = "100%", height = "1200px")
                       )
+                    ),
+                    fluidRow(
+                      column(12,
+                             tags$div(
+                               style = "border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);",
+                               fluidRow(
+                                 column(12,
+                                        tags$h5(style = "margin-top: 0; color: #333; border-bottom: 2px solid #5f5ca3; padding-bottom: 8px;",
+                                                icon("palette"), " Agent Appearance Customization")
+                                 )
+                               ),
+                               fluidRow(
+                                 column(4,
+                                        radioButtons("agentVisualMode", "Visualization Mode:",
+                                                     choices = c("Shapes (faster)" = "shapes",
+                                                                 "Emojis (slower)" = "emojis"),
+                                                     selected = "shapes",
+                                                     inline = FALSE)
+                                 ),
+                                 column(8,
+                                        tags$div(
+                                          style = "padding: 8px; background-color: #fff3cd; border-radius: 4px; font-size: 12px;",
+                                          icon("lightbulb"),
+                                          tags$strong(" Tip:"),
+                                          " Shapes render faster for large simulations. Emojis provide better visual distinction."
+                                        )
+                                 )
+                               ),
+                               tags$hr(style = "margin: 10px 0;"),
+                               fluidRow(
+                                 column(12,
+                                        tags$div(
+                                          style = "max-height: 400px; overflow-y: auto; padding-right: 10px;",
+                                          uiOutput("agentShapeSelectors")
+                                        )
+                                 )
+                               )
+                             )
+                      )
                     )
                 )
               ),
@@ -2731,6 +2750,35 @@ ui <- dashboardPage(
                     plotOutput("ContactMatrix_plot", width = "100%", height = "1200px")
                 )
               ),
+              fluidRow(
+                box(width = 12,collapsed = T,collapsible = T,
+                    title =   div(class = "icon-container", style="margin-top:20px",
+                                  h3("Further Information about the Model", icon("info-circle")),
+                                  div(class = "icon-text", "Click on the table to visualise the corresponding disease dynamics.")
+                    ),
+                    fluidRow(
+                      column(5,offset = 2,
+                             selectInput("Room_Counters_A_C_selectize",choices = "",
+                                         label = div(class = "icon-container", style="margin-top:20px",
+                                                     h3("Choice of the room:", icon("info-circle")),
+                                                     div(class = "icon-text", "Select the room to visualize the respective number of contacts and virus concentration over time. A contact between two agents is defined as the situation where they remain close to each other for a certain number of steps without ever separating.")
+                                         )
+                             )
+                      )
+                    ),
+                    fluidRow(
+                      column(10,
+                             plotOutput("A_C_CountersPlot", width = "100%", height = "600px")
+                      ),
+                      column(2,
+                             checkboxGroupInput("A_C_CountersDisease_radioButt",
+                                                choices = c("Mean curves", "Area from all simulations"),
+                                                label = "Show:",selected = character()
+                             )
+                      )
+                    )
+                )
+              )
       )
       #### END tabs ####
     )
