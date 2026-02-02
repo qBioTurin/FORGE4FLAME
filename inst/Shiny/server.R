@@ -5001,17 +5001,59 @@ server <- function(input, output,session) {
   })
 
   output$PostProc_filters <- renderUI({
-    df <- req(postprocObjects$evolutionCSV )
+    df <- req(postprocObjects$evolutionCSV)
+    granularity <- input$postproc_time_granularity
+    if (is.null(granularity)) granularity <- "day"
+    
+    # Get step size in seconds
+    step_seconds <- as.numeric(postprocObjects$Model$starting$step)
+    if (is.null(step_seconds) || is.na(step_seconds)) step_seconds <- 60
+    
     show_modal_spinner()
-
-    # i want to add the slider about the agent
-    name_cols <- colnames(df%>% select(-Folder, -agent_type))
+    
+    # Convert time column based on granularity
+    df_display <- df
+    if (granularity == "step") {
+      df_display <- df_display %>% 
+        mutate(Time = Day) %>%
+        select(-Day)
+      time_label <- "Time (Steps)"
+    } else if (granularity == "hour") {
+      df_display <- df_display %>% 
+        mutate(Time = floor((Day * step_seconds) / 3600)) %>%
+        select(-Day)
+      time_label <- "Time (Hours)"
+    } else {
+      df_display <- df_display %>% 
+        mutate(Time = floor((Day * step_seconds) / 86400)) %>%
+        select(-Day)
+      time_label <- "Time (Days)"
+    }
+    
+    # Aggregate by the new time granularity
+    df_display <- df_display %>%
+      group_by(Folder, Time, agent_type) %>%
+      summarise(across(where(is.numeric), sum), .groups = "drop")
+    
+    # Store the processed data for filtering
+    postprocObjects$evolutionCSV_display <- df_display
+    
+    # Create sliders for agent types and disease states
+    name_cols <- colnames(df_display %>% select(-Folder, -agent_type))
     sliders = lapply(name_cols, function(col) {
-      values = unique(df[[col]])
-      if(col == "Day") values <- values[-c(length(values))]
+      values = unique(df_display[[col]])
+      if(col == "Time") values <- values[-c(length(values))]
+      
+      # Create appropriate label
+      if (col == "Time") {
+        label_text <- paste("Select range for", time_label)
+      } else {
+        label_text <- paste("Select range for", col)
+      }
+      
       sliderInput(
         inputId = paste0("filter_", col),
-        label = paste("Select range for", col),
+        label = label_text,
         min = min(values, na.rm = TRUE),
         max = max(values, na.rm = TRUE),
         value = range(values, na.rm = TRUE)
@@ -5022,8 +5064,8 @@ server <- function(input, output,session) {
   })
 
   observe({
-    df <-req(postprocObjects$evolutionCSV )
-    name_cols <- colnames(df%>% select(-Folder))
+    df <- req(postprocObjects$evolutionCSV_display)
+    name_cols <- colnames(df %>% select(-Folder))
 
     for (col in name_cols) {
       input_id <- paste0("filter_", col)
@@ -5223,7 +5265,7 @@ server <- function(input, output,session) {
     # Parse starting time from canvasObjects$starting$time (format "HH:MM" or "HH")
     starting_time_str <- canvasObjects$starting$time
     if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
-    
+
     # Parse starting time to get offset in seconds from midnight
     if (grepl(":", starting_time_str)) {
       time_parts <- strsplit(starting_time_str, ":")[[1]]
@@ -5596,7 +5638,7 @@ server <- function(input, output,session) {
     ribbon_alpha <- input$diseaseEvol_alpha
     plot_type <- input$diseaseEvol_plotType
     options <- input$diseaseEvol_options
-    facet_room <- if (metric_type == "aerosol") input$diseaseEvol_facetRoom else FALSE
+    facet_room <- if (metric_type %in% c("aerosol", "contacts")) input$diseaseEvol_facetRoom else FALSE
     if (is.null(facet_room)) facet_room <- FALSE
     cumulative <- input$diseaseEvol_cumulative
     if (is.null(cumulative)) cumulative <- FALSE
@@ -5678,7 +5720,7 @@ server <- function(input, output,session) {
     # Parse starting time from canvasObjects$starting$time (format "HH:MM" or "HH")
     starting_time_str <- postprocObjects$Model$starting$time
     if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
-    
+
     # Parse starting time to get offset in seconds from midnight
     if (grepl(":", starting_time_str)) {
       time_parts <- strsplit(starting_time_str, ":")[[1]]
@@ -5713,6 +5755,10 @@ server <- function(input, output,session) {
 
     # Aggregate data based on metric type
     if (metric_type == "contacts") {
+      # Create RoomID column for contacts data
+      df_raw <- df_raw %>%
+        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+      
       # Count contacts per time unit
       df <- df_raw %>%
         mutate(time_granular = case_when(
@@ -5723,47 +5769,13 @@ server <- function(input, output,session) {
           granularity == "week" ~ floor(time * step / 604800),
           granularity == "month" ~ floor(time * step / 2592000),
           TRUE ~ time
-        )) %>%
-        group_by(Folder, time_granular) %>%
-        summarise(Value = n(), .groups = "drop")
-      
-      # Complete the time range from min_time_granular to max_time_granular
-      folders <- unique(df$Folder)
-      complete_grid <- expand.grid(
-        Folder = folders,
-        time_granular = min_time_granular:max_time_granular,
-        stringsAsFactors = FALSE
-      )
-      df <- complete_grid %>%
-        left_join(df, by = c("Folder", "time_granular")) %>%
-        mutate(Value = ifelse(is.na(Value), 0, Value))
-      
-      # Apply cumulative calculation if enabled
-      if (cumulative) {
-        df <- df %>%
-          arrange(Folder, time_granular) %>%
-          group_by(Folder) %>%
-          mutate(Value = cumsum(Value)) %>%
-          ungroup()
-      }
-    } else {
-      # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
-      df <- df_raw %>%
-        mutate(time_granular = case_when(
-          granularity == "step" ~ time,
-          granularity == "minute" ~ floor(time * step / 60),
-          granularity == "hour" ~ floor(time * step / 3600),
-          granularity == "day" ~ floor(time * step / 86400),
-          granularity == "week" ~ floor(time * step / 604800),
-          granularity == "month" ~ floor(time * step / 2592000),
-          TRUE ~ time
         ))
-
+      
       if (facet_room) {
         # Group by RoomID to keep rooms separate
         df <- df %>%
           group_by(Folder, time_granular, RoomID) %>%
-          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+          summarise(Value = n(), .groups = "drop")
         
         # Complete the time range from min_time_granular to max_time_granular
         folders <- unique(df$Folder)
@@ -5787,11 +5799,10 @@ server <- function(input, output,session) {
             ungroup()
         }
       } else {
-        # Aggregate across all rooms
         df <- df %>%
           group_by(Folder, time_granular) %>%
-          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
-        
+          summarise(Value = n(), .groups = "drop")
+
         # Complete the time range from min_time_granular to max_time_granular
         folders <- unique(df$Folder)
         complete_grid <- expand.grid(
@@ -5802,7 +5813,73 @@ server <- function(input, output,session) {
         df <- complete_grid %>%
           left_join(df, by = c("Folder", "time_granular")) %>%
           mutate(Value = ifelse(is.na(Value), 0, Value))
-        
+
+        # Apply cumulative calculation if enabled
+        if (cumulative) {
+          df <- df %>%
+            arrange(Folder, time_granular) %>%
+            group_by(Folder) %>%
+            mutate(Value = cumsum(Value)) %>%
+            ungroup()
+        }
+      }
+    } else {
+      # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
+      df <- df_raw %>%
+        mutate(time_granular = case_when(
+          granularity == "step" ~ time,
+          granularity == "minute" ~ floor(time * step / 60),
+          granularity == "hour" ~ floor(time * step / 3600),
+          granularity == "day" ~ floor(time * step / 86400),
+          granularity == "week" ~ floor(time * step / 604800),
+          granularity == "month" ~ floor(time * step / 2592000),
+          TRUE ~ time
+        ))
+
+      if (facet_room) {
+        # Group by RoomID to keep rooms separate
+        df <- df %>%
+          group_by(Folder, time_granular, RoomID) %>%
+          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+
+        # Complete the time range from min_time_granular to max_time_granular
+        folders <- unique(df$Folder)
+        rooms_in_data <- unique(df$RoomID)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = min_time_granular:max_time_granular,
+          RoomID = rooms_in_data,
+          stringsAsFactors = FALSE
+        )
+        df <- complete_grid %>%
+          left_join(df, by = c("Folder", "time_granular", "RoomID")) %>%
+          mutate(Value = ifelse(is.na(Value), 0, Value))
+
+        # Apply cumulative calculation if enabled
+        if (cumulative) {
+          df <- df %>%
+            arrange(Folder, RoomID, time_granular) %>%
+            group_by(Folder, RoomID) %>%
+            mutate(Value = cumsum(Value)) %>%
+            ungroup()
+        }
+      } else {
+        # Aggregate across all rooms
+        df <- df %>%
+          group_by(Folder, time_granular) %>%
+          summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+
+        # Complete the time range from min_time_granular to max_time_granular
+        folders <- unique(df$Folder)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = min_time_granular:max_time_granular,
+          stringsAsFactors = FALSE
+        )
+        df <- complete_grid %>%
+          left_join(df, by = c("Folder", "time_granular")) %>%
+          mutate(Value = ifelse(is.na(Value), 0, Value))
+
         # Apply cumulative calculation if enabled
         if (cumulative) {
           df <- df %>%
@@ -5997,14 +6074,14 @@ server <- function(input, output,session) {
   }
 
   # Render the Disease State Evolution plot
-  output$DiseaseStateEvolutionPlot <- renderPlot({
+  output$DiseaseStateEvolutionPlot <- renderPlotly({
     metric <- input$diseaseEvol_metric
     if (is.null(metric)) metric <- "disease_states"
 
     # Handle different metrics
     if (metric %in% c("contacts", "aerosol")) {
       # Use contacts/aerosol data
-      return(renderContactsAerosolPlot(metric))
+      return( plotly::ggplotly(renderContactsAerosolPlot(metric) ) )
     }
 
     # Default: disease states
@@ -6012,11 +6089,12 @@ server <- function(input, output,session) {
 
     if (is.null(df) || nrow(df) == 0) {
       return(
-        ggplot() +
+        plotly::ggplotly( ggplot() +
           annotate("text", x = 0.5, y = 0.5, label = "Please wait for simulation data to load.\nFilters will be populated automatically.",
                    size = 6, color = "white") +
           theme_void() +
           theme(plot.background = element_rect(fill = "#2b2b2b", color = NA))
+      )
       )
     }
 
@@ -6281,62 +6359,62 @@ server <- function(input, output,session) {
       # Get simulation parameters
       simulation_days <- as.numeric(canvasObjects$starting$simulation_days)
       if (is.null(simulation_days) || is.na(simulation_days)) simulation_days <- 30
-      
+
       # Parse starting time to get the starting hour
       starting_time_str <- canvasObjects$starting$time
       if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
-      
+
       if (grepl(":", starting_time_str)) {
         time_parts <- strsplit(starting_time_str, ":")[[1]]
         starting_hour <- as.numeric(time_parts[1])
       } else {
         starting_hour <- as.numeric(starting_time_str)
       }
-      
+
       # Calculate min and max hours in the data
       min_hour <- min(df$time_granular, na.rm = TRUE)
       max_hour <- max(df$time_granular, na.rm = TRUE)
-      
+
       # Calculate hour positions where days change (every 24 hours from midnight)
       # First midnight after start: if starting_hour > 0, first midnight is at hour (24 - starting_hour) from start
       # In absolute terms: starting_hour is the first hour, so midnight (hour 0/24) occurs at position:
       # starting_hour + X = 24 => X = 24 - starting_hour (first midnight)
       # Then every 24 hours after that
-      
+
       first_midnight_hour <- if (starting_hour == 0) 24 else (24 - starting_hour)
-      
+
       # Generate all midnight positions within the data range
-      day_boundaries <- seq(from = min_hour + first_midnight_hour, 
-                            to = max_hour, 
+      day_boundaries <- seq(from = min_hour + first_midnight_hour,
+                            to = max_hour,
                             by = 24)
-      
+
       # Filter to only include boundaries within the actual data range
       day_boundaries <- day_boundaries[day_boundaries > min_hour & day_boundaries <= max_hour]
-      
+
       if (length(day_boundaries) > 0) {
         # Create labels for each day boundary
         day_labels <- paste0("Day ", seq_along(day_boundaries) + 1)
-        
+
         # Add vertical lines at day boundaries
-        pl <- pl + 
-          geom_vline(xintercept = day_boundaries, 
-                     linetype = "dashed", 
-                     color = "white", 
+        pl <- pl +
+          geom_vline(xintercept = day_boundaries,
+                     linetype = "dashed",
+                     color = "white",
                      alpha = 0.5,
                      linewidth = 0.5) +
-          annotate("text", 
-                   x = day_boundaries, 
-                   y = Inf, 
-                   label = day_labels, 
-                   vjust = 1.5, 
+          annotate("text",
+                   x = day_boundaries,
+                   y = Inf,
+                   label = day_labels,
+                   vjust = 1.5,
                    hjust = 0.5,
-                   color = "white", 
+                   color = "white",
                    size = 3,
                    alpha = 0.7)
       }
     }
 
-    pl
+    plotly::ggplotly( pl )
   })
 
   # Render summary statistics table
@@ -6903,11 +6981,19 @@ server <- function(input, output,session) {
 
   observe({
     info <- input$PostProc_table_cell_clicked
-    folder = req(info$value)
+    colorFeat = input$visualColor_select
+    showAverage <- input$visualColor_showAverage
+    if (is.null(showAverage)) showAverage <- FALSE
+    
+    # For gradient color features with average, we don't need a folder selection
+    if (colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && showAverage) {
+      folder <- NULL
+    } else {
+      folder <- req(info$value)
+    }
 
     roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
-    colorFeat = input$visualColor_select
     Label = input$visualLabel_select
 
     isolate({
@@ -6944,73 +7030,166 @@ server <- function(input, output,session) {
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
       }else if(colorFeat == "CumulContact"){
-        CONTACT_std = postprocObjects$CONTACT_std   %>%
-          filter(Folder == folder , time <= timeIn) %>%
-          select(-Folder)
+        showAverage <- input$visualColor_showAverage
+        if (is.null(showAverage)) showAverage <- FALSE
+        
+        if (showAverage) {
+          # Calculate average across all folders
+          CONTACT_std = postprocObjects$CONTACT_std %>%
+            filter(time <= timeIn) %>%
+            select(-Folder)
+          
+          if(dim(CONTACT_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
+              summarize(counts = n()) %>%
+              rename(IDtoColor = counts)
+            
+            # Get number of folders to calculate average
+            n_folders <- length(unique(postprocObjects$CONTACT_std$Folder))
+            CONTACT_std <- CONTACT_std %>%
+              mutate(IDtoColor = IDtoColor / n_folders)
+            
+            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
+          }
+        } else {
+          CONTACT_std = postprocObjects$CONTACT_std   %>%
+            filter(Folder == folder , time <= timeIn) %>%
+            select(-Folder)
 
-        if(dim(CONTACT_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
-          CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
-            summarize(counts = n()) %>%
-            rename(IDtoColor = counts)
+          if(dim(CONTACT_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
+              summarize(counts = n()) %>%
+              rename(IDtoColor = counts)
 
-          CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
+          }
         }
 
       }else if(colorFeat == "Aerosol"){
-        AEROSOL_std = postprocObjects$AEROSOL_std %>%
-          filter(Folder == folder , time <= timeIn) %>%
-          select(-Folder)
+        showAverage <- input$visualColor_showAverage
+        if (is.null(showAverage)) showAverage <- FALSE
+        
+        if (showAverage) {
+          # Calculate average across all folders
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(time <= timeIn) %>%
+            select(-Folder)
+          
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            # Get the latest time point for each room and average across folders
+            n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
+            
+            AEROSOL_std = AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              group_by(type,area,Name,CanvasID,ID) %>%
+              summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
+              rename(IDtoColor = virus_concentration)
+            
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-        ### Check if it has all the data for each time step
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
+        } else {
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(Folder == folder , time <= timeIn) %>%
+            select(-Folder)
 
-        if(dim(AEROSOL_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
+          ### Check if it has all the data for each time step
 
-          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-            rename(IDtoColor = virus_concentration)
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+              rename(IDtoColor = virus_concentration)
+            # here i give to each room for each step a virus concetration = 0 when is not present
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
         }
       }else if(colorFeat == "CumulAerosol"){
-        AEROSOL_std = postprocObjects$AEROSOL_std %>%
-          filter(Folder == folder , time <= timeIn)%>%
-          group_by(ID, type,area,Name,CanvasID) %>%
-          summarise(virus_concentration = sum(virus_concentration)) %>%
-          mutate(time = timeIn) %>% ungroup()
+        showAverage <- input$visualColor_showAverage
+        if (is.null(showAverage)) showAverage <- FALSE
+        
+        if (showAverage) {
+          # Calculate average across all folders
+          n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
+          
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(time <= timeIn) %>%
+            group_by(ID, type, area, Name, CanvasID) %>%
+            summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
+            mutate(time = timeIn)
+          
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            AEROSOL_std = AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+              rename(IDtoColor = virus_concentration)
 
-        if(dim(AEROSOL_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
-          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-            rename(IDtoColor = virus_concentration)
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
+        } else {
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(Folder == folder , time <= timeIn)%>%
+            group_by(ID, type,area,Name,CanvasID) %>%
+            summarise(virus_concentration = sum(virus_concentration)) %>%
+            mutate(time = timeIn) %>% ungroup()
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+              rename(IDtoColor = virus_concentration)
+
+            # here i give to each room for each step a virus concetration = 0 when is not present
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
         }
       }
 
@@ -7031,22 +7210,42 @@ server <- function(input, output,session) {
       if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
         MinCol = 0
 
-        # Calculate data max
+        # Calculate data max - use all data for average mode, or filtered by folder otherwise
         if(colorFeat == "Aerosol"){
-          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                         filter(Folder == folder) %>% pull(virus_concentration))
+          if (showAverage) {
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>% pull(virus_concentration))
+          } else {
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           filter(Folder == folder) %>% pull(virus_concentration))
+          }
         }else if(colorFeat == "CumulContact"){
-          dataMaxCol = max(postprocObjects$CONTACT_std %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID,ID)   %>%
-                         count() %>%
-                         pull(n) )
+          if (showAverage) {
+            dataMaxCol = max(postprocObjects$CONTACT_std %>%
+                           group_by(type,area,Name,CanvasID,ID) %>%
+                           count() %>%
+                           ungroup() %>%
+                           pull(n) / length(unique(postprocObjects$CONTACT_std$Folder)))
+          } else {
+            dataMaxCol = max(postprocObjects$CONTACT_std %>%
+                           filter(Folder == folder) %>%
+                           group_by(type,area,Name,CanvasID,ID)   %>%
+                           count() %>%
+                           pull(n) )
+          }
         }else if(colorFeat == "CumulAerosol"){
-          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID,ID) %>%
-                         mutate(virus_concentration = cumsum(virus_concentration)) %>%
-                         pull(virus_concentration))
+          if (showAverage) {
+            n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           group_by(type,area,Name,CanvasID,ID) %>%
+                           summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
+                           pull(virus_concentration))
+          } else {
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           filter(Folder == folder) %>%
+                           group_by(type,area,Name,CanvasID,ID) %>%
+                           mutate(virus_concentration = cumsum(virus_concentration)) %>%
+                           pull(virus_concentration))
+          }
         }
 
         # Check if custom max value is provided
@@ -7079,28 +7278,71 @@ server <- function(input, output,session) {
       #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
       # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
 
-      pl = ggplot() +
-        scale_y_reverse() +
-        geom_rect(data = df,
-                  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                  color = "black") +
-        sc_fill +guide_fill+
-        scale_color_manual(values = colorDisease$Col,
-                           limits = (colorDisease$State),
-                           labels = (colorDisease$State),
-                           drop = FALSE) +
-        coord_fixed() +
-        facet_wrap(~CanvasID,ncol = 2) +
-        theme_bw() +
-        theme(legend.position = "bottom",
-              legend.direction = "vertical",
-              axis.text = element_text(size = 16),
-              axis.title = element_text(size = 20, face = "bold"),
-              plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
-              legend.text = element_text(size = 14),
-              legend.key.size = unit(1.5, 'cm'),
-              legend.title = element_text(face = "bold", size = 18),
-              strip.text = element_text(size = 18, face = "bold"))
+      # For gradient color features, handle Fillingroom and Spawnroom separately with grey color
+      if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
+        # Separate data for special room types (grey) and normal rooms (gradient)
+        df_grey <- df %>% filter(type %in% c("Fillingroom", "Spawnroom"))
+        df_gradient <- df %>% filter(!type %in% c("Fillingroom", "Spawnroom"))
+        
+        pl = ggplot() +
+          scale_y_reverse()
+        
+        # Add grey rectangles for Fillingroom and Spawnroom first
+        if(nrow(df_grey) > 0) {
+          pl = pl + geom_rect(data = df_grey,
+                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+                              fill = "grey70", color = "black")
+        }
+        
+        # Add gradient rectangles for other rooms
+        if(nrow(df_gradient) > 0) {
+          pl = pl + geom_rect(data = df_gradient,
+                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
+                              color = "black") +
+            sc_fill + guide_fill
+        }
+        
+        pl = pl +
+          scale_color_manual(values = colorDisease$Col,
+                             limits = (colorDisease$State),
+                             labels = (colorDisease$State),
+                             drop = FALSE) +
+          coord_fixed() +
+          facet_wrap(~CanvasID,ncol = 2) +
+          theme_bw() +
+          theme(legend.position = "bottom",
+                legend.direction = "vertical",
+                axis.text = element_text(size = 16),
+                axis.title = element_text(size = 20, face = "bold"),
+                plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
+                legend.text = element_text(size = 14),
+                legend.key.size = unit(1.5, 'cm'),
+                legend.title = element_text(face = "bold", size = 18),
+                strip.text = element_text(size = 18, face = "bold"))
+      } else {
+        pl = ggplot() +
+          scale_y_reverse() +
+          geom_rect(data = df,
+                    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
+                    color = "black") +
+          sc_fill +guide_fill+
+          scale_color_manual(values = colorDisease$Col,
+                             limits = (colorDisease$State),
+                             labels = (colorDisease$State),
+                             drop = FALSE) +
+          coord_fixed() +
+          facet_wrap(~CanvasID,ncol = 2) +
+          theme_bw() +
+          theme(legend.position = "bottom",
+                legend.direction = "vertical",
+                axis.text = element_text(size = 16),
+                axis.title = element_text(size = 20, face = "bold"),
+                plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
+                legend.text = element_text(size = 14),
+                legend.key.size = unit(1.5, 'cm'),
+                legend.title = element_text(face = "bold", size = 18),
+                strip.text = element_text(size = 18, face = "bold"))
+      }
 
 
       if(! Label  %in% c("None","Agent ID")){
@@ -7122,6 +7364,38 @@ server <- function(input, output,session) {
 
     })
 
+  })
+
+  # Render plot for average mode (no folder selected)
+  observe({
+    colorFeat = input$visualColor_select
+    showAverage <- input$visualColor_showAverage
+    if (is.null(showAverage)) showAverage <- FALSE
+    
+    # Only render when in average mode for gradient color features
+    req(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))
+    req(showAverage)
+    
+    # Check if no folder is selected
+    info <- input$PostProc_table_cell_clicked
+    if (!is.null(info$value) && info$value != "") return()  # Folder selected, let the other observe handle it
+    
+    pl <- req(postprocObjects$plot_2D)
+    step <- as.numeric(postprocObjects$Model$starting$step)
+    timeIn <- input$animation/step
+    
+    total_seconds = timeIn*step + as.numeric(strsplit(input$initial_time, ":")[[1]][1]) * 60 * 60 + as.numeric(strsplit(input$initial_time, ":")[[1]][2]) * 60
+    days <- total_seconds %/% (24 * 3600)
+    remaining_seconds <- total_seconds %% (24 * 3600)
+    hours <- remaining_seconds %/% 3600
+    remaining_seconds <- remaining_seconds %% 3600
+    minutes <- remaining_seconds %/% 60
+    seconds <- remaining_seconds %% 60
+    
+    title <- labs(title = paste0("Average (All Simulations) - ", days+1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", timeIn, ")"),
+                  x = "", y = "")
+    
+    output[["plot_map"]] <- renderPlot({ pl + title })
   })
 
   observe({

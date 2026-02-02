@@ -24,6 +24,7 @@ library(lubridate)
 library(sf)
 library(purrr)
 library(shinyjqui)
+library(plotly)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -2583,7 +2584,7 @@ ui <- dashboardPage(
                               )
                             ),
                             conditionalPanel(
-                              condition = "input.diseaseEvol_metric == 'aerosol'",
+                              condition = "input.diseaseEvol_metric == 'aerosol' || input.diseaseEvol_metric == 'contacts'",
                               column(2,
                                      checkboxInput("diseaseEvol_facetRoom",
                                                    label = "Facet by Room",
@@ -2613,7 +2614,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(12,
-                             plotOutput("DiseaseStateEvolutionPlot", width = "100%", height = "600px")
+                             plotlyOutput("DiseaseStateEvolutionPlot", width = "100%", height = "600px")
                       )
                     ),
                     div(style = "height:20px"),
@@ -2634,6 +2635,14 @@ ui <- dashboardPage(
                     ),
                     conditionalPanel(
                       condition = "input.dir != 'NULL'",
+                      fluidRow(
+                        column(width = 2,
+                               selectInput("postproc_time_granularity",
+                                           label = "Time Granularity:",
+                                           choices = c("Step" = "step", "Hour" = "hour", "Day" = "day"),
+                                           selected = "day")
+                        )
+                      ),
                       fluidRow(
                         column(width = 6,
                                uiOutput("PostProc_filters")
@@ -2694,6 +2703,14 @@ ui <- dashboardPage(
                                                               div(class = "icon-text", "Set a custom maximum value for the color legend. Leave empty or set to 0 to use the data maximum.")),
                                                   value = NA,
                                                   min = 0)
+                              ),
+                              column(2,
+                                     checkboxInput("visualColor_showAverage",
+                                                   label = div(class = "icon-container",
+                                                               tags$b("Show Average (All Simulations)"),
+                                                               icon("info-circle"),
+                                                               div(class = "icon-text", "When checked, shows average values from all simulation folders instead of a single selected folder.")),
+                                                   value = FALSE)
                               )
                             ),
                             column(2,
