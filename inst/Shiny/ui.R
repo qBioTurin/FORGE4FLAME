@@ -2590,6 +2590,14 @@ ui <- dashboardPage(
                                                    value = FALSE)
                               )
                             ),
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric == 'contacts' || input.diseaseEvol_metric == 'aerosol'",
+                              column(2,
+                                     checkboxInput("diseaseEvol_cumulative",
+                                                   label = "Cumulative Plot",
+                                                   value = FALSE)
+                              )
+                            ),
                             column(3,
                                    checkboxInput("diseaseEvol_showRibbon",
                                                  label = "Show Uncertainty Ribbon",
