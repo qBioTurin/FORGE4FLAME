@@ -5220,6 +5220,21 @@ server <- function(input, output,session) {
     # Calculate total simulation time in seconds
     total_simulation_seconds <- simulation_days * 86400  # days to seconds
 
+    # Parse starting time from canvasObjects$starting$time (format "HH:MM" or "HH")
+    starting_time_str <- canvasObjects$starting$time
+    if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
+    
+    # Parse starting time to get offset in seconds from midnight
+    if (grepl(":", starting_time_str)) {
+      time_parts <- strsplit(starting_time_str, ":")[[1]]
+      starting_hour <- as.numeric(time_parts[1])
+      starting_minute <- as.numeric(time_parts[2])
+    } else {
+      starting_hour <- as.numeric(starting_time_str)
+      starting_minute <- 0
+    }
+    starting_offset_seconds <- starting_hour * 3600 + starting_minute * 60
+
     # Check if we need a specific folder or all
     selected_sims <- input$diseaseEvol_simulation
 
@@ -5298,6 +5313,17 @@ server <- function(input, output,session) {
       "week"   = floor(simulation_days / 7),
       "month"  = floor(simulation_days / 30),
       simulation_days
+    )
+
+    # Calculate min_time_granular based on starting time for step/minute/hour granularities
+    min_time_granular <- switch(granularity,
+      "step"   = floor(starting_offset_seconds / step_seconds),
+      "minute" = floor(starting_offset_seconds / 60),
+      "hour"   = floor(starting_offset_seconds / 3600),
+      "day"    = 0,
+      "week"   = 0,
+      "month"  = 0,
+      0
     )
 
     # Get measure type selection
@@ -5394,7 +5420,7 @@ server <- function(input, output,session) {
         rooms_in_data <- unique(agg_data$RoomID)
         complete_grid <- expand.grid(
           Folder = folders,
-          time_granular = 0:max_time_granular,
+          time_granular = min_time_granular:max_time_granular,
           disease_state = all_disease_states,
           agent_type = agent_types_in_data,
           RoomID = rooms_in_data,
@@ -5403,7 +5429,7 @@ server <- function(input, output,session) {
       } else {
         complete_grid <- expand.grid(
           Folder = folders,
-          time_granular = 0:max_time_granular,
+          time_granular = min_time_granular:max_time_granular,
           disease_state = all_disease_states,
           agent_type = agent_types_in_data,
           stringsAsFactors = FALSE
@@ -5491,7 +5517,7 @@ server <- function(input, output,session) {
         rooms_in_data <- unique(agg_data$RoomID)
         complete_grid <- expand.grid(
           Folder = folders,
-          time_granular = 0:max_time_granular,
+          time_granular = min_time_granular:max_time_granular,
           disease_state = all_disease_states,
           RoomID = rooms_in_data,
           stringsAsFactors = FALSE
@@ -5499,7 +5525,7 @@ server <- function(input, output,session) {
       } else {
         complete_grid <- expand.grid(
           Folder = folders,
-          time_granular = 0:max_time_granular,
+          time_granular = min_time_granular:max_time_granular,
           disease_state = all_disease_states,
           stringsAsFactors = FALSE
         )
@@ -5572,17 +5598,19 @@ server <- function(input, output,session) {
     options <- input$diseaseEvol_options
     facet_room <- if (metric_type == "aerosol") input$diseaseEvol_facetRoom else FALSE
     if (is.null(facet_room)) facet_room <- FALSE
+    cumulative <- input$diseaseEvol_cumulative
+    if (is.null(cumulative)) cumulative <- FALSE
 
     # Get the appropriate data
     if (metric_type == "contacts") {
       df_raw <- postprocObjects$CONTACT_std
-      y_label <- "Number of Contacts"
-      title_text <- "Contacts Evolution"
+      y_label <- if(cumulative) "Cumulative Number of Contacts" else "Number of Contacts"
+      title_text <- if(cumulative) "Cumulative Contacts Evolution" else "Contacts Evolution"
       metric_color <- "#E5D05AFF"
     } else {
       df_raw <- postprocObjects$AEROSOL_std
-      y_label <- "Virus Concentration"
-      title_text <- "Aerosol Concentration Evolution"
+      y_label <- if(cumulative) "Cumulative Virus Concentration" else "Virus Concentration"
+      title_text <- if(cumulative) "Cumulative Aerosol Concentration Evolution" else "Aerosol Concentration Evolution"
       metric_color <- "#3498db"
     }
 
@@ -5640,6 +5668,49 @@ server <- function(input, output,session) {
     step <- as.numeric(postprocObjects$Model$starting$step)
     if (is.null(step) || is.na(step)) step <- 60
 
+    # Get simulation days to calculate the complete time range
+    simulation_days <- as.numeric(postprocObjects$Model$starting$simulation_days)
+    if (is.null(simulation_days) || is.na(simulation_days)) simulation_days <- 30
+
+    # Calculate total simulation time in seconds
+    total_simulation_seconds <- simulation_days * 86400
+
+    # Parse starting time from canvasObjects$starting$time (format "HH:MM" or "HH")
+    starting_time_str <- postprocObjects$Model$starting$time
+    if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
+    
+    # Parse starting time to get offset in seconds from midnight
+    if (grepl(":", starting_time_str)) {
+      time_parts <- strsplit(starting_time_str, ":")[[1]]
+      starting_hour <- as.numeric(time_parts[1])
+      starting_minute <- as.numeric(time_parts[2])
+    } else {
+      starting_hour <- as.numeric(starting_time_str)
+      starting_minute <- 0
+    }
+    starting_offset_seconds <- starting_hour * 3600 + starting_minute * 60
+
+    # Calculate min and max time_granular based on starting time and granularity
+    min_time_granular <- switch(granularity,
+      "step"   = floor(starting_offset_seconds / step),
+      "minute" = floor(starting_offset_seconds / 60),
+      "hour"   = floor(starting_offset_seconds / 3600),
+      "day"    = 0,
+      "week"   = 0,
+      "month"  = 0,
+      0
+    )
+
+    max_time_granular <- switch(granularity,
+      "step"   = floor(total_simulation_seconds / step),
+      "minute" = floor(total_simulation_seconds / 60),
+      "hour"   = floor(total_simulation_seconds / 3600),
+      "day"    = simulation_days,
+      "week"   = floor(simulation_days / 7),
+      "month"  = floor(simulation_days / 30),
+      simulation_days
+    )
+
     # Aggregate data based on metric type
     if (metric_type == "contacts") {
       # Count contacts per time unit
@@ -5655,6 +5726,26 @@ server <- function(input, output,session) {
         )) %>%
         group_by(Folder, time_granular) %>%
         summarise(Value = n(), .groups = "drop")
+      
+      # Complete the time range from min_time_granular to max_time_granular
+      folders <- unique(df$Folder)
+      complete_grid <- expand.grid(
+        Folder = folders,
+        time_granular = min_time_granular:max_time_granular,
+        stringsAsFactors = FALSE
+      )
+      df <- complete_grid %>%
+        left_join(df, by = c("Folder", "time_granular")) %>%
+        mutate(Value = ifelse(is.na(Value), 0, Value))
+      
+      # Apply cumulative calculation if enabled
+      if (cumulative) {
+        df <- df %>%
+          arrange(Folder, time_granular) %>%
+          group_by(Folder) %>%
+          mutate(Value = cumsum(Value)) %>%
+          ungroup()
+      }
     } else {
       # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
       df <- df_raw %>%
@@ -5673,11 +5764,53 @@ server <- function(input, output,session) {
         df <- df %>%
           group_by(Folder, time_granular, RoomID) %>%
           summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+        
+        # Complete the time range from min_time_granular to max_time_granular
+        folders <- unique(df$Folder)
+        rooms_in_data <- unique(df$RoomID)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = min_time_granular:max_time_granular,
+          RoomID = rooms_in_data,
+          stringsAsFactors = FALSE
+        )
+        df <- complete_grid %>%
+          left_join(df, by = c("Folder", "time_granular", "RoomID")) %>%
+          mutate(Value = ifelse(is.na(Value), 0, Value))
+        
+        # Apply cumulative calculation if enabled
+        if (cumulative) {
+          df <- df %>%
+            arrange(Folder, RoomID, time_granular) %>%
+            group_by(Folder, RoomID) %>%
+            mutate(Value = cumsum(Value)) %>%
+            ungroup()
+        }
       } else {
         # Aggregate across all rooms
         df <- df %>%
           group_by(Folder, time_granular) %>%
           summarise(Value = sum(virus_concentration, na.rm = TRUE), .groups = "drop")
+        
+        # Complete the time range from min_time_granular to max_time_granular
+        folders <- unique(df$Folder)
+        complete_grid <- expand.grid(
+          Folder = folders,
+          time_granular = min_time_granular:max_time_granular,
+          stringsAsFactors = FALSE
+        )
+        df <- complete_grid %>%
+          left_join(df, by = c("Folder", "time_granular")) %>%
+          mutate(Value = ifelse(is.na(Value), 0, Value))
+        
+        # Apply cumulative calculation if enabled
+        if (cumulative) {
+          df <- df %>%
+            arrange(Folder, time_granular) %>%
+            group_by(Folder) %>%
+            mutate(Value = cumsum(Value)) %>%
+            ungroup()
+        }
       }
     }
 
@@ -5724,6 +5857,22 @@ server <- function(input, output,session) {
           )
       }
 
+      # Calculate ymin and ymax for bar plot error bars BEFORE creating ggplot
+      if (aggregate_mode == "mean_sd") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
+      } else if (aggregate_mode == "mean_ci") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = pmax(0, CI_lower), ymax = CI_upper)
+      } else if (aggregate_mode == "minmax") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = Min, ymax = Max)
+      } else {
+        # Default case: individual mode or no aggregation
+        agg_stats <- agg_stats %>%
+          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
+      }
+
       if (facet_room && "RoomID" %in% names(agg_stats)) {
         p <- ggplot(agg_stats, aes(x = time_granular, color = RoomID, fill = RoomID))
       } else {
@@ -5731,44 +5880,62 @@ server <- function(input, output,session) {
       }
 
       # Add ribbon based on aggregate mode
-      if (show_ribbon) {
+      if (show_ribbon && plot_type == "line") {
         if (aggregate_mode == "mean_sd") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         } else if (aggregate_mode == "mean_ci") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         } else if (aggregate_mode == "minmax") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
+            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         }
       }
 
-      # Add line
-      if (facet_room && "RoomID" %in% names(agg_stats)) {
-        p <- p + geom_line(aes(y = Mean, group = RoomID), linewidth = 1.2)
-        if ("points" %in% options) {
-          p <- p + geom_point(aes(y = Mean), size = 2)
+      # Add line or bar plot
+      if (plot_type == "line") {
+        if (facet_room && "RoomID" %in% names(agg_stats)) {
+          p <- p + geom_line(aes(y = Mean, group = RoomID), linewidth = 1.2)
+          if ("points" %in% options) {
+            p <- p + geom_point(aes(y = Mean), size = 2)
+          }
+        } else {
+          p <- p + geom_line(aes(y = Mean), color = metric_color, linewidth = 1.2)
+          if ("points" %in% options) {
+            p <- p + geom_point(aes(y = Mean), color = metric_color, size = 2)
+          }
         }
-      } else {
-        p <- p + geom_line(aes(y = Mean), color = metric_color, linewidth = 1.2)
-        if ("points" %in% options) {
-          p <- p + geom_point(aes(y = Mean), color = metric_color, size = 2)
+      } else if (plot_type == "bar") {
+        if (facet_room && "RoomID" %in% names(agg_stats)) {
+          p <- p + geom_col(aes(y = Mean), position = "dodge", alpha = 0.8)
+          if (show_ribbon) {
+            p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                                    position = position_dodge(width = 0.9),
+                                    width = 0.25, alpha = 0.7)
+          }
+        } else {
+          p <- p + geom_col(aes(y = Mean), fill = metric_color, alpha = 0.8)
+          if (show_ribbon) {
+            p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                                    color = metric_color,
+                                    width = 0.25, alpha = 0.7)
+          }
         }
       }
 
@@ -5777,22 +5944,34 @@ server <- function(input, output,session) {
     } else {
       # Individual lines for each simulation
       if (facet_room && "RoomID" %in% names(df)) {
-        p <- ggplot(df, aes(x = time_granular, y = Value, color = RoomID, group = interaction(Folder, RoomID)))
-        p <- p + geom_line(linewidth = 0.8, alpha = 0.7)
-        if ("points" %in% options) {
-          p <- p + geom_point(size = 1.5, alpha = 0.7)
+        p <- ggplot(df, aes(x = time_granular, y = Value, color = RoomID, fill = RoomID, group = interaction(Folder, RoomID)))
+        if (plot_type == "line") {
+          p <- p + geom_line(linewidth = 0.8, alpha = 0.7)
+          if ("points" %in% options) {
+            p <- p + geom_point(size = 1.5, alpha = 0.7)
+          }
+        } else if (plot_type == "bar") {
+          p <- p + geom_col(position = "dodge", alpha = 0.7)
         }
       } else {
         p <- ggplot(df, aes(x = time_granular, y = Value, group = Folder))
         if (n_sims > 1) {
-          p <- p + geom_line(aes(color = Folder), linewidth = 0.8, alpha = 0.7)
-          if ("points" %in% options) {
-            p <- p + geom_point(aes(color = Folder), size = 1.5, alpha = 0.7)
+          if (plot_type == "line") {
+            p <- p + geom_line(aes(color = Folder), linewidth = 0.8, alpha = 0.7)
+            if ("points" %in% options) {
+              p <- p + geom_point(aes(color = Folder), size = 1.5, alpha = 0.7)
+            }
+          } else if (plot_type == "bar") {
+            p <- p + geom_col(aes(fill = Folder), position = "dodge", alpha = 0.7)
           }
         } else {
-          p <- p + geom_line(color = metric_color, linewidth = 1.2)
-          if ("points" %in% options) {
-            p <- p + geom_point(color = metric_color, size = 2)
+          if (plot_type == "line") {
+            p <- p + geom_line(color = metric_color, linewidth = 1.2)
+            if ("points" %in% options) {
+              p <- p + geom_point(color = metric_color, size = 2)
+            }
+          } else if (plot_type == "bar") {
+            p <- p + geom_col(fill = metric_color, alpha = 0.8)
           }
           title_text <- paste0(title_text, " (", unique(df$Folder), ")")
         }
@@ -6094,6 +6273,66 @@ server <- function(input, output,session) {
       } else if (facet_state) {
         # Facet by disease state only
         pl <- pl + facet_wrap(~disease_state, scales = "free_y")
+      }
+    }
+
+    # Add day boundary markers when granularity is "hour"
+    if (granularity == "hour") {
+      # Get simulation parameters
+      simulation_days <- as.numeric(canvasObjects$starting$simulation_days)
+      if (is.null(simulation_days) || is.na(simulation_days)) simulation_days <- 30
+      
+      # Parse starting time to get the starting hour
+      starting_time_str <- canvasObjects$starting$time
+      if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
+      
+      if (grepl(":", starting_time_str)) {
+        time_parts <- strsplit(starting_time_str, ":")[[1]]
+        starting_hour <- as.numeric(time_parts[1])
+      } else {
+        starting_hour <- as.numeric(starting_time_str)
+      }
+      
+      # Calculate min and max hours in the data
+      min_hour <- min(df$time_granular, na.rm = TRUE)
+      max_hour <- max(df$time_granular, na.rm = TRUE)
+      
+      # Calculate hour positions where days change (every 24 hours from midnight)
+      # First midnight after start: if starting_hour > 0, first midnight is at hour (24 - starting_hour) from start
+      # In absolute terms: starting_hour is the first hour, so midnight (hour 0/24) occurs at position:
+      # starting_hour + X = 24 => X = 24 - starting_hour (first midnight)
+      # Then every 24 hours after that
+      
+      first_midnight_hour <- if (starting_hour == 0) 24 else (24 - starting_hour)
+      
+      # Generate all midnight positions within the data range
+      day_boundaries <- seq(from = min_hour + first_midnight_hour, 
+                            to = max_hour, 
+                            by = 24)
+      
+      # Filter to only include boundaries within the actual data range
+      day_boundaries <- day_boundaries[day_boundaries > min_hour & day_boundaries <= max_hour]
+      
+      if (length(day_boundaries) > 0) {
+        # Create labels for each day boundary
+        day_labels <- paste0("Day ", seq_along(day_boundaries) + 1)
+        
+        # Add vertical lines at day boundaries
+        pl <- pl + 
+          geom_vline(xintercept = day_boundaries, 
+                     linetype = "dashed", 
+                     color = "white", 
+                     alpha = 0.5,
+                     linewidth = 0.5) +
+          annotate("text", 
+                   x = day_boundaries, 
+                   y = Inf, 
+                   label = day_labels, 
+                   vjust = 1.5, 
+                   hjust = 0.5,
+                   color = "white", 
+                   size = 3,
+                   alpha = 0.7)
       }
     }
 
