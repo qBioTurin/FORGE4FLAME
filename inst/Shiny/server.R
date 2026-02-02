@@ -1512,20 +1512,20 @@ server <- function(input, output,session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if(!is.null(input$id)){
-      # if(input$type == "circle"){
-      #   x = floor(input$x/10)
-      #   y = floor(input$y/10)
-      # }
+      if(input$type == "circle"){
+        x = floor(input$x/10)
+        y = floor(input$y/10)
+      }
       # else{
       #   x = input$x/10
       #   y = input$y/10
       # }
-      #
+
       # length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
       # width = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"])
-      #
-      # if(input$type == "circle")
-      #   canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
+
+      if(input$type == "circle")
+        canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id,c("x","y")] = c(x, y)
       # else{
       #   canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
       #

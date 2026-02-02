@@ -535,8 +535,8 @@ class FloorManager {
             {
               const rect = this.arrayObject[i];
               if ((event.id != rect.id)){
-                if (event.x + event.length > rect.x - 10 && event.x < rect.x + rect.length + 10 &&
-                    event.y + event.width > rect.y - 10 && event.y < rect.y + rect.width + 10){
+                if (event.x + event.length > rect.x && event.x < rect.x + rect.length &&
+                    event.y + event.width > rect.y && event.y < rect.y + rect.width){
                   overlap = true;  // C'è sovrapposizione
                 }
               }
@@ -546,7 +546,7 @@ class FloorManager {
             {
               const circle = this.arrayObject[i];
               if(circle.x >= event.x && circle.x <= event.x + event.length + 10 &&
-                 circle.y >= event.y && circle.y <= event.y + event.width+ 10){
+                 circle.y >= event.y && circle.y <= event.y + event.width + 10){
                 overlap = true;  // C'è sovrapposizione
               }
             }
@@ -556,7 +556,7 @@ class FloorManager {
             {
               const rect = this.arrayObject[i];
               if (event.x >= rect.x && event.x <= rect.x + rect.length + 10 &&
-                  event.y >= rect.y && event.y <= rect.y + rect.width+ 10){
+                  event.y >= rect.y && event.y <= rect.y + rect.width + 10){
                 overlap = true;  // C'è sovrapposizione
               }
             }
