@@ -631,7 +631,7 @@ server <- function(input, output,session) {
           newID = max(canvasObjects$types$ID)+1
 
           newtype = data.frame(Name=Name, ID=newID,
-                               Color = paste0("rgba(",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", 1)") )
+                               Color = paste0("rgba(",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),")") )
           canvasObjects$types = rbind(canvasObjects$types, newtype)
         }
       }
@@ -1087,7 +1087,9 @@ server <- function(input, output,session) {
         room = canvasObjects$rooms %>% filter(Name == name)
         colourpicker::colourInput(paste0("col_",room$Name),
                                   paste0("Select colour for " , room$Name),
-                                  room$colorFill,
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",room$colorFill)
+                                  ),
                                   allowTransparent = T)
       })
       do.call(tagList, col_output_list)
@@ -1115,7 +1117,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$rooms$Name,function(i)
                         if(!is.null(input[[paste0("col_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_",i)]], alpha = TRUE),collapse = ", "),")")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_",i)]]),collapse = ", "),", 1)")
                           )
                       )
       )
@@ -1171,7 +1173,9 @@ server <- function(input, output,session) {
       div(
         colourpicker::colourInput(paste0("col_area_",name),
                                   paste0("Select colour for " , name),
-                                  color,
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",color)
+                                  ),
                                   allowTransparent = T)
       )
     }
@@ -1198,7 +1202,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$areas$Name,function(i)
                         if(!is.null(input[[paste0("col_area_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_area_",i)]], alpha = TRUE),collapse = ", "),")")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_area_",i)]]),collapse = ", "),", 1)")
                           )
                       )
       )
@@ -1256,7 +1260,9 @@ server <- function(input, output,session) {
       div(
         colourpicker::colourInput(paste0("col_type_",name),
                                   paste0("Select colour for " , name),
-                                  color,
+                                  gsub(pattern = ", 1\\)",replacement = "\\)",
+                                       gsub(pattern = "rgba",replacement = "rgb",color)
+                                  ),
                                   allowTransparent = T)
       )
     }
@@ -1284,7 +1290,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$types$Name,function(i)
                         if(!is.null(input[[paste0("col_type_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_type_",i)]], alpha = TRUE),collapse = ", "),")")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_type_",i)]]),collapse = ", "),", 1)")
                           )
                       )
       )
@@ -7310,7 +7316,7 @@ server <- function(input, output,session) {
         }
         guide_fill = labs(fill = fill_label)
       }else{
-        df$colorFillParsed = df$colorFill
+        df$colorFillParsed =  df$colorFillParsed = gsub(pattern = "rgba",replacement = "rgb",x = df$colorFill)
         df$colorFillParsed = gsub(pattern = ",",replacement = "/255,",x = df$colorFillParsed)
         df$colorFillParsed = gsub(pattern = ")",replacement = "/255)",x = df$colorFillParsed)
 
