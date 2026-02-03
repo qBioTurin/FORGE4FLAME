@@ -84,7 +84,6 @@ server <- function(input, output,session) {
   observeEvent(input$link_run, { updateTabItems(session, "SideTabs", "run") })
   observeEvent(input$link_post_process, { updateTabItems(session, "SideTabs", "post_process") })
 
-
   observeEvent(input$LoadBG_image, {
 
     # 1. Ensure a file is present
@@ -92,78 +91,51 @@ server <- function(input, output,session) {
 
     if(is.null(canvasObjects$floors))
     {
-      shinyalert("Error", "To set the background it is necessary to define a floor.", type = "error")
+      shinyalert("To set the background it is necessary to define a floor.")
       return()
     }
 
-      # 2. Validate extension
-      ext <- tools::file_ext(input$BGfile$name)
-      if (tolower(ext) != "dxf") {
-        shinyalert("Error", "Please upload a .dxf file.", type = "error")
-        return()
-      }
-      # 3. Inspect available layers
-      layers_info <- tryCatch(
-        sf::st_layers(input$BGfile$datapath),
+    # 2. Validate extension
+    ext <- tolower(tools::file_ext(input$BGfile$name))
+    if (!(ext %in% c("dxf", "png"))) {
+      showNotification("Please upload a .dxf or .png file.", type = "error", duration = 5)
+      return()
+    }
+
+    # Handle PNG files
+    if (ext == "png") {
+      # Read PNG image
+      img <- tryCatch(
+        png::readPNG(input$BGfile$datapath),
         error = function(e) {
-          shinyalert("Error", paste("Cannot read layers:", e$message), type = "error")
+          showNotification(paste("Error reading PNG:", e$message), type = "error", duration = 5)
           return(NULL)
         }
       )
-      if (is.null(layers_info)) return()
+      if (is.null(img)) return()
 
-      # 4. Read the DXF, catch errors
-      # Require a specific layer (e.g. "entities")
-      needed_layer <- "entities"
-      if (!(needed_layer %in% layers_info$name)) {
-        showModal(modalDialog(
-          title = "Required Layer Not Found",
-          paste("Your DXF file contains these layers:", paste(layers_info$name, collapse = ", ")),
-          "Expected layer:", needed_layer,
-          easyClose = TRUE,
-          footer   = modalButton("OK")
-        ))
-        return()
+      # Get image dimensions (in pixels)
+      img_height <- dim(img)[1]
+      img_width <- dim(img)[2]
+
+      # Get pixels per meter from user input (default to 10 if not set)
+      pixels_per_meter <- if (!is.null(input$png_pixels_per_meter) && input$png_pixels_per_meter > 0) {
+        input$png_pixels_per_meter
+      } else {
+        10
       }
-      plan_raw <- tryCatch(
-        sf::st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
-        error = function(e) {
-          shinyalert("Error", paste("Error reading DXF:", e$message), type = "error")
-          return(NULL)
-        }
-      )
-      if (is.null(plan_raw)) return()
+      canvas_w <- ceiling(img_width / pixels_per_meter)
+      canvas_h <- ceiling(img_height / pixels_per_meter)
 
-      # 5. Check for empty geometry
-      if (nrow(plan_raw) == 0 || all(is.na(st_geometry(plan_raw)))) {
-        shinyalert("Warning", "No geometries found in the uploaded DXF.", type = "warning")
-        return()
-      }
-
-      units_info <- read_dxf_units(input$BGfile$datapath)
-      if(units_info["unit"] ==  "unitless" ){
-        units_info <- detect_units_by_bbox(plan_raw)
-      }
-
-      # 2. Scale geometries to meters
-      plan <- plan_raw
-      sf::st_geometry(plan) <- sf::st_geometry(plan) * as.numeric(units_info["factor"])
-
-      # 3. Compute bounding box & canvas dimensions
-      bbox <- sf::st_bbox(plan)
-      canvas_w <- as.numeric(ceiling(bbox["xmax"] - bbox["xmin"]) )
-      canvas_h <- as.numeric(ceiling(bbox["ymax"] - bbox["ymin"]) )
-
-      # 4. Store dimensions and notify front-end
-      ## Check also the other dimensions of the other floors, and use the max
+      # Update canvas dimensions
       if(length(canvasObjects$floors) > 0 ){
         canvas_w = max(canvas_w, max(canvasObjects$floors$canvasWidth, na.rm = TRUE))
         canvas_h = max(canvas_h, max(canvasObjects$floors$canvasHeight, na.rm = TRUE))
       }
 
       canvasObjects$canvasDimension$canvasWidth  <- max(canvasObjects$canvasDimension$canvasWidth, canvas_w*10)
-      canvasObjects$canvasDimension$canvasHeight <-  max(canvasObjects$canvasDimension$canvasHeight,canvas_h*10)
-      js$canvasDimension(canvasObjects$canvasDimension$canvasWidth,  canvasObjects$canvasDimension$canvasHeight)
+      canvasObjects$canvasDimension$canvasHeight <- max(canvasObjects$canvasDimension$canvasHeight, canvas_h*10)
+      js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
 
       canvasObjects$matrixCanvas <- matrix(
         data = 1,
@@ -171,15 +143,97 @@ server <- function(input, output,session) {
         ncol = canvas_w + 2
       )
 
-      # 6. Create ggplot of your floorplan
-      gg <- ggplot(plan) +
-        geom_sf(color = "black", size = 0.2) +
-        theme_void() +
-        coord_sf(expand = FALSE)
-      gg -> canvasObjects$floorsBG[[input$canvas_selector]]$plot
+      # Create ggplot with PNG as background using annotation_raster
+      gg <- ggplot() +
+        annotation_raster(img, xmin = 0, xmax = img_width, ymin = 0, ymax = img_height) +
+        coord_fixed(ratio = 1, xlim = c(0, img_width), ylim = c(0, img_height), expand = FALSE) +
+        theme_void()
 
+      gg -> canvasObjects$floorsBG[[input$canvas_selector]]$plot
       canvasObjects$floorsBG[[input$canvas_selector]]$imWidth <- canvas_w*10
       canvasObjects$floorsBG[[input$canvas_selector]]$imHeight <- canvas_h*10
+
+      sendBG(gg, canvas_w*10, canvas_h*10, session, input$canvas_selector)
+      return()
+    }
+    # 3. Inspect available layers
+    layers_info <- tryCatch(
+      sf::st_layers(input$BGfile$datapath),
+      error = function(e) {
+        showNotification(paste("Cannot read layers:", e$message), type = "error", duration = 5)
+        return(NULL)
+      }
+    )
+    if (is.null(layers_info)) return()
+
+    # 4. Read the DXF, catch errors
+    # Require a specific layer (e.g. "entities")
+    needed_layer <- "entities"
+    if (!(needed_layer %in% layers_info$name)) {
+      showModal(modalDialog(
+        title = "Required Layer Not Found",
+        paste("Your DXF file contains these layers:", paste(layers_info$name, collapse = ", ")),
+        "Expected layer:", needed_layer,
+        easyClose = TRUE,
+        footer   = modalButton("OK")
+      ))
+      return()
+    }
+    plan_raw <- tryCatch(
+      sf::st_read(dsn = input$BGfile$datapath, layer = needed_layer, quiet = TRUE),
+      error = function(e) {
+        showNotification(paste("Error reading DXF:", e$message), type = "error", duration = 5)
+        return(NULL)
+      }
+    )
+    if (is.null(plan_raw)) return()
+
+    # 5. Check for empty geometry
+    if (nrow(plan_raw) == 0 || all(is.na(st_geometry(plan_raw)))) {
+      showNotification("No geometries found in the uploaded DXF.", type = "warning", duration = 5)
+      return()
+    }
+
+    units_info <- read_dxf_units(input$BGfile$datapath)
+    if(units_info["unit"] ==  "unitless" ){
+      units_info <- detect_units_by_bbox(plan_raw)
+    }
+
+    # 2. Scale geometries to meters
+    plan <- plan_raw
+    sf::st_geometry(plan) <- sf::st_geometry(plan) * as.numeric(units_info["factor"])
+
+    # 3. Compute bounding box & canvas dimensions
+    bbox <- sf::st_bbox(plan)
+    canvas_w <- as.numeric(ceiling(bbox["xmax"] - bbox["xmin"]) )
+    canvas_h <- as.numeric(ceiling(bbox["ymax"] - bbox["ymin"]) )
+
+    # 4. Store dimensions and notify front-end
+    ## Check also the other dimensions of the other floors, and use the max
+    if(length(canvasObjects$floors) > 0 ){
+      canvas_w = max(canvas_w, max(canvasObjects$floors$canvasWidth, na.rm = TRUE))
+      canvas_h = max(canvas_h, max(canvasObjects$floors$canvasHeight, na.rm = TRUE))
+    }
+
+    canvasObjects$canvasDimension$canvasWidth  <- max(canvasObjects$canvasDimension$canvasWidth, canvas_w*10)
+    canvasObjects$canvasDimension$canvasHeight <-  max(canvasObjects$canvasDimension$canvasHeight,canvas_h*10)
+    js$canvasDimension(canvasObjects$canvasDimension$canvasWidth,  canvasObjects$canvasDimension$canvasHeight)
+
+    canvasObjects$matrixCanvas <- matrix(
+      data = 1,
+      nrow = canvas_h + 2,
+      ncol = canvas_w + 2
+    )
+
+    # 6. Create ggplot of your floorplan
+    gg <- ggplot(plan) +
+      geom_sf(color = "black", size = 0.2) +
+      theme_void() +
+      coord_sf(expand = FALSE)
+    gg -> canvasObjects$floorsBG[[input$canvas_selector]]$plot
+
+    canvasObjects$floorsBG[[input$canvas_selector]]$imWidth <- canvas_w*10
+    canvasObjects$floorsBG[[input$canvas_selector]]$imHeight <- canvas_h*10
 
     sendBG(gg,canvas_w*10,canvas_h*10,session, input$canvas_selector)
 
@@ -210,7 +264,7 @@ server <- function(input, output,session) {
         }
 
         if((canvasObjects$roomsINcanvas$x[i] + length + 1)*10 >= newCanvasWidth || (canvasObjects$roomsINcanvas$y[i] + width + 1)*10 >= newCanvasHeight){
-          shinyalert("Error", "The new canvas dimension is too small. There will be at least one room outside the canvas.", type = "error")
+          shinyalert("The new canvas dimension is too small. There will be at least one room outside the canvas.")
           return()
         }
       }
@@ -231,6 +285,7 @@ server <- function(input, output,session) {
                                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
 
   })
+
 
   observeEvent(input$delete_floor, {
     disable("rds_generation")
@@ -265,11 +320,12 @@ server <- function(input, output,session) {
                            choices = c("", canvasObjects$floors$Name) )
 
       if(!is.null(canvasObjects$floorsBG[[input$canvas_selector]]) )
-         canvasObjects$floorsBG <- canvasObjects$floorsBG[- which(input$canvas_selector == names(canvasObjects$floorsBG)) ]
+        canvasObjects$floorsBG <- canvasObjects$floorsBG[- which(input$canvas_selector == names(canvasObjects$floorsBG)) ]
 
 
     }
   })
+
 
   #### update floor  ####
   observeEvent(input$canvas_selector,{
@@ -283,41 +339,31 @@ server <- function(input, output,session) {
           updateSelectizeInput(inputId = "canvas_selector",
                                selected = "",
                                choices = c("", canvasObjects$floors$Name) )
-          return()
-        }
-
+          return()        }
         if(!is.null(canvasObjects$floors) && nrow(canvasObjects$floors) != 0){
           if(nrow(canvasObjects$floors) > 1000){
             shinyalert("Error", "The maximum permitted number of floors is 1000.", type = "error")
-            return()
-          }
-
+            return()          }
           canvasObjects$floors = rbind(canvasObjects$floors,
-                                       data.frame(ID = max(canvasObjects$floors$ID)+1, Name = Name, Order = max(canvasObjects$floors$Order)+1))
-        }
+                                       data.frame(ID = max(canvasObjects$floors$ID)+1,
+                                                  Name = Name, Order = max(canvasObjects$floors$Order)+1))
+          }
         else{
           canvasObjects$floors = data.frame(ID = 1, Name = Name, Order = 1)
+          }
         }
       }
-    }
-
-
     if(!is.null(canvasObjects$roomsINcanvas)){
       roomsINcanvasFloor <- canvasObjects$roomsINcanvas %>%
         filter(CanvasID == input$canvas_selector)
-
       if(nrow(roomsINcanvasFloor) > 0){
         updateSelectizeInput(inputId = "select_RemoveRoom",
                              selected = "",
                              choices = c("", paste0( roomsINcanvasFloor$Name," #",roomsINcanvasFloor$ID ) ) )
-      }
-      else{
-        updateSelectizeInput(inputId = "select_RemoveRoom",
-                             selected = "",
-                             choices = "" )
-      }
-    }
-
+        }else{
+          updateSelectizeInput(inputId = "select_RemoveRoom",
+                               selected = "",
+                               choices = "" )      }    }
     if(length(canvasObjects$floors)>0){
       # removing BG image when change floor
       sendBG( ggplot() +
@@ -325,24 +371,18 @@ server <- function(input, output,session) {
                 coord_sf(expand = FALSE),
               canvas_w= canvasObjects$canvasDimension$canvasWidth,
               canvas_h= canvasObjects$canvasDimension$canvasHeight,
-              session, "empty")
-    }
-
+              session, "empty")    }
     if(!canvasObjects$floorsBG[[input$canvas_selector]] %>% is.null()){
       sendBG(canvasObjects$floorsBG[[input$canvas_selector]]$plot,
              canvas_w = canvasObjects$floorsBG[[input$canvas_selector]]$imWidth,
              canvas_h= canvasObjects$floorsBG[[input$canvas_selector]]$imHeight,
-             session , input$canvas_selector)
-    }
-
-  })
+             session , input$canvas_selector)    }  })
 
   observeEvent(input$HideBG_image,{
     disable("rds_generation")
     disable("flamegpu_connection")
     canvas_selector = req(input$canvas_selector)
     req(canvasObjects$floorsBG[[canvas_selector]])
-
     if(input$HideBG_image){
       sendBG( ggplot() +
                 theme_void() +
@@ -350,14 +390,12 @@ server <- function(input, output,session) {
               canvas_w= canvasObjects$canvasDimension$canvasWidth,
               canvas_h= canvasObjects$canvasDimension$canvasHeight,
               session, "empty")
-    }else{
-      sendBG(canvasObjects$floorsBG[[input$canvas_selector]]$plot,
-             canvas_w = canvasObjects$floorsBG[[input$canvas_selector]]$imWidth,
-             canvas_h= canvasObjects$floorsBG[[input$canvas_selector]]$imHeight,
-             session , input$canvas_selector)
-      }
+      }else{
+                sendBG(canvasObjects$floorsBG[[input$canvas_selector]]$plot,
+                       canvas_w = canvasObjects$floorsBG[[input$canvas_selector]]$imWidth,
+                       canvas_h= canvasObjects$floorsBG[[input$canvas_selector]]$imHeight,
+                       session , input$canvas_selector)      }  })
 
-  })
   #### ordering floors
   observeEvent(input$canvas_selector,{
     disable("rds_generation")
@@ -693,12 +731,29 @@ server <- function(input, output,session) {
         return()
       }else{
         color_type <- canvasObjects$color
-        room_color <- roomSelected$colorFill
+        room_color_base <- roomSelected$colorFill
         if(color_type == "Type")
-          room_color <- (canvasObjects$types %>% filter(Name == roomSelected$type))$Color
+          room_color_base <- (canvasObjects$types %>% filter(Name == roomSelected$type))$Color
 
         if(color_type == "Area")
-          room_color <- (canvasObjects$areas %>% filter(Name == input$select_area))$Color
+          room_color_base <- (canvasObjects$areas %>% filter(Name == input$select_area))$Color
+
+        # Ensure base color has alpha = 1
+        rgb_match <- regmatches(room_color_base, regexec("rgba?\\(([0-9]+),\\s*([0-9]+),\\s*([0-9]+)", room_color_base))
+        if (length(rgb_match[[1]]) >= 4) {
+          r <- rgb_match[[1]][2]
+          g <- rgb_match[[1]][3]
+          b <- rgb_match[[1]][4]
+          room_color_base <- paste0("rgba(", r, ", ", g, ", ", b, ", 1)")
+        }
+
+        # Apply alpha from slider to the room color for display
+        alpha_value <- input$room_fill_alpha
+        if (!is.null(alpha_value)) {
+          room_color_display <- paste0("rgba(", r, ", ", g, ", ", b, ", ", alpha_value, ")")
+        } else {
+          room_color_display <- room_color_base
+        }
 
         newroom = data.frame(ID = 1,
                              typeID = roomSelected$ID,
@@ -709,7 +764,8 @@ server <- function(input, output,session) {
                              w = width, l = length, h = height,
                              Name = roomSelected$Name,
                              door = input$door_new_room,
-                             colorFill = room_color,
+                             colorFill = room_color_display,
+                             colorFillBase = room_color_base,
                              colorBorder = "rgba(0, 0, 0, 1)",
                              area = input$select_area,
                              CanvasID = input$canvas_selector)
@@ -814,6 +870,49 @@ server <- function(input, output,session) {
       }
     }
   })
+
+  # Observer for room fill alpha slider - updates all rooms when alpha changes
+  observeEvent(input$room_fill_alpha, {
+    req(canvasObjects$roomsINcanvas)
+
+    alpha_value <- input$room_fill_alpha
+    if (is.null(alpha_value)) return()
+
+    # Update colorFill for all rooms based on their base color and new alpha
+    for (i in seq_len(nrow(canvasObjects$roomsINcanvas))) {
+      room <- canvasObjects$roomsINcanvas[i, ]
+
+      # Get base color (or use colorFill if colorFillBase doesn't exist)
+      base_color <- if (!is.null(room$colorFillBase) && !is.na(room$colorFillBase)) {
+        room$colorFillBase
+      } else {
+        room$colorFill
+      }
+
+      # Extract RGB values and apply new alpha
+      rgb_match <- regmatches(base_color, regexec("rgba?\\(([0-9]+),\\s*([0-9]+),\\s*([0-9]+)", base_color))
+      if (length(rgb_match[[1]]) >= 4) {
+        r <- rgb_match[[1]][2]
+        g <- rgb_match[[1]][3]
+        b <- rgb_match[[1]][4]
+        new_color <- paste0("rgba(", r, ", ", g, ", ", b, ", ", alpha_value, ")")
+
+        canvasObjects$roomsINcanvas[i, "colorFill"] <- new_color
+
+        # First remove the existing room from the canvas
+        runjs(paste0("
+          FloorArray[\"", room$CanvasID, "\"].arrayObject.forEach((e, index) => {
+            if(e.type === 'rectangle' && e.id === ", room$ID, "){
+              FloorArray[\"", room$CanvasID, "\"].arrayObject.splice(index, 1);
+            }
+          });
+        "))
+
+        # Then add it back with the new color
+        runjs(command_addRoomObject(canvasObjects$roomsINcanvas[i, ]))
+      }
+    }
+  }, ignoreInit = TRUE)
 
   deletingRoomFromCanvas = function(session,objectDelete,canvasObjects){
     runjs(paste0("
@@ -1822,7 +1921,7 @@ server <- function(input, output,session) {
       postprocObjects$CONTACT_std = NULL
       postprocObjects$CONTACTmatrix = NULL
       postprocObjects$AEROSOL_std = NULL
-      postoprocObjets$AEROSOLcsv = NULL
+      postprocObjects$AEROSOLcsv = NULL
       postprocObjects$COUNTERScsv = NULL
       postprocObjects$A_C_COUNTERS = NULL
       postprocObjects$Mapping = NULL
@@ -4662,7 +4761,8 @@ server <- function(input, output,session) {
                                    Mapping = NULL,
                                    FLAGmodelLoaded = FALSE,
                                    MappingID_room = FALSE,
-                                   Model = NULL
+                                   Model = NULL,
+                                   animation_bg = NULL
   )
 
   required_files <- c("AEROSOL.csv","AGENT_POSITION_AND_STATUS.csv", "CONTACT.csv","counters.csv")
@@ -5001,59 +5101,17 @@ server <- function(input, output,session) {
   })
 
   output$PostProc_filters <- renderUI({
-    df <- req(postprocObjects$evolutionCSV)
-    granularity <- input$postproc_time_granularity
-    if (is.null(granularity)) granularity <- "day"
-    
-    # Get step size in seconds
-    step_seconds <- as.numeric(postprocObjects$Model$starting$step)
-    if (is.null(step_seconds) || is.na(step_seconds)) step_seconds <- 60
-    
+    df <- req(postprocObjects$evolutionCSV )
     show_modal_spinner()
-    
-    # Convert time column based on granularity
-    df_display <- df
-    if (granularity == "step") {
-      df_display <- df_display %>% 
-        mutate(Time = Day) %>%
-        select(-Day)
-      time_label <- "Time (Steps)"
-    } else if (granularity == "hour") {
-      df_display <- df_display %>% 
-        mutate(Time = floor((Day * step_seconds) / 3600)) %>%
-        select(-Day)
-      time_label <- "Time (Hours)"
-    } else {
-      df_display <- df_display %>% 
-        mutate(Time = floor((Day * step_seconds) / 86400)) %>%
-        select(-Day)
-      time_label <- "Time (Days)"
-    }
-    
-    # Aggregate by the new time granularity
-    df_display <- df_display %>%
-      group_by(Folder, Time, agent_type) %>%
-      summarise(across(where(is.numeric), sum), .groups = "drop")
-    
-    # Store the processed data for filtering
-    postprocObjects$evolutionCSV_display <- df_display
-    
-    # Create sliders for agent types and disease states
-    name_cols <- colnames(df_display %>% select(-Folder, -agent_type))
+
+    # i want to add the slider about the agent
+    name_cols <- colnames(df%>% select(-Folder, -agent_type))
     sliders = lapply(name_cols, function(col) {
-      values = unique(df_display[[col]])
-      if(col == "Time") values <- values[-c(length(values))]
-      
-      # Create appropriate label
-      if (col == "Time") {
-        label_text <- paste("Select range for", time_label)
-      } else {
-        label_text <- paste("Select range for", col)
-      }
-      
+      values = unique(df[[col]])
+      if(col == "Day") values <- values[-c(length(values))]
       sliderInput(
         inputId = paste0("filter_", col),
-        label = label_text,
+        label = paste("Select range for", col),
         min = min(values, na.rm = TRUE),
         max = max(values, na.rm = TRUE),
         value = range(values, na.rm = TRUE)
@@ -5064,8 +5122,8 @@ server <- function(input, output,session) {
   })
 
   observe({
-    df <- req(postprocObjects$evolutionCSV_display)
-    name_cols <- colnames(df %>% select(-Folder))
+    df <-req(postprocObjects$evolutionCSV )
+    name_cols <- colnames(df%>% select(-Folder))
 
     for (col in name_cols) {
       input_id <- paste0("filter_", col)
@@ -5638,7 +5696,7 @@ server <- function(input, output,session) {
     ribbon_alpha <- input$diseaseEvol_alpha
     plot_type <- input$diseaseEvol_plotType
     options <- input$diseaseEvol_options
-    facet_room <- if (metric_type %in% c("aerosol", "contacts")) input$diseaseEvol_facetRoom else FALSE
+    facet_room <- if (metric_type == "aerosol") input$diseaseEvol_facetRoom else FALSE
     if (is.null(facet_room)) facet_room <- FALSE
     cumulative <- input$diseaseEvol_cumulative
     if (is.null(cumulative)) cumulative <- FALSE
@@ -5651,7 +5709,7 @@ server <- function(input, output,session) {
       metric_color <- "#E5D05AFF"
     } else {
       df_raw <- postprocObjects$AEROSOL_std
-      y_label <- if(cumulative) "Cumulative Virus Concentration" else "Virus Concentration"
+      y_label <- if(cumulative) expression(paste("Cumulative Virus Concentration (", PFU/m^3, ")")) else expression(paste("Virus Concentration (", PFU/m^3, ")"))
       title_text <- if(cumulative) "Cumulative Aerosol Concentration Evolution" else "Aerosol Concentration Evolution"
       metric_color <- "#3498db"
     }
@@ -5755,10 +5813,6 @@ server <- function(input, output,session) {
 
     # Aggregate data based on metric type
     if (metric_type == "contacts") {
-      # Create RoomID column for contacts data
-      df_raw <- df_raw %>%
-        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
-      
       # Count contacts per time unit
       df <- df_raw %>%
         mutate(time_granular = case_when(
@@ -5769,59 +5823,28 @@ server <- function(input, output,session) {
           granularity == "week" ~ floor(time * step / 604800),
           granularity == "month" ~ floor(time * step / 2592000),
           TRUE ~ time
-        ))
-      
-      if (facet_room) {
-        # Group by RoomID to keep rooms separate
-        df <- df %>%
-          group_by(Folder, time_granular, RoomID) %>%
-          summarise(Value = n(), .groups = "drop")
-        
-        # Complete the time range from min_time_granular to max_time_granular
-        folders <- unique(df$Folder)
-        rooms_in_data <- unique(df$RoomID)
-        complete_grid <- expand.grid(
-          Folder = folders,
-          time_granular = min_time_granular:max_time_granular,
-          RoomID = rooms_in_data,
-          stringsAsFactors = FALSE
-        )
-        df <- complete_grid %>%
-          left_join(df, by = c("Folder", "time_granular", "RoomID")) %>%
-          mutate(Value = ifelse(is.na(Value), 0, Value))
-        
-        # Apply cumulative calculation if enabled
-        if (cumulative) {
-          df <- df %>%
-            arrange(Folder, RoomID, time_granular) %>%
-            group_by(Folder, RoomID) %>%
-            mutate(Value = cumsum(Value)) %>%
-            ungroup()
-        }
-      } else {
-        df <- df %>%
-          group_by(Folder, time_granular) %>%
-          summarise(Value = n(), .groups = "drop")
+        )) %>%
+        group_by(Folder, time_granular) %>%
+        summarise(Value = n(), .groups = "drop")
 
-        # Complete the time range from min_time_granular to max_time_granular
-        folders <- unique(df$Folder)
-        complete_grid <- expand.grid(
-          Folder = folders,
-          time_granular = min_time_granular:max_time_granular,
-          stringsAsFactors = FALSE
-        )
-        df <- complete_grid %>%
-          left_join(df, by = c("Folder", "time_granular")) %>%
-          mutate(Value = ifelse(is.na(Value), 0, Value))
+      # Complete the time range from min_time_granular to max_time_granular
+      folders <- unique(df$Folder)
+      complete_grid <- expand.grid(
+        Folder = folders,
+        time_granular = min_time_granular:max_time_granular,
+        stringsAsFactors = FALSE
+      )
+      df <- complete_grid %>%
+        left_join(df, by = c("Folder", "time_granular")) %>%
+        mutate(Value = ifelse(is.na(Value), 0, Value))
 
-        # Apply cumulative calculation if enabled
-        if (cumulative) {
-          df <- df %>%
-            arrange(Folder, time_granular) %>%
-            group_by(Folder) %>%
-            mutate(Value = cumsum(Value)) %>%
-            ungroup()
-        }
+      # Apply cumulative calculation if enabled
+      if (cumulative) {
+        df <- df %>%
+          arrange(Folder, time_granular) %>%
+          group_by(Folder) %>%
+          mutate(Value = cumsum(Value)) %>%
+          ungroup()
       }
     } else {
       # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
@@ -5934,22 +5957,6 @@ server <- function(input, output,session) {
           )
       }
 
-      # Calculate ymin and ymax for bar plot error bars BEFORE creating ggplot
-      if (aggregate_mode == "mean_sd") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
-      } else if (aggregate_mode == "mean_ci") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = pmax(0, CI_lower), ymax = CI_upper)
-      } else if (aggregate_mode == "minmax") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = Min, ymax = Max)
-      } else {
-        # Default case: individual mode or no aggregation
-        agg_stats <- agg_stats %>%
-          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
-      }
-
       if (facet_room && "RoomID" %in% names(agg_stats)) {
         p <- ggplot(agg_stats, aes(x = time_granular, color = RoomID, fill = RoomID))
       } else {
@@ -5960,29 +5967,41 @@ server <- function(input, output,session) {
       if (show_ribbon && plot_type == "line") {
         if (aggregate_mode == "mean_sd") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
+            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         } else if (aggregate_mode == "mean_ci") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
+            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         } else if (aggregate_mode == "minmax") {
           if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
+            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max, group = RoomID),
                                  alpha = ribbon_alpha, color = NA)
           } else {
-            p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
+            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
                                  fill = metric_color, alpha = ribbon_alpha)
           }
         }
+      }
+
+      # Calculate ymin and ymax for bar plot error bars
+      if (aggregate_mode == "mean_sd") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
+      } else if (aggregate_mode == "mean_ci") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = pmax(0, CI_lower), ymax = CI_upper)
+      } else if (aggregate_mode == "minmax") {
+        agg_stats <- agg_stats %>%
+          mutate(ymin = Min, ymax = Max)
       }
 
       # Add line or bar plot
@@ -6414,7 +6433,7 @@ server <- function(input, output,session) {
       }
     }
 
-    plotly::ggplotly( pl )
+    pl
   })
 
   # Render summary statistics table
@@ -6569,46 +6588,145 @@ server <- function(input, output,session) {
 
   output$DownloadPostProc_Button <- downloadHandler(
     filename = function() {
-      paste0('PostProcData', Sys.Date(), '.zip')
+      paste0('PostProcData_filtered_', Sys.Date(), '.zip')
     },
     content = function(file) {
-      AEROSOL_std = req(postprocObjects$AEROSOL_std)
-      CONTACT_std = req(postprocObjects$CONTACT_std)
-      CONTACTmatrix = req(postprocObjects$CONTACTmatrix)
-      COUNTERScsv = req(postprocObjects$COUNTERScsv)
-      Mapping = req(postprocObjects$Mapping)
-      dir = req(postprocObjects$dirPath)
+      AEROSOL_std = postprocObjects$AEROSOL_std
+      CONTACT_std = postprocObjects$CONTACT_std
+      CONTACTmatrix = postprocObjects$CONTACTmatrix
+      COUNTERScsv = postprocObjects$COUNTERScsv
+      Mapping = postprocObjects$Mapping
+      simulation_log = postprocObjects$simulation_log_full
+
+      if(is.null(simulation_log)) {
+        showNotification("No simulation data loaded.", type = "error")
+        return(NULL)
+      }
 
       show_modal_spinner()
 
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
 
-      file_name <- glue("AEROSOL.RDs")
-      saveRDS(AEROSOL_std, file=file.path(temp_directory, file_name))
+      # Apply filters based on Disease Evolution settings
+      selected_sims <- input$diseaseEvol_simulation
+      selected_rooms <- input$diseaseEvol_room
+      selected_agents <- input$diseaseEvol_agentType
+      selected_floors <- input$diseaseEvol_floor
+      selected_states <- input$diseaseEvol_states
 
-      file_name <- glue("CONTACT.RDs")
-      saveRDS(CONTACT_std, file=file.path(temp_directory, file_name))
+      # Filter simulation log
+      sim_data_filtered <- simulation_log
 
-      file_name <- glue("CONTACT_MATRIX.RDs")
-      saveRDS(CONTACTmatrix, file=file.path(temp_directory, file_name))
-
-      file_name <- glue("COUNTERS.RDs")
-      saveRDS(COUNTERScsv, file=file.path(temp_directory, file_name))
-
-      file_name <- glue("MAPPING.RDs")
-      saveRDS(Mapping, file=file.path(temp_directory, file_name))
-
-      subfolders <- list.dirs(dir, recursive = FALSE)
-      for(folder in subfolders){
-        file.copy(
-          from = file.path(folder, "AGENT_POSITION_AND_STATUS.csv"),
-          to = file.path(temp_directory,
-                         paste0("AGENT_POSITION_AND_STATUS_", gsub("seed", "", basename(folder)), ".csv"))
-        )
+      # Filter by simulation/folder
+      if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(Folder %in% selected_sims)
       }
 
-      system(paste0('echo time,id,agent_type,x,y,z,disease_state > ', temp_directory, '/AGENT_POSITION_AND_STATUS_colnames.csv'))
+      # Filter by room
+      if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
+        Mapping_with_id <- Mapping %>%
+          dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+        selected_room_ids <- Mapping_with_id %>%
+          dplyr::filter(RoomID %in% selected_rooms) %>%
+          dplyr::pull(ID) %>%
+          unique()
+        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(room_id %in% selected_room_ids)
+      }
+
+      # Filter by agent type
+      if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
+        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(agent_type %in% selected_agents)
+      }
+
+      # Filter by floor
+      if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
+      }
+
+      # Filter by disease state
+      if (!is.null(selected_states) && !"All" %in% selected_states && length(selected_states) > 0) {
+        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(disease_state %in% selected_states)
+      }
+
+      # Save filtered simulation log
+      file_name <- glue("SIMULATION_LOG_filtered.RDs")
+      saveRDS(sim_data_filtered, file=file.path(temp_directory, file_name))
+
+      # Also save as CSV for easier access
+      file_name <- glue("SIMULATION_LOG_filtered.csv")
+      write.csv(sim_data_filtered, file=file.path(temp_directory, file_name), row.names = FALSE)
+
+      # Filter AEROSOL data
+      if (!is.null(AEROSOL_std) && nrow(AEROSOL_std) > 0) {
+        AEROSOL_filtered <- AEROSOL_std
+        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+          AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(Folder %in% selected_sims)
+        }
+        if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+          AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
+        }
+        if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
+          Mapping_with_id <- Mapping %>%
+            dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+          selected_room_names <- Mapping_with_id %>%
+            dplyr::filter(RoomID %in% selected_rooms) %>%
+            dplyr::select(Name, type, area) %>%
+            dplyr::distinct()
+          AEROSOL_filtered <- AEROSOL_filtered %>%
+            dplyr::semi_join(selected_room_names, by = c("Name", "type", "area"))
+        }
+        saveRDS(AEROSOL_filtered, file=file.path(temp_directory, "AEROSOL_filtered.RDs"))
+        write.csv(AEROSOL_filtered, file=file.path(temp_directory, "AEROSOL_filtered.csv"), row.names = FALSE)
+      }
+
+      # Filter CONTACT data
+      if (!is.null(CONTACT_std) && nrow(CONTACT_std) > 0) {
+        CONTACT_filtered <- CONTACT_std
+        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+          CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(Folder %in% selected_sims)
+        }
+        if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+          CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
+        }
+        saveRDS(CONTACT_filtered, file=file.path(temp_directory, "CONTACT_filtered.RDs"))
+        write.csv(CONTACT_filtered, file=file.path(temp_directory, "CONTACT_filtered.csv"), row.names = FALSE)
+      }
+
+      # Filter CONTACT matrix
+      if (!is.null(CONTACTmatrix) && nrow(CONTACTmatrix) > 0) {
+        CONTACTmatrix_filtered <- CONTACTmatrix
+        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+          CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>% dplyr::filter(Folder %in% selected_sims)
+        }
+        if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
+          CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>%
+            dplyr::filter(agent_type_1 %in% selected_agents | agent_type_2 %in% selected_agents)
+        }
+        saveRDS(CONTACTmatrix_filtered, file=file.path(temp_directory, "CONTACT_MATRIX_filtered.RDs"))
+        write.csv(CONTACTmatrix_filtered, file=file.path(temp_directory, "CONTACT_MATRIX_filtered.csv"), row.names = FALSE)
+      }
+
+      # Filter COUNTERS data
+      if (!is.null(COUNTERScsv) && nrow(COUNTERScsv) > 0) {
+        COUNTERS_filtered <- COUNTERScsv
+        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+          COUNTERS_filtered <- COUNTERS_filtered %>% dplyr::filter(Folder %in% selected_sims)
+        }
+        saveRDS(COUNTERS_filtered, file=file.path(temp_directory, "COUNTERS_filtered.RDs"))
+        write.csv(COUNTERS_filtered, file=file.path(temp_directory, "COUNTERS_filtered.csv"), row.names = FALSE)
+      }
+
+      # Save filter metadata
+      filter_info <- list(
+        simulations = selected_sims,
+        rooms = selected_rooms,
+        agent_types = selected_agents,
+        floors = selected_floors,
+        disease_states = selected_states,
+        download_date = Sys.time()
+      )
+      saveRDS(filter_info, file=file.path(temp_directory, "FILTER_INFO.RDs"))
 
       zip::zip(
         zipfile = file,
@@ -6636,7 +6754,8 @@ server <- function(input, output,session) {
       show_modal_spinner()
       simulation_log = simulation_log %>%
         filter(Folder == folder) %>%
-        select(-Folder)
+        select(-Folder) %>%
+        mutate(time = time - min(time))
 
       simulation_log = simulation_log %>%
         group_by(id) %>%
@@ -6656,8 +6775,8 @@ server <- function(input, output,session) {
       step = as.numeric(postprocObjects$Model$starting$step)
       updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
       updateSliderInput("animation", session = session,
-                        max = max(simulation_log$time)*step, min = min(simulation_log$time)*step,
-                        value = min(simulation_log$time)*step, step = step )
+                        max = max(simulation_log$time)*step, min = 0,
+                        value = 0, step = step )
       updateSelectInput("visualFloor_select", session = session,
                         choices = c("All",unique(floors$CanvasID)))
       updateSelectInput("visualAgent_select", session = session,
@@ -6707,7 +6826,7 @@ server <- function(input, output,session) {
     num_floors_in_canvas <- unique(simulation_log_folder$CanvasID)
 
     # Increase height per floor to 800 pixels, with minimum of 1000px
-    H = max(1000, length(num_floors_in_canvas) * 800)
+    H = max(400, length(num_floors_in_canvas) * 400)
     plot_output_list <- plotOutput(outputId = "plot_map", height = paste0(H,"px"), width = "100%" )
 
     (plot_output_list)
@@ -6979,22 +7098,57 @@ server <- function(input, output,session) {
   })
   ### END EMOJI shapes ####
 
+  # Handle animation background image upload
+  observeEvent(input$animation_bg_file, {
+    req(input$animation_bg_file)
+
+    ext <- tolower(tools::file_ext(input$animation_bg_file$name))
+    if (ext != "png") {
+      showNotification("Please upload a PNG file.", type = "error", duration = 5)
+      return()
+    }
+
+    # Read PNG image
+    img <- tryCatch(
+      png::readPNG(input$animation_bg_file$datapath),
+      error = function(e) {
+        showNotification(paste("Error reading PNG:", e$message), type = "error", duration = 5)
+        return(NULL)
+      }
+    )
+    if (is.null(img)) return()
+
+    # Store the image in postprocObjects
+    postprocObjects$animation_bg <- list(
+      img = img,
+      width = dim(img)[2],
+      height = dim(img)[1]
+    )
+
+    updateCheckboxInput(session, "animation_show_bg", value = TRUE)
+    showNotification("Background image loaded successfully.", type = "message", duration = 3)
+  })
+
+  # Handle clear background button
+  observeEvent(input$animation_clear_bg, {
+    postprocObjects$animation_bg <- NULL
+    updateCheckboxInput(session, "animation_show_bg", value = FALSE)
+    showNotification("Background image cleared.", type = "message", duration = 3)
+  })
+
   observe({
     info <- input$PostProc_table_cell_clicked
-    colorFeat = input$visualColor_select
-    showAverage <- input$visualColor_showAverage
-    if (is.null(showAverage)) showAverage <- FALSE
-    
-    # For gradient color features with average, we don't need a folder selection
-    if (colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && showAverage) {
-      folder <- NULL
-    } else {
-      folder <- req(info$value)
-    }
+    folder = req(info$value)
 
     roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
+    colorFeat = input$visualColor_select
     Label = input$visualLabel_select
+
+    # changes from the BG
+    animation_bg = postprocObjects$animation_bg
+    input$animation_show_bg
+    input$animation_bg_alpha
 
     isolate({
       step = as.numeric(postprocObjects$Model$starting$step)
@@ -7030,166 +7184,73 @@ server <- function(input, output,session) {
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
       }else if(colorFeat == "CumulContact"){
-        showAverage <- input$visualColor_showAverage
-        if (is.null(showAverage)) showAverage <- FALSE
-        
-        if (showAverage) {
-          # Calculate average across all folders
-          CONTACT_std = postprocObjects$CONTACT_std %>%
-            filter(time <= timeIn) %>%
-            select(-Folder)
-          
-          if(dim(CONTACT_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
-            CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
-              summarize(counts = n()) %>%
-              rename(IDtoColor = counts)
-            
-            # Get number of folders to calculate average
-            n_folders <- length(unique(postprocObjects$CONTACT_std$Folder))
-            CONTACT_std <- CONTACT_std %>%
-              mutate(IDtoColor = IDtoColor / n_folders)
-            
-            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-            
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
-          }
-        } else {
-          CONTACT_std = postprocObjects$CONTACT_std   %>%
-            filter(Folder == folder , time <= timeIn) %>%
-            select(-Folder)
+        CONTACT_std = postprocObjects$CONTACT_std   %>%
+          filter(Folder == folder , time <= timeIn) %>%
+          select(-Folder)
 
-          if(dim(CONTACT_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
-            CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
-              summarize(counts = n()) %>%
-              rename(IDtoColor = counts)
+        if(dim(CONTACT_std)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
+          CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
+            summarize(counts = n()) %>%
+            rename(IDtoColor = counts)
 
-            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+          CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
-          }
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
         }
 
       }else if(colorFeat == "Aerosol"){
-        showAverage <- input$visualColor_showAverage
-        if (is.null(showAverage)) showAverage <- FALSE
-        
-        if (showAverage) {
-          # Calculate average across all folders
-          AEROSOL_std = postprocObjects$AEROSOL_std %>%
-            filter(time <= timeIn) %>%
-            select(-Folder)
-          
-          if(dim(AEROSOL_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
-            # Get the latest time point for each room and average across folders
-            n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
-            
-            AEROSOL_std = AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-              filter(difftime <= 0,  difftime == max(difftime)) %>%
-              group_by(type,area,Name,CanvasID,ID) %>%
-              summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
-              rename(IDtoColor = virus_concentration)
-            
-            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+        AEROSOL_std = postprocObjects$AEROSOL_std %>%
+          filter(Folder == folder , time <= timeIn) %>%
+          select(-Folder)
 
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
-          }
-        } else {
-          AEROSOL_std = postprocObjects$AEROSOL_std %>%
-            filter(Folder == folder , time <= timeIn) %>%
-            select(-Folder)
+        ### Check if it has all the data for each time step
 
-          ### Check if it has all the data for each time step
+        if(dim(AEROSOL_std)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
 
-          if(dim(AEROSOL_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
+          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>%
+            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+            rename(IDtoColor = virus_concentration)
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-              filter(difftime <= 0,  difftime == max(difftime)) %>%
-              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-              rename(IDtoColor = virus_concentration)
-            # here i give to each room for each step a virus concetration = 0 when is not present
-            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
-          }
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
         }
       }else if(colorFeat == "CumulAerosol"){
-        showAverage <- input$visualColor_showAverage
-        if (is.null(showAverage)) showAverage <- FALSE
-        
-        if (showAverage) {
-          # Calculate average across all folders
-          n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
-          
-          AEROSOL_std = postprocObjects$AEROSOL_std %>%
-            filter(time <= timeIn) %>%
-            group_by(ID, type, area, Name, CanvasID) %>%
-            summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
-            mutate(time = timeIn)
-          
-          if(dim(AEROSOL_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
-            AEROSOL_std = AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-              filter(difftime <= 0,  difftime == max(difftime)) %>%
-              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-              rename(IDtoColor = virus_concentration)
+        AEROSOL_std = postprocObjects$AEROSOL_std %>%
+          filter(Folder == folder , time <= timeIn)%>%
+          group_by(ID, type,area,Name,CanvasID) %>%
+          summarise(virus_concentration = sum(virus_concentration)) %>%
+          mutate(time = timeIn) %>% ungroup()
 
-            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+        if(dim(AEROSOL_std)[1] == 0){
+          roomsINcanvas$IDtoColor = 0
+        }else{
+          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+            filter(difftime <= 0,  difftime == max(difftime)) %>%
+            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+            rename(IDtoColor = virus_concentration)
 
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
-          }
-        } else {
-          AEROSOL_std = postprocObjects$AEROSOL_std %>%
-            filter(Folder == folder , time <= timeIn)%>%
-            group_by(ID, type,area,Name,CanvasID) %>%
-            summarise(virus_concentration = sum(virus_concentration)) %>%
-            mutate(time = timeIn) %>% ungroup()
+          # here i give to each room for each step a virus concetration = 0 when is not present
+          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+            left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          if(dim(AEROSOL_std)[1] == 0){
-            roomsINcanvas$IDtoColor = 0
-          }else{
-            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-              filter(difftime <= 0,  difftime == max(difftime)) %>%
-              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-              rename(IDtoColor = virus_concentration)
-
-            # here i give to each room for each step a virus concetration = 0 when is not present
-            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if("IDtoColor" %in% colnames(roomsINcanvas))
-              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
-          }
+          if("IDtoColor" %in% colnames(roomsINcanvas))
+            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
         }
       }
 
@@ -7210,42 +7271,22 @@ server <- function(input, output,session) {
       if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
         MinCol = 0
 
-        # Calculate data max - use all data for average mode, or filtered by folder otherwise
+        # Calculate data max
         if(colorFeat == "Aerosol"){
-          if (showAverage) {
-            dataMaxCol = max(postprocObjects$AEROSOL_std %>% pull(virus_concentration))
-          } else {
-            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                           filter(Folder == folder) %>% pull(virus_concentration))
-          }
+          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                         filter(Folder == folder) %>% pull(virus_concentration))
         }else if(colorFeat == "CumulContact"){
-          if (showAverage) {
-            dataMaxCol = max(postprocObjects$CONTACT_std %>%
-                           group_by(type,area,Name,CanvasID,ID) %>%
-                           count() %>%
-                           ungroup() %>%
-                           pull(n) / length(unique(postprocObjects$CONTACT_std$Folder)))
-          } else {
-            dataMaxCol = max(postprocObjects$CONTACT_std %>%
-                           filter(Folder == folder) %>%
-                           group_by(type,area,Name,CanvasID,ID)   %>%
-                           count() %>%
-                           pull(n) )
-          }
+          dataMaxCol = max(postprocObjects$CONTACT_std %>%
+                         filter(Folder == folder) %>%
+                         group_by(type,area,Name,CanvasID,ID)   %>%
+                         count() %>%
+                         pull(n) )
         }else if(colorFeat == "CumulAerosol"){
-          if (showAverage) {
-            n_folders <- length(unique(postprocObjects$AEROSOL_std$Folder))
-            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                           group_by(type,area,Name,CanvasID,ID) %>%
-                           summarise(virus_concentration = sum(virus_concentration) / n_folders, .groups = "drop") %>%
-                           pull(virus_concentration))
-          } else {
-            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                           filter(Folder == folder) %>%
-                           group_by(type,area,Name,CanvasID,ID) %>%
-                           mutate(virus_concentration = cumsum(virus_concentration)) %>%
-                           pull(virus_concentration))
-          }
+          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                         filter(Folder == folder) %>%
+                         group_by(type,area,Name,CanvasID,ID) %>%
+                         mutate(virus_concentration = cumsum(virus_concentration)) %>%
+                         pull(virus_concentration))
         }
 
         # Check if custom max value is provided
@@ -7259,7 +7300,13 @@ server <- function(input, output,session) {
         sc_fill <- scale_fill_gradient(low = "blue", high = "red",
                                        limits=c(MinCol,MaxCol),
                                        guide = "colourbar")
-        guide_fill = labs(fill = colorFeat)
+        # Add unit for aerosol-related color features
+        fill_label <- if(colorFeat %in% c("Aerosol", "CumulAerosol")) {
+          expression(paste("PFU/", m^3))
+        } else {
+          colorFeat
+        }
+        guide_fill = labs(fill = fill_label)
       }else{
         df$colorFillParsed = gsub(pattern = "rgba",replacement = "rgb",x = df$colorFill)
         df$colorFillParsed = gsub(pattern = ",",replacement = "/255,",x = df$colorFillParsed)
@@ -7278,71 +7325,72 @@ server <- function(input, output,session) {
       #df = df %>% mutate(ymin = -ymin + max(ymax), ymax = -ymax + max(ymax) )
       # simulation_log = simulation_log  %>% mutate(z = z + min(df$y) )
 
-      # For gradient color features, handle Fillingroom and Spawnroom separately with grey color
-      if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
-        # Separate data for special room types (grey) and normal rooms (gradient)
-        df_grey <- df %>% filter(type %in% c("Fillingroom", "Spawnroom"))
-        df_gradient <- df %>% filter(!type %in% c("Fillingroom", "Spawnroom"))
-        
-        pl = ggplot() +
-          scale_y_reverse()
-        
-        # Add grey rectangles for Fillingroom and Spawnroom first
-        if(nrow(df_grey) > 0) {
-          pl = pl + geom_rect(data = df_grey,
-                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-                              fill = "grey70", color = "black")
+      # Separate special rooms (Spawnroom, Fillingroom) that should always be grey
+      df_special <- df %>% dplyr::filter(type %in% c("Spawnroom", "Fillingroom"))
+      df_normal <- df %>% dplyr::filter(!type %in% c("Spawnroom", "Fillingroom"))
+
+      # Start building the plot
+      pl = ggplot() +
+        scale_y_reverse()
+
+      # Add background image if available and enabled
+      if (!is.null(animation_bg) && isTRUE(input$animation_show_bg)) {
+        bg_img <- animation_bg$img
+        bg_width <- animation_bg$width
+        bg_height <- animation_bg$height
+        pixels_per_meter <- if (!is.null(input$animation_bg_pixels_per_meter) && input$animation_bg_pixels_per_meter > 0) {
+          input$animation_bg_pixels_per_meter
+        } else {
+          10
         }
-        
-        # Add gradient rectangles for other rooms
-        if(nrow(df_gradient) > 0) {
-          pl = pl + geom_rect(data = df_gradient,
-                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                              color = "black") +
-            sc_fill + guide_fill
+        bg_alpha <- if (!is.null(input$animation_bg_alpha)) input$animation_bg_alpha else 0.5
+
+        # Scale the background image dimensions to meters (matching canvas scale: 10 pixels = 1 meter)
+        # The rooms are in units where 1 unit = 1 meter, canvas uses 10px/m
+        bg_xmax <- (bg_width / pixels_per_meter) * 10  # Convert to canvas units
+        bg_ymax <- (bg_height / pixels_per_meter) * 10  # Note: y is reversed
+
+        # Apply alpha to the image if needed
+        if (bg_alpha < 1 && length(dim(bg_img)) == 3) {
+          if (dim(bg_img)[3] == 3) {
+            # Add alpha channel if not present
+            bg_img <- abind::abind(bg_img, matrix(bg_alpha, nrow = dim(bg_img)[1], ncol = dim(bg_img)[2]), along = 3)
+          } else if (dim(bg_img)[3] == 4) {
+            # Multiply existing alpha by user alpha
+            bg_img[,,4] <- bg_img[,,4] * bg_alpha
+          }
         }
-        
-        pl = pl +
-          scale_color_manual(values = colorDisease$Col,
-                             limits = (colorDisease$State),
-                             labels = (colorDisease$State),
-                             drop = FALSE) +
-          coord_fixed() +
-          facet_wrap(~CanvasID,ncol = 2) +
-          theme_bw() +
-          theme(legend.position = "bottom",
-                legend.direction = "vertical",
-                axis.text = element_text(size = 16),
-                axis.title = element_text(size = 20, face = "bold"),
-                plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
-                legend.text = element_text(size = 14),
-                legend.key.size = unit(1.5, 'cm'),
-                legend.title = element_text(face = "bold", size = 18),
-                strip.text = element_text(size = 18, face = "bold"))
-      } else {
-        pl = ggplot() +
-          scale_y_reverse() +
-          geom_rect(data = df,
-                    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                    color = "black") +
-          sc_fill +guide_fill+
-          scale_color_manual(values = colorDisease$Col,
-                             limits = (colorDisease$State),
-                             labels = (colorDisease$State),
-                             drop = FALSE) +
-          coord_fixed() +
-          facet_wrap(~CanvasID,ncol = 2) +
-          theme_bw() +
-          theme(legend.position = "bottom",
-                legend.direction = "vertical",
-                axis.text = element_text(size = 16),
-                axis.title = element_text(size = 20, face = "bold"),
-                plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
-                legend.text = element_text(size = 14),
-                legend.key.size = unit(1.5, 'cm'),
-                legend.title = element_text(face = "bold", size = 18),
-                strip.text = element_text(size = 18, face = "bold"))
+        pl <- pl + ggpubr::background_image(bg_img)
+        #pl <- pl + annotation_raster(bg_img, xmin = 0, xmax = bg_xmax, ymin = bg_ymax, ymax = 0)
       }
+
+      # Add room layers
+      pl <- pl +
+        # Draw normal rooms with dynamic color
+        geom_rect(data = df_normal,
+                  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
+                  color = "black") +
+        # Draw special rooms (Spawnroom, Fillingroom) always in grey
+        geom_rect(data = df_special,
+                  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+                  fill = "grey80", color = "black") +
+        sc_fill +guide_fill+
+        scale_color_manual(values = colorDisease$Col,
+                           limits = (colorDisease$State),
+                           labels = (colorDisease$State),
+                           drop = FALSE) +
+        coord_fixed() +
+        facet_wrap(~CanvasID,ncol = 2) +
+        theme_bw() +
+        theme(legend.position = "bottom",
+              legend.direction = "vertical",
+              axis.text = element_text(size = 16),
+              axis.title = element_text(size = 20, face = "bold"),
+              plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
+              legend.text = element_text(size = 14),
+              legend.key.size = unit(1.5, 'cm'),
+              legend.title = element_text(face = "bold", size = 18),
+              strip.text = element_text(size = 18, face = "bold"))
 
 
       if(! Label  %in% c("None","Agent ID")){
@@ -7366,37 +7414,169 @@ server <- function(input, output,session) {
 
   })
 
-  # Render plot for average mode (no folder selected)
-  observe({
-    colorFeat = input$visualColor_select
-    showAverage <- input$visualColor_showAverage
-    if (is.null(showAverage)) showAverage <- FALSE
-    
-    # Only render when in average mode for gradient color features
-    req(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))
-    req(showAverage)
-    
-    # Check if no folder is selected
-    info <- input$PostProc_table_cell_clicked
-    if (!is.null(info$value) && info$value != "") return()  # Folder selected, let the other observe handle it
-    
-    pl <- req(postprocObjects$plot_2D)
-    step <- as.numeric(postprocObjects$Model$starting$step)
-    timeIn <- input$animation/step
-    
-    total_seconds = timeIn*step + as.numeric(strsplit(input$initial_time, ":")[[1]][1]) * 60 * 60 + as.numeric(strsplit(input$initial_time, ":")[[1]][2]) * 60
+  # Function to generate 2D visualization plot with agents at a specific time
+  generate2DPlotWithAgents <- function(pl_base, simulation_log, timeIn, folder, colorFeat, visualAgent,
+                              visualAgentID, Label, floorSelected, visualMode,
+                              emojiAgents, shapeAgents, floors, roomsINcanvas,
+                              AEROSOL_std, CONTACT_std, initial_time, step, customMax = NULL) {
+
+    pl <- pl_base
+
+    # Find the layer with room data (geom_rect with xmin/xmax/ymin/ymax)
+    # This handles cases where a background image layer may be present first
+    room_layer_idx <- 1
+    for (i in seq_along(pl$layers)) {
+      layer_data <- pl$layers[[i]]$data
+      if (!is.null(layer_data) && is.data.frame(layer_data) &&
+          all(c("xmin", "xmax", "ymin", "ymax") %in% colnames(layer_data))) {
+        room_layer_idx <- i
+        break
+      }
+    }
+    df <- pl$layers[[room_layer_idx]]$data
+
+    # Filter simulation log for current time
+    sim_log <- simulation_log %>%
+      dplyr::filter(time <= timeIn) %>%
+      dplyr::group_by(id) %>%
+      dplyr::filter(time == max(time)) %>%
+      dplyr::filter(y != 10000) %>%
+      dplyr::ungroup()
+
+    if(visualAgent != "All") {
+      sim_log <- sim_log %>% dplyr::filter(agent_type == visualAgent)
+      if(visualAgentID != "All") {
+        sim_log <- sim_log %>% dplyr::filter(id == visualAgentID)
+      }
+    }
+
+    sim_log$agent_type <- factor(sim_log$agent_type, levels = unique(simulation_log$agent_type))
+
+    if(floorSelected != "All") {
+      sim_log <- sim_log %>% dplyr::filter(CanvasID == floorSelected)
+    } else {
+      sim_log$CanvasID <- factor(sim_log$CanvasID, levels = floors$Name)
+    }
+
+    # Update room colors based on colorFeat
+    # Note: Layer 1 is normal rooms, Layer 2 is special rooms (Spawnroom, Fillingroom) which stay grey
+    if(colorFeat %in% c("CumulAerosol", "Aerosol") && !is.null(AEROSOL_std)) {
+      AEROSOL_data <- AEROSOL_std %>%
+        dplyr::filter(Folder == folder, time <= timeIn)
+
+      if(colorFeat == "CumulAerosol") {
+        AEROSOL_data <- AEROSOL_data %>%
+          dplyr::group_by(ID, type, area, Name, CanvasID) %>%
+          dplyr::summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
+          dplyr::mutate(time = timeIn)
+      }
+
+      if(nrow(AEROSOL_data) == 0) {
+        df$IDtoColor <- 0
+      } else {
+        AEROSOL_data <- AEROSOL_data %>%
+          dplyr::mutate(difftime = (timeIn - time)) %>%
+          dplyr::filter(difftime >= 0, difftime == min(difftime)) %>%
+          dplyr::select(virus_concentration, type, area, Name, CanvasID, ID) %>%
+          dplyr::rename(IDtoColor = virus_concentration)
+
+        AEROSOL_data <- roomsINcanvas %>%
+          dplyr::select(Name, CanvasID, type, area, ID) %>%
+          dplyr::distinct() %>%
+          dplyr::left_join(AEROSOL_data, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
+          dplyr::mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+        if("IDtoColor" %in% colnames(df)) df <- df %>% dplyr::select(-IDtoColor)
+        df <- merge(df, AEROSOL_data)
+        # Only update normal rooms (exclude Spawnroom, Fillingroom)
+        df <- df %>% dplyr::filter(!type %in% c("Spawnroom", "Fillingroom"))
+      }
+      pl$layers[[room_layer_idx]]$data <- df
+
+    } else if(colorFeat == "CumulContact" && !is.null(CONTACT_std)) {
+      CONTACT_data <- CONTACT_std %>%
+        dplyr::filter(Folder == folder, time <= timeIn)
+
+      if(nrow(CONTACT_data) == 0) {
+        df$IDtoColor <- 0
+      } else {
+        CONTACT_data <- CONTACT_data %>%
+          dplyr::group_by(CanvasID, Name, area, type, ID) %>%
+          dplyr::count() %>%
+          dplyr::rename(IDtoColor = n) %>%
+          dplyr::ungroup()
+
+        CONTACT_data <- roomsINcanvas %>%
+          dplyr::select(Name, CanvasID, type, area, ID) %>%
+          dplyr::distinct() %>%
+          dplyr::left_join(CONTACT_data, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
+          dplyr::mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+        if("IDtoColor" %in% colnames(df)) df <- df %>% dplyr::select(-IDtoColor)
+        df <- merge(df, CONTACT_data)
+        # Only update normal rooms (exclude Spawnroom, Fillingroom)
+        df <- df %>% dplyr::filter(!type %in% c("Spawnroom", "Fillingroom"))
+      }
+      pl$layers[[room_layer_idx]]$data <- df
+    }
+
+    # Add agents to plot
+    if(visualMode == "emojis" && !is.null(emojiAgents)) {
+      sim_log <- sim_log %>%
+        dplyr::mutate(agent_type_char = as.character(agent_type)) %>%
+        dplyr::left_join(emojiAgents, by = c("agent_type_char" = "Agents"))
+
+      unique_emoji_codes <- unique(sim_log$EmojiCode)
+      for(emoji_code in unique_emoji_codes) {
+        sim_subset <- sim_log %>% dplyr::filter(EmojiCode == emoji_code)
+        if(nrow(sim_subset) > 0) {
+          pl <- pl + emoGG::geom_emoji(data = sim_subset, aes(x = x, y = z), emoji = emoji_code)
+        }
+      }
+      # Position the disease state indicator above the emoji (offset by ~0.8 units)
+      # Since scale_y_reverse() is used, we subtract to move visually upward
+      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z - 0.8, color = disease_state),
+                            size = 4, alpha = 0.7, shape = 19, stroke = 1) +
+        guides(color = guide_legend(override.aes = list(size = 5)))
+    } else if(!is.null(shapeAgents)) {
+      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
+                                                 color = disease_state, size = agent_type), stroke = 2) +
+        scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
+        scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
+        guides(shape = guide_legend(ncol = 8, order = 1))
+    }
+
+    if(Label == "Agent ID") {
+      pl <- pl + geom_label(data = sim_log, aes(x = x, y = z, label = id, col = disease_state), size = 4)
+    }
+
+    # Calculate title
+    total_seconds <- timeIn * step + as.numeric(strsplit(initial_time, ":")[[1]][1]) * 60 * 60 +
+                     as.numeric(strsplit(initial_time, ":")[[1]][2]) * 60
     days <- total_seconds %/% (24 * 3600)
     remaining_seconds <- total_seconds %% (24 * 3600)
     hours <- remaining_seconds %/% 3600
     remaining_seconds <- remaining_seconds %% 3600
     minutes <- remaining_seconds %/% 60
     seconds <- remaining_seconds %% 60
-    
-    title <- labs(title = paste0("Average (All Simulations) - ", days+1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", timeIn, ")"),
-                  x = "", y = "")
-    
-    output[["plot_map"]] <- renderPlot({ pl + title })
-  })
+
+    if(visualMode == "emojis") {
+      title <- labs(title = paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")"),
+                    x = "", y = "", color = "Disease state")
+    } else {
+      title <- labs(title = paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")"),
+                    x = "", y = "", color = "Disease state", shape = "Agent type")
+    }
+
+    # Apply custom max if provided
+    if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+      pl <- pl + scale_fill_gradient(low = "blue", high = "red",
+                                      limits = c(0, customMax),
+                                      guide = "colourbar")
+    }
+
+    pl + title
+  }
 
   observe({
     info <- input$PostProc_table_cell_clicked
@@ -7420,18 +7600,8 @@ server <- function(input, output,session) {
       visualMode <- input$agentVisualMode
       if(is.null(visualMode)) visualMode <- "shapes"
 
-      df = pl$layers[[1]]$data
-      disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
-      #simulation_log$disease_state = disease[simulation_log$disease_state+1]
-
       # Get agent types from simulation_log
       agentTypesInLog <- unique(simulation_log$agent_type)
-      agentTypes <- postprocObjects$agentTypes
-
-      # If agentTypes not available or doesn't match, use defaults
-      if(is.null(agentTypes) || length(agentTypes) == 0) {
-        agentTypes <- agentTypesInLog
-      }
 
       if(visualMode == "emojis") {
         # Emoji mode: Get emoji codes from emojiAssignments reactive
@@ -7452,7 +7622,7 @@ server <- function(input, output,session) {
         emojiAgents = data.frame(Agents = agentTypesInLog,
                                  EmojiCode = customEmojiCodes,
                                  stringsAsFactors = F)
-        row.names(emojiAgents) <- NULL
+        shapeAgents = NULL
       } else {
         # Shape mode: Get custom shapes and sizes from user input
         customShapes <- sapply(agentTypesInLog, function(at) {
@@ -7478,163 +7648,336 @@ server <- function(input, output,session) {
                                  Shape = customShapes,
                                  Size = customSizes,
                                  stringsAsFactors = F)
-        row.names(shapeAgents) <- NULL
+        emojiAgents = NULL
       }
 
-      if(visualAgent != "All"){
-        simulation_log = simulation_log %>% filter(agent_type == visualAgent)
-        if(visualAgentID != "All"){
-          simulation_log = simulation_log %>% filter(id == visualAgentID)
-        }
-      }
-
-      simulation_log$agent_type = factor(x = simulation_log$agent_type , levels = unique(simulation_log$agent_type))
-
-      simulation_log <- simulation_log %>%
-        filter(time <= timeIn) %>%
-        group_by(id) %>%
-        filter(time == max(time)) %>%
-        filter(y != 10000)
-
-      if(floorSelected != "All"){
-        simulation_log = simulation_log %>% filter(CanvasID == floorSelected)
-      }else{
-        simulation_log$CanvasID = factor(simulation_log$CanvasID, levels = floors$Name)
-      }
-
-      if(colorFeat %in% c("CumulAerosol", "Aerosol") ){
-        AEROSOL_std = postprocObjects$AEROSOL_std %>%
-          filter(Folder == folder , time <= timeIn)
-
-        if(colorFeat == "CumulAerosol")
-          AEROSOL_std = AEROSOL_std %>%
-            group_by(ID, type,area,Name,CanvasID) %>%
-            summarise(virus_concentration = sum(virus_concentration)) %>%
-            mutate(time = timeIn) %>% ungroup()
-
-        if(dim(AEROSOL_std)[1] == 0){
-          df$IDtoColor = 0
-        }else{
-          AEROSOL_std = AEROSOL_std %>% mutate(difftime = (timeIn-time) ) %>%
-            filter(difftime >= 0,  difftime == min(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-            rename(IDtoColor = virus_concentration)
-
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-          if("IDtoColor" %in% colnames(df))
-            df = df %>% select(-IDtoColor )
-
-          df = merge(df,AEROSOL_std)
-        }
-        pl$layers[[1]]$data = df
-      }else if(colorFeat == "CumulContact"){
-        CONTACT_std = postprocObjects$CONTACT_std   %>%
-          filter(Folder == folder , time <= timeIn)
-
-        if(dim(CONTACT_std)[1] == 0){
-          df$IDtoColor = 0
-        }else{
-          CONTACT_std = CONTACT_std %>%
-            group_by(CanvasID,Name,area,type,ID) %>%
-            count() %>%
-            rename(IDtoColor = n) %>% ungroup()
-
-          CONTACT_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-          if("IDtoColor" %in% colnames(df))
-            df = df %>% select(-IDtoColor )
-          df = merge(df,CONTACT_std)
-        }
-        pl$layers[[1]]$data = df
-      }
-
-      # Add agents to the plot based on visualization mode
-      if(visualMode == "emojis") {
-        # Join emoji codes to simulation_log for plotting with emoGG
-        simulation_log <- simulation_log %>%
-          mutate(agent_type_char = as.character(agent_type)) %>%
-          left_join(emojiAgents, by = c("agent_type_char" = "Agents"))
-
-        # Use emoGG's geom_emoji for each agent type
-        unique_emoji_codes <- unique(simulation_log$EmojiCode)
-
-        for(emoji_code in unique_emoji_codes) {
-          sim_subset <- simulation_log %>% filter(EmojiCode == emoji_code)
-          if(nrow(sim_subset) > 0) {
-            pl <- pl + emoGG::geom_emoji(data = sim_subset,
-                                         aes(x = x, y = z),
-                                         emoji = emoji_code)
-          }
-        }
-
-        # Add disease state coloring with colored circles behind emojis
-        pl <- pl +
-          geom_point(data = simulation_log,
-                     aes(x = x, y = z, color = disease_state),
-                     size = 8, alpha = 0.5, shape = 21, stroke = 2) +
-          guides(color = guide_legend(override.aes = list(size = 5)))
-      } else {
-        # Shape mode: Use geom_point with custom shapes
-        pl <- pl +
-          geom_point(data = simulation_log,
-                     aes(x = x, y = z, group = id, shape = agent_type,
-                         color = disease_state, size = agent_type), stroke = 2) +
-          scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
-          scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
-          guides(shape = guide_legend(ncol=8, order=1))
-      }
-
-
-      # if(! Label  %in% c("None","Agent ID")){
-      #   df = df %>% rename(name = Name)
-      #   pl = pl + geom_label(data = df,
-      #                        aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
-      #                            label = get(tolower(Label)) ),
-      #                        color = "black", size = 4)
-      # }else
-      if(Label == "Agent ID"){
-        #dfSim = simulation_log %>% filter(time == timeIn)
-        pl = pl + geom_label(data = simulation_log,
-                             aes(x = x, y = z,
-                                 label = id, col = disease_state ),
-                             size = 4)
-      }
-
-      total_seconds = timeIn*step + as.numeric(strsplit(input$initial_time, ":")[[1]][1]) * 60 * 60 + as.numeric(strsplit(input$initial_time, ":")[[1]][2]) * 60
-      days <- total_seconds %/% (24 * 3600)  # Number of days
-      remaining_seconds <- total_seconds %% (24 * 3600)
-      hours <- remaining_seconds %/% 3600  # Number of hours
-      remaining_seconds <- remaining_seconds %% 3600
-      minutes <- remaining_seconds %/% 60  # Number of minutes
-      seconds <- remaining_seconds %% 60   # Remaining seconds
-
-      # Set title and labels - only include shape label when using shapes mode
-      if(visualMode == "emojis") {
-        title <- labs(title = paste0(days+1, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"),
-                      x = "", y = "", color = "Disease state")
-      } else {
-        title <- labs(title = paste0(days+1, "d:", hours, "h:",minutes,"m:",seconds,"s (# steps: ", timeIn,")"),
-                      x = "", y = "", color = "Disease state", shape = "Agent type")
-      }
+      initial_time <- input$initial_time
+      if(is.null(initial_time)) initial_time <- "00:00"
 
       customMax <- input$visualColor_maxValue
-      if (!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-        MaxCol <- customMax
-        pl = pl + scale_fill_gradient(low = "blue", high = "red",
-                                       limits=c(0,MaxCol),
-                                       guide = "colourbar")
-      }
 
-      output[["plot_map"]] <- renderPlot({ pl + title })
+      # Use the generate2DPlotWithAgents function
+      final_plot <- generate2DPlotWithAgents(
+        pl_base = pl,
+        simulation_log = simulation_log,
+        timeIn = timeIn,
+        folder = folder,
+        colorFeat = colorFeat,
+        visualAgent = visualAgent,
+        visualAgentID = visualAgentID,
+        Label = Label,
+        floorSelected = floorSelected,
+        visualMode = visualMode,
+        emojiAgents = emojiAgents,
+        shapeAgents = shapeAgents,
+        floors = floors,
+        roomsINcanvas = roomsINcanvas,
+        AEROSOL_std = postprocObjects$AEROSOL_std,
+        CONTACT_std = postprocObjects$CONTACT_std,
+        initial_time = initial_time,
+        step = step,
+        customMax = customMax
+      )
+
+      output[["plot_map"]] <- renderPlot({ final_plot })
 
     })
   })
+
+  # Download animation as MP4
+  output$download_animation_mp4 <- downloadHandler(
+    filename = function() {
+      paste0("animation_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".mp4")
+    },
+    content = function(file) {
+      # Validate required data before proceeding
+      simulation_log <- postprocObjects$simulation_log_folder
+      if(is.null(simulation_log)) {
+        showNotification("Please load simulation data first.", type = "error")
+        return(NULL)
+      }
+
+      folder <- input$PostProc_table_cell_clicked$value
+      if(is.null(folder) || folder == "") {
+        showNotification("Please select a simulation folder from the table.", type = "error")
+        return(NULL)
+      }
+
+      pl_base <- postprocObjects$plot_2D
+      if(is.null(pl_base)) {
+        showNotification("Please wait for the plot to be generated.", type = "error")
+        return(NULL)
+      }
+
+      # Show progress
+      withProgress(message = 'Generating animation...', value = 0, {
+
+        step <- as.numeric(postprocObjects$Model$starting$step)
+        fps <- input$animation_fps
+        if(is.null(fps) || is.na(fps)) fps <- 10
+        animStep <- input$animationStep
+        if(is.null(animStep) || is.na(animStep)) animStep <- 1
+
+        # Get settings
+        colorFeat <- input$visualColor_select
+        visualAgent <- input$visualAgent_select
+        visualAgentID <- input$visualAgentID_select
+        Label <- input$visualLabel_select
+        floorSelected <- input$visualFloor_select
+        visualMode <- input$agentVisualMode
+        if(is.null(visualMode)) visualMode <- "shapes"
+
+        # Get shape/emoji mappings
+        agentTypesInLog <- unique(simulation_log$agent_type)
+
+        if(visualMode == "emojis") {
+          defaultEmojiCodes <- c("1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
+                                 "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d")
+          assignments <- emojiAssignments()
+          customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
+            at <- agentTypesInLog[i]
+            if(!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
+              return(assignments[[at]]$code)
+            }
+            return(defaultEmojiCodes[min(i, length(defaultEmojiCodes))])
+          })
+          names(customEmojiCodes) <- NULL
+          emojiAgents <- data.frame(Agents = agentTypesInLog, EmojiCode = customEmojiCodes, stringsAsFactors = FALSE)
+          shapeAgents <- NULL
+        } else {
+          customShapes <- sapply(agentTypesInLog, function(at) {
+            inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
+            val <- input[[inputId]]
+            if(is.null(val) || is.na(val)) {
+              idx <- which(agentTypesInLog == at)
+              return(as.numeric(c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)[min(idx, 10)]))
+            }
+            as.numeric(val)
+          })
+          customSizes <- sapply(agentTypesInLog, function(at) {
+            inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
+            val <- input[[inputId]]
+            if(is.null(val) || is.na(val)) return(5)
+            as.numeric(val)
+          })
+          shapeAgents <- data.frame(Agents = agentTypesInLog, Shape = customShapes, Size = customSizes, stringsAsFactors = FALSE)
+          emojiAgents <- NULL
+        }
+
+        # Calculate time range with from/to bounds and granularity
+        maxTime <- max(simulation_log$time)
+        fromTime <- input$animation_from
+        toTime <- input$animation_to
+        granularity <- input$animation_granularity
+        if(is.null(granularity)) granularity <- "step"
+
+        # Convert from seconds to steps
+        fromSteps <- if(is.null(fromTime) || is.na(fromTime)) 0 else fromTime / step
+        toSteps <- if(is.null(toTime) || is.na(toTime)) maxTime else toTime / step
+
+        # Clamp values
+        fromSteps <- max(0, min(fromSteps, maxTime))
+        toSteps <- max(fromSteps, min(toSteps, maxTime))
+
+        # Calculate step increment based on granularity
+        stepIncrement <- switch(granularity,
+                                "step" = 1,
+                                "second" = 1 / step,
+                                "minute" = 60 / step,
+                                "hour" = 3600 / step,
+                                1)
+        stepIncrement <- max(1, stepIncrement)
+
+        timeSteps <- seq(fromSteps, toSteps, by = stepIncrement)
+        n_frames <- length(timeSteps)
+
+        # Create temp directory for frames
+        tmpDir <- tempdir()
+        framesDir <- file.path(tmpDir, paste0("animation_frames_", format(Sys.time(), "%Y%m%d%H%M%S")))
+        dir.create(framesDir, showWarnings = FALSE, recursive = TRUE)
+
+        # Prepare floor data
+        floors <- canvasObjects$floors
+        roomsINcanvas <- postprocObjects$MappingID_room
+
+        # Get initial time
+        initial_time <- input$initial_time
+        if(is.null(initial_time)) initial_time <- "00:00"
+
+        # Prepare data for parallel processing
+        AEROSOL_std_data <- postprocObjects$AEROSOL_std
+        CONTACT_std_data <- postprocObjects$CONTACT_std
+
+        # Determine number of cores (use at most n_frames cores, and leave 1 core free)
+        n_cores <- min(parallel::detectCores() - 1, n_frames, 8)
+        n_cores <- max(1, n_cores)
+
+        # Generate frames in parallel
+        if(n_cores > 1 && n_frames > 4) {
+          # Use parallel processing for larger frame counts
+          incProgress(0.1, detail = paste("Starting parallel generation with", n_cores, "cores..."))
+
+          # Create a function that generates a single frame
+          generate_single_frame <- function(frame_info) {
+            i <- frame_info$i
+            timeIn <- frame_info$timeIn
+            framePath <- frame_info$framePath
+
+            # Generate the frame plot
+            frame_plot <- generate2DPlotWithAgents(
+              pl_base = frame_info$pl_base,
+              simulation_log = frame_info$simulation_log,
+              timeIn = timeIn,
+              folder = frame_info$folder,
+              colorFeat = frame_info$colorFeat,
+              visualAgent = frame_info$visualAgent,
+              visualAgentID = frame_info$visualAgentID,
+              Label = frame_info$Label,
+              floorSelected = frame_info$floorSelected,
+              visualMode = frame_info$visualMode,
+              emojiAgents = frame_info$emojiAgents,
+              shapeAgents = frame_info$shapeAgents,
+              floors = frame_info$floors,
+              roomsINcanvas = frame_info$roomsINcanvas,
+              AEROSOL_std = frame_info$AEROSOL_std,
+              CONTACT_std = frame_info$CONTACT_std,
+              initial_time = frame_info$initial_time,
+              step = frame_info$step,
+              customMax = NULL
+            )
+
+            # Save frame
+            ggplot2::ggsave(framePath, frame_plot, width = 16, height = 12, dpi = 100)
+            return(framePath)
+          }
+
+          # Prepare frame info list
+          frame_info_list <- lapply(seq_along(timeSteps), function(i) {
+            list(
+              i = i,
+              timeIn = timeSteps[i],
+              framePath = file.path(framesDir, sprintf("frame_%06d.png", i)),
+              pl_base = pl_base,
+              simulation_log = simulation_log,
+              folder = folder,
+              colorFeat = colorFeat,
+              visualAgent = visualAgent,
+              visualAgentID = visualAgentID,
+              Label = Label,
+              floorSelected = floorSelected,
+              visualMode = visualMode,
+              emojiAgents = emojiAgents,
+              shapeAgents = shapeAgents,
+              floors = floors,
+              roomsINcanvas = roomsINcanvas,
+              AEROSOL_std = AEROSOL_std_data,
+              CONTACT_std = CONTACT_std_data,
+              initial_time = initial_time,
+              step = step
+            )
+          })
+
+          # Use mclapply for parallel processing (works on macOS/Linux)
+          # On Windows, use parLapply with a cluster
+          if(.Platform$OS.type == "unix") {
+            results <- parallel::mclapply(frame_info_list, generate_single_frame, mc.cores = n_cores)
+          } else {
+            # Windows fallback - use PSOCK cluster
+            cl <- parallel::makeCluster(n_cores)
+            on.exit(parallel::stopCluster(cl), add = TRUE)
+
+            # Export necessary functions and packages to cluster
+            parallel::clusterExport(cl, c("generate2DPlotWithAgents"), envir = environment())
+            parallel::clusterEvalQ(cl, {
+              library(ggplot2)
+              library(dplyr)
+              if(requireNamespace("emoGG", quietly = TRUE)) library(emoGG)
+            })
+
+            results <- parallel::parLapply(cl, frame_info_list, generate_single_frame)
+          }
+
+          incProgress(0.8, detail = "Frames generated, creating video...")
+
+        } else {
+          # Sequential processing for small frame counts or single core
+          for(i in seq_along(timeSteps)) {
+            timeIn <- timeSteps[i]
+
+            incProgress(1/n_frames, detail = paste("Frame", i, "of", n_frames))
+
+            # Use the shared generate2DPlotWithAgents function
+            frame_plot <- generate2DPlotWithAgents(
+              pl_base = pl_base,
+              simulation_log = simulation_log,
+              timeIn = timeIn,
+              folder = folder,
+              colorFeat = colorFeat,
+              visualAgent = visualAgent,
+              visualAgentID = visualAgentID,
+              Label = Label,
+              floorSelected = floorSelected,
+              visualMode = visualMode,
+              emojiAgents = emojiAgents,
+              shapeAgents = shapeAgents,
+              floors = floors,
+              roomsINcanvas = roomsINcanvas,
+              AEROSOL_std = AEROSOL_std_data,
+              CONTACT_std = CONTACT_std_data,
+              initial_time = initial_time,
+              step = step,
+              customMax = NULL
+            )
+
+            # Save frame
+            framePath <- file.path(framesDir, sprintf("frame_%06d.png", i))
+            ggsave(framePath, frame_plot, width = 16, height = 12, dpi = 100)
+          }
+        }
+
+        # Use magick package to create video
+        outputPath <- file.path(tmpDir, "output_animation.mp4")
+
+        # Get list of frame files
+        frameFiles <- list.files(framesDir, pattern = "frame_.*\\.png$", full.names = TRUE)
+        frameFiles <- sort(frameFiles)
+
+        if(length(frameFiles) > 0) {
+          # Use magick package
+          if(requireNamespace("magick", quietly = TRUE)) {
+            # Read all frames into magick image stack
+            img_stack <- magick::image_read(frameFiles[1])
+            if(length(frameFiles) > 1) {
+              for(f in frameFiles[-1]) {
+                img_stack <- c(img_stack, magick::image_read(f))
+              }
+            }
+            # Set animation delay (100/fps gives centiseconds per frame)
+            img_anim <- magick::image_animate(img_stack, fps = fps, dispose = "previous")
+            # Write as MP4 video
+            magick::image_write_video(img_anim, path = outputPath, framerate = fps)
+          } else {
+            # Fallback to ffmpeg command
+            ffmpegCmd <- sprintf(
+              "ffmpeg -y -framerate %d -i '%s/frame_%%06d.png' -c:v libx264 -pix_fmt yuv420p -crf 23 '%s'",
+              fps, framesDir, outputPath
+            )
+            system(ffmpegCmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
+          }
+
+          # Copy to output file
+          if(file.exists(outputPath)) {
+            file.copy(outputPath, file, overwrite = TRUE)
+          }
+        }
+
+        # Cleanup
+        unlink(framesDir, recursive = TRUE)
+        if(file.exists(outputPath)) unlink(outputPath)
+
+      }) # end withProgress
+    }
+  )
 
   observe({
     is_docker <- file.exists("/.dockerenv")

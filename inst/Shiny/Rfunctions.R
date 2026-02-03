@@ -290,6 +290,18 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   # draw rooms
   if(!is.null(canvasObjects$roomsINcanvas)){
+    # Add colorFillBase column for backward compatibility with old saved models
+    if (!"colorFillBase" %in% colnames(canvasObjects$roomsINcanvas)) {
+      # Create colorFillBase from colorFill, ensuring alpha=1
+      canvasObjects$roomsINcanvas$colorFillBase <- sapply(canvasObjects$roomsINcanvas$colorFill, function(color) {
+        rgb_match <- regmatches(color, regexec("rgba?\\(([0-9]+),\\s*([0-9]+),\\s*([0-9]+)", color))
+        if (length(rgb_match[[1]]) >= 4) {
+          paste0("rgba(", rgb_match[[1]][2], ", ", rgb_match[[1]][3], ", ", rgb_match[[1]][4], ", 1)")
+        } else {
+          color
+        }
+      })
+    }
     for(r_id in canvasObjects$roomsINcanvas$ID){
       newroom = canvasObjects$roomsINcanvas %>% filter(ID == r_id)
       runjs( command_addRoomObject( newroom) )

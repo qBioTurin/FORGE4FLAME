@@ -25,6 +25,10 @@ library(sf)
 library(purrr)
 library(shinyjqui)
 library(plotly)
+library(magick)
+library(av)
+library(png)
+library(abind)
 
 source(system.file("Shiny","Rfunctions.R", package = "FORGE4FLAME"))
 
@@ -295,6 +299,7 @@ ui <- dashboardPage(
                   icon = icon("ruler-combined")
                 ),
                 menuItem("Rooms", tabName = "rooms", icon = icon("bed")),
+                menuItem("Objects in Rooms", tabName = "objects_in_rooms", icon = icon("cube")),
                 menuItem("Agents", tabName = "agents", icon = icon("user")),
                 menuItem("Resources", tabName = "resources", icon = icon("chart-simple")),
                 menuItem("Infection", tabName = "infection", icon = icon("viruses")),
@@ -426,15 +431,26 @@ ui <- dashboardPage(
               box(width = 10, title = h3("Floor background image"),
                   collapsible = T, collapsed = T,
                   column(
-                    8,
+                    6,
                     offset = 1,
                     fileInput(
                       inputId = "BGfile",
                       label = "Background Image",
-                      placeholder = "Select an dxf file.",
+                      placeholder = "Select a DXF or PNG file.",
                       width = "100%",
-                      accept = "dxf",
+                      accept = c(".dxf", ".png", "image/png"),
                       multiple = F
+                    )
+                  ),
+                  column(
+                    2,
+                    numericInput(
+                      inputId = "png_pixels_per_meter",
+                      label = "PNG pixels/meter:",
+                      value = 10,
+                      min = 1,
+                      max = 1000,
+                      step = 1
                     )
                   ),
                   column(
@@ -494,6 +510,13 @@ ui <- dashboardPage(
                                                #             "Dermosurgery",
                                                #             "Radiology")
                                 )
+                         )
+                       ),
+                       fluidRow(
+                         column(10, offset=1,
+                                sliderInput(inputId = "room_fill_alpha", 
+                                           label = "Room fill transparency:",
+                                           min = 0, max = 1, value = 0.5, step = 0.1)
                          )
                        ),
                        fluidRow(
@@ -693,29 +716,29 @@ ui <- dashboardPage(
                        selected = ""
                      )
               ),
-                column(3,
-                       selectInput(
-                         inputId = "copy_objects_from_room",
-                         label = div(icon("copy"), " Copy Objects From:"),
-                         choices = c(""),
-                         selected = ""
-                       )
-                ),
-                column(2,
-                       actionButton(
-                         inputId = "copy_objects_btn",
-                         label = "Copy All Objects",
-                         icon = icon("clone"),
-                         style = "margin-top: 25px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
-                       )
-                ),
+              column(3,
+                     selectInput(
+                       inputId = "copy_objects_from_room",
+                       label = div(icon("copy"), " Copy Objects From:"),
+                       choices = c(""),
+                       selected = ""
+                     )
+              ),
+              column(2,
+                     actionButton(
+                       inputId = "copy_objects_btn",
+                       label = "Copy All Objects",
+                       icon = icon("clone"),
+                       style = "margin-top: 25px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                     )
+              ),
               column(2,
                      htmlOutput("room_dimensions_info")
               )
-                # column(4,
-                #        p(style = "margin-top: 30px; color: #f5576c; font-style: italic; font-size: 12px;",
-                #          icon("info-circle"), " Copy all objects from another room to the selected room")
-                # )
+              # column(4,
+              #        p(style = "margin-top: 30px; color: #f5576c; font-style: italic; font-size: 12px;",
+              #          icon("info-circle"), " Copy all objects from another room to the selected room")
+              # )
             ),
             fluidRow(
               column(4, offset = 1,
@@ -2434,9 +2457,9 @@ ui <- dashboardPage(
                     fluidRow(
                       column(
                         offset = 4,
-                        width = 3,
+                        width = 4,
                         style = "margin-top: 20px;",
-                        downloadButton("DownloadPostProc_Button", label = "Download processed data")
+                        downloadButton("DownloadPostProc_Button", label = "Download filtered data (from Disease Evolution filters)")
                       )
                     ),
                     fluidRow(
@@ -2584,18 +2607,10 @@ ui <- dashboardPage(
                               )
                             ),
                             conditionalPanel(
-                              condition = "input.diseaseEvol_metric == 'aerosol' || input.diseaseEvol_metric == 'contacts'",
+                              condition = "input.diseaseEvol_metric == 'aerosol'",
                               column(2,
                                      checkboxInput("diseaseEvol_facetRoom",
                                                    label = "Facet by Room",
-                                                   value = FALSE)
-                              )
-                            ),
-                            conditionalPanel(
-                              condition = "input.diseaseEvol_metric == 'contacts' || input.diseaseEvol_metric == 'aerosol'",
-                              column(2,
-                                     checkboxInput("diseaseEvol_cumulative",
-                                                   label = "Cumulative Plot",
                                                    value = FALSE)
                               )
                             ),
@@ -2635,14 +2650,6 @@ ui <- dashboardPage(
                     ),
                     conditionalPanel(
                       condition = "input.dir != 'NULL'",
-                      fluidRow(
-                        column(width = 2,
-                               selectInput("postproc_time_granularity",
-                                           label = "Time Granularity:",
-                                           choices = c("Step" = "step", "Hour" = "hour", "Day" = "day"),
-                                           selected = "day")
-                        )
-                      ),
                       fluidRow(
                         column(width = 6,
                                uiOutput("PostProc_filters")
@@ -2703,14 +2710,6 @@ ui <- dashboardPage(
                                                               div(class = "icon-text", "Set a custom maximum value for the color legend. Leave empty or set to 0 to use the data maximum.")),
                                                   value = NA,
                                                   min = 0)
-                              ),
-                              column(2,
-                                     checkboxInput("visualColor_showAverage",
-                                                   label = div(class = "icon-container",
-                                                               tags$b("Show Average (All Simulations)"),
-                                                               icon("info-circle"),
-                                                               div(class = "icon-text", "When checked, shows average values from all simulation folders instead of a single selected folder.")),
-                                                   value = FALSE)
                               )
                             ),
                             column(2,
@@ -2728,7 +2727,7 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                      column(9,
+                      column(7,
                              sliderInput("animation", "Time in the animation (sec):",
                                          min = 0, max = 1,
                                          value = 0, step = 1,
@@ -2747,7 +2746,111 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(12,
-                             uiOutput("TwoDMapPlots", width = "100%", height = "1200px")
+                             uiOutput("TwoDMapPlots", width = "100%", height = "800px")
+                      )
+                    ),
+                    # Background Image Section - separate from MP4 export
+                    fluidRow(
+                      column(12,
+                             tags$div(
+                               style = "border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 15px; margin-bottom: 15px; background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);",
+                               fluidRow(
+                                 column(12,
+                                        tags$h5(style = "margin-top: 0; color: #333; border-bottom: 2px solid #2196f3; padding-bottom: 8px;",
+                                                icon("image"), " Background Image")
+                                 )
+                               ),
+                               fluidRow(
+                                 column(3,
+                                        fileInput(
+                                          inputId = "animation_bg_file",
+                                          label = "Select PNG file:",
+                                          accept = c(".png", "image/png"),
+                                          placeholder = "No file selected",
+                                          buttonLabel = "Browse..."
+                                        )
+                                 ),
+                                 column(2,
+                                        numericInput(
+                                          inputId = "animation_bg_pixels_per_meter",
+                                          label = "Pixels/meter:",
+                                          value = 10,
+                                          min = 1,
+                                          max = 1000,
+                                          step = 1
+                                        )
+                                 ),
+                                 column(2,
+                                        sliderInput(
+                                          inputId = "animation_bg_alpha",
+                                          label = "Opacity:",
+                                          min = 0, max = 1,
+                                          value = 0.5, step = 0.1
+                                        )
+                                 ),
+                                 column(2,
+                                        div(style = "padding-top: 25px;",
+                                            checkboxInput(
+                                              inputId = "animation_show_bg",
+                                              label = "Show background",
+                                              value = FALSE
+                                            )
+                                        )
+                                 ),
+                                 column(2,
+                                        actionButton(
+                                          inputId = "animation_clear_bg",
+                                          label = "Clear",
+                                          icon = icon("trash"),
+                                          style = "margin-top: 25px;"
+                                        )
+                                 )
+                               )
+                             )
+                      )
+                    ),
+                    # Video Download Section - below the background section
+                    fluidRow(
+                      column(12,
+                             tags$div(
+                               style = "border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 15px; margin-bottom: 15px; background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);",
+                               fluidRow(
+                                 column(12,
+                                        tags$h5(style = "margin-top: 0; color: #333; border-bottom: 2px solid #4caf50; padding-bottom: 8px;",
+                                                icon("video"), " Export Animation as MP4")
+                                 )
+                               ),
+                               fluidRow(
+                                 column(2,
+                                        numericInput("animation_fps", label = "FPS:", value = 10, min = 1, max = 60)
+                                 ),
+                                 column(2,
+                                        numericInput("animation_from", label = "From (sec):", value = 0, min = 0)
+                                 ),
+                                 column(2,
+                                        numericInput("animation_to", label = "To (sec):", value = NA)
+                                 ),
+                                 column(3,
+                                        selectInput("animation_granularity", label = "Frame every:",
+                                                    choices = c("Step" = "step", "Second" = "second", "Minute" = "minute", "Hour" = "hour"),
+                                                    selected = "step")
+                                 ),
+                                 column(3,
+                                        style="padding-top:25px;",
+                                        downloadButton("download_animation_mp4", "Download MP4", class = "btn-success", style = "width: 100%;")
+                                 )
+                               ),
+                               fluidRow(
+                                 column(12,
+                                        tags$div(
+                                          style = "padding: 8px; background-color: #fff3cd; border-radius: 4px; font-size: 12px; margin-top: 10px;",
+                                          icon("lightbulb"),
+                                          tags$strong(" Tip:"),
+                                          " Use 'Frame every: Minute' or 'Hour' for long simulations to reduce video file size. FPS controls playback speed."
+                                        )
+                                 )
+                               )
+                             )
                       )
                     ),
                     fluidRow(
