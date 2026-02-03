@@ -631,7 +631,7 @@ server <- function(input, output,session) {
           newID = max(canvasObjects$types$ID)+1
 
           newtype = data.frame(Name=Name, ID=newID,
-                               Color = paste0("rgba(",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),")") )
+                               Color = paste0("rgba(",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", ",round(255*runif(1, 0, 1)),", 1)") )
           canvasObjects$types = rbind(canvasObjects$types, newtype)
         }
       }
@@ -892,9 +892,9 @@ server <- function(input, output,session) {
       # Extract RGB values and apply new alpha
       rgb_match <- regmatches(base_color, regexec("rgba?\\(([0-9]+),\\s*([0-9]+),\\s*([0-9]+)", base_color))
       if (length(rgb_match[[1]]) >= 4) {
-        r <- rgb_match[[1]][2]
-        g <- rgb_match[[1]][3]
-        b <- rgb_match[[1]][4]
+        r <- rgb_match[[1]][1]
+        g <- rgb_match[[1]][2]
+        b <- rgb_match[[1]][3]
         new_color <- paste0("rgba(", r, ", ", g, ", ", b, ", ", alpha_value, ")")
 
         canvasObjects$roomsINcanvas[i, "colorFill"] <- new_color
@@ -1087,9 +1087,7 @@ server <- function(input, output,session) {
         room = canvasObjects$rooms %>% filter(Name == name)
         colourpicker::colourInput(paste0("col_",room$Name),
                                   paste0("Select colour for " , room$Name),
-                                  gsub(pattern = ", 1\\)",replacement = "\\)",
-                                       gsub(pattern = "rgba",replacement = "rgb",room$colorFill)
-                                  ),
+                                  room$colorFill,
                                   allowTransparent = T)
       })
       do.call(tagList, col_output_list)
@@ -1117,7 +1115,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$rooms$Name,function(i)
                         if(!is.null(input[[paste0("col_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_",i)]]),collapse = ", "),", 1)")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_",i)]], alpha = TRUE),collapse = ", "),")")
                           )
                       )
       )
@@ -1173,9 +1171,7 @@ server <- function(input, output,session) {
       div(
         colourpicker::colourInput(paste0("col_area_",name),
                                   paste0("Select colour for " , name),
-                                  gsub(pattern = ", 1\\)",replacement = "\\)",
-                                       gsub(pattern = "rgba",replacement = "rgb",color)
-                                  ),
+                                  color,
                                   allowTransparent = T)
       )
     }
@@ -1202,7 +1198,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$areas$Name,function(i)
                         if(!is.null(input[[paste0("col_area_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_area_",i)]]),collapse = ", "),", 1)")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_area_",i)]], alpha = TRUE),collapse = ", "),")")
                           )
                       )
       )
@@ -1260,9 +1256,7 @@ server <- function(input, output,session) {
       div(
         colourpicker::colourInput(paste0("col_type_",name),
                                   paste0("Select colour for " , name),
-                                  gsub(pattern = ", 1\\)",replacement = "\\)",
-                                       gsub(pattern = "rgba",replacement = "rgb",color)
-                                  ),
+                                  color,
                                   allowTransparent = T)
       )
     }
@@ -1290,7 +1284,7 @@ server <- function(input, output,session) {
                       lapply(canvasObjects$types$Name,function(i)
                         if(!is.null(input[[paste0("col_type_",i)]]))
                           data.frame(Name = i,
-                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_type_",i)]]),collapse = ", "),", 1)")
+                                     ColNew = paste0("rgba(",paste(col2rgb(input[[paste0("col_type_",i)]], alpha = TRUE),collapse = ", "),")")
                           )
                       )
       )
@@ -1774,6 +1768,7 @@ server <- function(input, output,session) {
       model$agents_whatif = out$AgentMeasuresFromTo
       model$initial_infected = out$initial_infected
       model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
+      model$floorsBG <- NULL
       write_json(x = model, path = file.path(temp_directory, gsub(".RDs", ".json", file_name)))
 
       zip::zip(
@@ -1821,6 +1816,7 @@ server <- function(input, output,session) {
     model$agents_whatif = out$AgentMeasuresFromTo
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
+    model$floorsBG <- NULL
     file_name <- glue("model.json")
     write_json(x = model, path = file.path(paste0("FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text), file_name))
 
@@ -6433,7 +6429,7 @@ server <- function(input, output,session) {
       }
     }
 
-    pl
+    plotly::ggplotly(pl)
   })
 
   # Render summary statistics table
@@ -7308,7 +7304,7 @@ server <- function(input, output,session) {
         }
         guide_fill = labs(fill = fill_label)
       }else{
-        df$colorFillParsed = gsub(pattern = "rgba",replacement = "rgb",x = df$colorFill)
+        df$colorFillParsed = df$colorFill
         df$colorFillParsed = gsub(pattern = ",",replacement = "/255,",x = df$colorFillParsed)
         df$colorFillParsed = gsub(pattern = ")",replacement = "/255)",x = df$colorFillParsed)
 
@@ -8104,6 +8100,7 @@ server <- function(input, output,session) {
     model$agents_whatif = out$AgentMeasuresFromTo
     model$initial_infected = out$initial_infected
     model$outside_contagion$percentage_infected <- as.character(model$outside_contagion$percentage_infected)
+    model$floorsBG <- NULL
 
     if(is_docker_compose){
       system(paste0("mkdir -p FLAMEGPU-FORGE4FLAME/resources/f4f/", input$popup_text))
