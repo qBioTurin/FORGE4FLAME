@@ -514,7 +514,7 @@ ui <- dashboardPage(
                        ),
                        fluidRow(
                          column(10, offset=1,
-                                sliderInput(inputId = "room_fill_alpha", 
+                                sliderInput(inputId = "room_fill_alpha",
                                            label = "Room fill transparency:",
                                            min = 0, max = 1, value = 0.5, step = 0.1)
                          )
@@ -2535,6 +2535,13 @@ ui <- dashboardPage(
                                                     multiple = TRUE,
                                                     options = list(plugins = list('remove_button')))
                               )
+                            ),
+                            conditionalPanel(
+                              condition = "input.diseaseEvol_metric != 'disease_states'",
+                              column(2,
+                                     checkboxInput("diseaseEvol_cumulative",
+                                                  label = "Comulative", value = FALSE)
+                                     )
                             ),
                             column(1,
                                    div(style = "padding-top: 25px;",
