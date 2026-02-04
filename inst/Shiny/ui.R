@@ -2540,7 +2540,7 @@ ui <- dashboardPage(
                               condition = "input.diseaseEvol_metric != 'disease_states'",
                               column(2,
                                      checkboxInput("diseaseEvol_cumulative",
-                                                  label = "Comulative", value = FALSE)
+                                                  label = "Cumulative", value = FALSE)
                                      )
                             ),
                             column(1,
@@ -2713,7 +2713,7 @@ ui <- dashboardPage(
                               column(2,
                                      numericInput("visualColor_maxValue",
                                                   label = div(class = "icon-container",
-                                                              h5(tags$b("Max Legend Value: "), icon("info-circle")),
+                                                              h5(tags$b("Max legend value: "), icon("info-circle")),
                                                               div(class = "icon-text", "Set a custom maximum value for the color legend. Leave empty or set to 0 to use the data maximum.")),
                                                   value = NA,
                                                   min = 0)
@@ -2723,6 +2723,14 @@ ui <- dashboardPage(
                                    radioButtons("visualLabel_select","Show in the plot:",
                                                 selected = "None",
                                                 choices = c("None", "ID", "Name", "Type", "Area", "Agent ID"))
+                            ),
+                            column(2,
+                                   sliderInput(
+                                     inputId = "room_fill_alpha",
+                                     label = "Room Fill Opacity:",
+                                     min = 0, max = 1,
+                                     value = 0.5, step = 0.1
+                                   )
                             )
 
                           )

@@ -5088,7 +5088,7 @@ server <- function(input, output,session) {
 
       pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
         geom_tile() +
-        scale_fill_gradient(low = "blue", high = "red") +
+        scale_fill_gradient(low = "green", high = "red") +
         theme_bw() +
         labs(title = "",
              x = "",
@@ -7157,6 +7157,7 @@ server <- function(input, output,session) {
     animation_bg = postprocObjects$animation_bg
     input$animation_show_bg
     input$animation_bg_alpha
+    room_fill_alpha = input$room_fill_alpha
 
     isolate({
       step = as.numeric(postprocObjects$Model$starting$step)
@@ -7305,7 +7306,7 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        sc_fill <- scale_fill_gradient(low = "blue", high = "red",
+        sc_fill <- scale_fill_gradient(low = "green", high = "red",
                                        limits=c(MinCol,MaxCol),
                                        guide = "colourbar")
         # Add unit for aerosol-related color features
@@ -7372,16 +7373,19 @@ server <- function(input, output,session) {
         #pl <- pl + annotation_raster(bg_img, xmin = 0, xmax = bg_xmax, ymin = bg_ymax, ymax = 0)
       }
 
+      # Get room fill alpha value (default to 0.5 if not set)
+      room_alpha <- if (!is.null(room_fill_alpha)) room_fill_alpha else 0.5
+
       # Add room layers
       pl <- pl +
         # Draw normal rooms with dynamic color
         geom_rect(data = df_normal,
                   aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-                  color = "black") +
+                  color = "black", alpha = room_alpha) +
         # Draw special rooms (Spawnroom, Fillingroom) always in grey
         geom_rect(data = df_special,
                   aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-                  fill = "grey80", color = "black") +
+                  fill = "grey80", color = "black", alpha = room_alpha) +
         sc_fill +guide_fill+
         scale_color_manual(values = colorDisease$Col,
                            limits = (colorDisease$State),
@@ -7578,7 +7582,7 @@ server <- function(input, output,session) {
 
     # Apply custom max if provided
     if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-      pl <- pl + scale_fill_gradient(low = "blue", high = "red",
+      pl <- pl + scale_fill_gradient(low = "green", high = "red",
                                       limits = c(0, customMax),
                                       guide = "colourbar")
     }
