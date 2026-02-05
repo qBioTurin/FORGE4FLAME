@@ -2687,52 +2687,82 @@ ui <- dashboardPage(
                       box(width = 12, status = "primary",
                           solidHeader = TRUE, collapsible = T,
                           title = div(class = "icon-container", style="margin-top:20px",
-                                      h4("Features ", icon("info-circle")),
-                                      div(class = "icon-text", "Further feature that can be used to costumise the 2D visualisation of the simulation.")
+                                      h4("Features ", icon("sliders-h")),
+                                      div(class = "icon-text", "Customize the 2D visualisation of the simulation.")
                           ),
-                          fluidRow(
-                            column(2,
-                                   selectizeInput("visualFloor_select","Select floor to visualise:", choices = "All")
-                            ),
-                            column(2,
-                                   selectizeInput("visualAgent_select","Select agent type to visualise:", choices = "All")
-                            ),
-                            conditionalPanel( "input.visualAgent_select != 'All'",
-                                              column(2,
-                                                     selectizeInput("visualAgentID_select", "Select agent id to visualise:", choices = "All")
-                                              )
-                            ),
-                            column(2,
-                                   selectizeInput("visualColor_select","Select colour room:", choices = c("Name", "Type", "Area",
-                                                                                                          "Cumulative #Contacts" = "CumulContact",
-                                                                                                          "Aerosol" = "Aerosol",
-                                                                                                          "Cumulative Aerosol" = "CumulAerosol"))
-                            ),
-                            conditionalPanel(
-                              condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
-                              column(2,
-                                     numericInput("visualColor_maxValue",
-                                                  label = div(class = "icon-container",
-                                                              h5(tags$b("Max legend value: "), icon("info-circle")),
-                                                              div(class = "icon-text", "Set a custom maximum value for the color legend. Leave empty or set to 0 to use the data maximum.")),
-                                                  value = NA,
-                                                  min = 0)
+                          # Row 1: Filtering options
+                          tags$div(
+                            style = "border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;",
+                            tags$h5(icon("filter"), " Filtering", style = "color: #337ab7; margin-bottom: 10px;"),
+                            fluidRow(
+                              column(3,
+                                     selectizeInput("visualFloor_select", "Floor:", choices = "All")
+                              ),
+                              column(3,
+                                     selectizeInput("visualAgent_select", "Agent type:", choices = "All")
+                              ),
+                              conditionalPanel("input.visualAgent_select != 'All'",
+                                               column(3,
+                                                      selectizeInput("visualAgentID_select", "Agent ID:", choices = "All")
+                                               )
                               )
-                            ),
-                            column(2,
-                                   radioButtons("visualLabel_select","Show in the plot:",
-                                                selected = "None",
-                                                choices = c("None", "ID", "Name", "Type", "Area", "Agent ID"))
-                            ),
-                            column(2,
-                                   sliderInput(
-                                     inputId = "room_fill_alpha",
-                                     label = "Room Fill Opacity:",
-                                     min = 0, max = 1,
-                                     value = 0.5, step = 0.1
-                                   )
                             )
-
+                          ),
+                          # Row 2: Room coloring options
+                          tags$div(
+                            style = "border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;",
+                            tags$h5(icon("palette"), " Room Coloring", style = "color: #337ab7; margin-bottom: 10px;"),
+                            fluidRow(
+                              column(3,
+                                     selectizeInput("visualColor_select", "Color by:", 
+                                                    choices = c("Name", "Type", "Area",
+                                                                "Cumulative #Contacts" = "CumulContact",
+                                                                "Aerosol" = "Aerosol",
+                                                                "Cumulative Aerosol" = "CumulAerosol"))
+                              ),
+                              column(3,
+                                     sliderInput(
+                                       inputId = "room_fill_alpha",
+                                       label = "Opacity:",
+                                       min = 0, max = 1,
+                                       value = 0.5, step = 0.1
+                                     )
+                              ),
+                              conditionalPanel(
+                                condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
+                                column(3,
+                                       numericInput("visualColor_maxValue",
+                                                    label = div(class = "icon-container",
+                                                                "Max legend value ", icon("info-circle"),
+                                                                div(class = "icon-text", "Set a custom maximum for the color legend. Leave empty to use data max.")),
+                                                    value = NA,
+                                                    min = 0)
+                                ),
+                                column(3,
+                                       div(style = "padding-top: 25px;",
+                                           checkboxInput(
+                                             inputId = "visualShowAverage",
+                                             label = div(class = "icon-container",
+                                                         tags$b("Show average values "), icon("info-circle"),
+                                                         div(class = "icon-text", "Display average values across all simulation folders.")),
+                                             value = FALSE
+                                           )
+                                       )
+                                )
+                              )
+                            )
+                          ),
+                          # Row 3: Labels
+                          tags$div(
+                            tags$h5(icon("tag"), " Labels", style = "color: #337ab7; margin-bottom: 10px;"),
+                            fluidRow(
+                              column(12,
+                                     radioButtons("visualLabel_select", "Show labels:",
+                                                  selected = "None",
+                                                  choices = c("None", "ID", "Name", "Type", "Area", "Agent ID"),
+                                                  inline = TRUE)
+                              )
+                            )
                           )
                       )
                     ),
@@ -2742,21 +2772,20 @@ ui <- dashboardPage(
                       )
                     ),
                     fluidRow(
-                      column(7,
+                      column(6,
                              sliderInput("animation", "Time in the animation (sec):",
                                          min = 0, max = 1,
                                          value = 0, step = 1,
                                          animate = animationOptions(interval = 1000, loop = TRUE)
                              )
                       ),
-                      column(1,
-                             style="padding-top:35px;padding-left:50px;",
-                             actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next"),
-                                          class = "btn-primary")
+                      column(2,
+                             numericInput("animationStep", label = "Step (sec):", value = 1, min = 1)
                       ),
                       column(2,
-                             style="padding-top:10px;",
-                             numericInput("animationStep",label = "Set the animation step (sec):", value = 1, min = 1)
+                             style = "padding-top: 25px;",
+                             actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next Step"),
+                                          class = "btn-primary", style = "width: 100%;")
                       )
                     ),
                     fluidRow(

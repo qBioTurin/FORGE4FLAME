@@ -5064,6 +5064,27 @@ server <- function(input, output,session) {
 
       #####
       postprocObjects$FLAGmodelLoaded = FALSE
+
+      # Set default values for 2D visualization: show average cumulative aerosol
+      updateSelectInput(session, "visualColor_select", selected = "CumulAerosol")
+      updateCheckboxInput(session, "visualShowAverage", value = TRUE)
+
+      # Initialize slider with data max time
+      if (!is.null(postprocObjects$AEROSOL_std) && nrow(postprocObjects$AEROSOL_std) > 0) {
+        maxTime <- max(postprocObjects$AEROSOL_std$time, na.rm = TRUE)
+        if (maxTime > 0) {
+          updateNumericInput("animationStep", session = session, value = step, max = maxTime * step)
+          updateSliderInput("animation", session = session,
+                            max = maxTime * step, min = 0,
+                            value = 0, step = step)
+
+          floors <- canvasObjects$floors
+          if (!is.null(floors)) {
+            updateSelectInput("visualFloor_select", session = session,
+                              choices = c("All", unique(floors$Name)))
+          }
+        }
+      }
     })
 
     remove_modal_spinner()
@@ -5088,7 +5109,7 @@ server <- function(input, output,session) {
 
       pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
         geom_tile() +
-        scale_fill_gradient(low = "green", high = "red") +
+        scale_fill_gradient(low = "blue", high = "red") +
         theme_bw() +
         labs(title = "",
              x = "",
@@ -6758,6 +6779,9 @@ server <- function(input, output,session) {
     req(postprocObjects$simulation_log_full) -> simulation_log
     floors = req(canvasObjects$floors)
 
+    # Reset show average checkbox when a folder is selected
+    updateCheckboxInput(session, "visualShowAverage", value = FALSE)
+
     isolate({
       show_modal_spinner()
       simulation_log = simulation_log %>%
@@ -6798,10 +6822,46 @@ server <- function(input, output,session) {
     })
   })
 
+  # Update slider when showing averages (without selecting a specific folder)
+  observeEvent(input$visualShowAverage, {
+    showAverage <- isTRUE(input$visualShowAverage)
+    colorFeat <- input$visualColor_select
+
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      # Get max time from the data
+      maxTime <- 0
+      if (colorFeat %in% c("Aerosol", "CumulAerosol") && !is.null(postprocObjects$AEROSOL_std)) {
+        maxTime <- max(postprocObjects$AEROSOL_std$time, na.rm = TRUE)
+      } else if (colorFeat == "CumulContact" && !is.null(postprocObjects$CONTACT_std)) {
+        maxTime <- max(postprocObjects$CONTACT_std$time, na.rm = TRUE)
+      }
+
+      if (maxTime > 0) {
+        step <- as.numeric(postprocObjects$Model$starting$step)
+        updateNumericInput("animationStep", session = session, value = step, max = maxTime * step)
+        updateSliderInput("animation", session = session,
+                          max = maxTime * step, min = 0,
+                          value = 0, step = step)
+
+        floors <- canvasObjects$floors
+        if (!is.null(floors)) {
+          updateSelectInput("visualFloor_select", session = session,
+                            choices = c("All", unique(floors$Name)))
+        }
+      }
+    }
+  })
+
   animationStep <- debounce(reactive({input$animationStep}), 1000L)
 
   observeEvent(animationStep(),{
-    req(postprocObjects$simulation_log_folder)
+    showAverage <- isTRUE(input$visualShowAverage)
+    colorFeat <- input$visualColor_select
+
+    # Skip folder requirement when showing averages
+    if (!(showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))) {
+      req(postprocObjects$simulation_log_folder)
+    }
 
     if(is.na(input$animationStep) || input$animationStep == "") {
       shinyalert("Error", "The time step cannot be less than 1 sec.", type = "error")
@@ -6813,7 +6873,20 @@ server <- function(input, output,session) {
       return()
     }
 
-    if( input$animationStep > max(postprocObjects$simulation_log_folder$time)* as.numeric(postprocObjects$Model$starting$step) ) {
+    # Get max time based on mode
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      if (colorFeat %in% c("Aerosol", "CumulAerosol") && !is.null(postprocObjects$AEROSOL_std)) {
+        maxTime <- max(postprocObjects$AEROSOL_std$time, na.rm = TRUE)
+      } else if (!is.null(postprocObjects$CONTACT_std)) {
+        maxTime <- max(postprocObjects$CONTACT_std$time, na.rm = TRUE)
+      } else {
+        return()
+      }
+    } else {
+      maxTime <- max(postprocObjects$simulation_log_folder$time)
+    }
+
+    if( input$animationStep > maxTime * as.numeric(postprocObjects$Model$starting$step) ) {
       shinyalert("Error", "The time step cannot be greater than the maximum time of the simulation.",type = "error")
       return()
     }
@@ -6821,20 +6894,47 @@ server <- function(input, output,session) {
     updateSliderInput("animation", session = session, value = input$animation, step =  input$animationStep)
   })
   observeEvent(input$next_step_visual, {
-    req(postprocObjects$simulation_log_folder)
+    showAverage <- isTRUE(input$visualShowAverage)
+    colorFeat <- input$visualColor_select
 
-    new_val <- min(input$animation +  input$animationStep,
-                   max(postprocObjects$simulation_log_folder$time)* as.numeric(postprocObjects$Model$starting$step) )
+    # Get max time based on mode
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      if (colorFeat %in% c("Aerosol", "CumulAerosol") && !is.null(postprocObjects$AEROSOL_std)) {
+        maxTime <- max(postprocObjects$AEROSOL_std$time, na.rm = TRUE)
+      } else if (!is.null(postprocObjects$CONTACT_std)) {
+        maxTime <- max(postprocObjects$CONTACT_std$time, na.rm = TRUE)
+      } else {
+        return()
+      }
+    } else {
+      req(postprocObjects$simulation_log_folder)
+      maxTime <- max(postprocObjects$simulation_log_folder$time)
+    }
+
+    new_val <- min(input$animation + input$animationStep,
+                   maxTime * as.numeric(postprocObjects$Model$starting$step))
 
     updateSliderInput(session, "animation", value = new_val)
   })
 
   output$TwoDMapPlots <- renderUI({
-    simulation_log_folder = req(postprocObjects$simulation_log_folder)
-    num_floors_in_canvas <- unique(simulation_log_folder$CanvasID)
+    showAverage <- isTRUE(input$visualShowAverage)
+    colorFeat <- input$visualColor_select
+    floors <- req(canvasObjects$floors)
+
+    # When showing averages with supported color features, use floor info from canvasObjects
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      if (is.null(floors)) {
+        return(tags$p("Please load data first."))
+      }
+      num_floors_in_canvas <- length(unique(floors$Name))+1 # +1 to match CanvasID since in this case there is not the "Outside"
+    } else {
+      simulation_log_folder = req(postprocObjects$simulation_log_folder)
+      num_floors_in_canvas <- length(unique(simulation_log_folder$CanvasID))
+    }
 
     # Increase height per floor to 800 pixels, with minimum of 1000px
-    H = max(400, length(num_floors_in_canvas) * 400)
+    H = max(400, num_floors_in_canvas * 400)
     plot_output_list <- plotOutput(outputId = "plot_map", height = paste0(H,"px"), width = "100%" )
 
     (plot_output_list)
@@ -7146,11 +7246,19 @@ server <- function(input, output,session) {
 
   observe({
     info <- input$PostProc_table_cell_clicked
-    folder = req(info$value)
+    showAverage <- isTRUE(input$visualShowAverage)
+    colorFeat = input$visualColor_select
+
+    # When showing averages with CumulContact/Aerosol/CumulAerosol, folder is not required
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      folder <- NULL
+      req(postprocObjects$AEROSOL_std) # Require that data is loaded
+    } else {
+      folder = req(info$value)
+    }
 
     roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
-    colorFeat = input$visualColor_select
     Label = input$visualLabel_select
 
     # changes from the BG
@@ -7159,9 +7267,12 @@ server <- function(input, output,session) {
     input$animation_bg_alpha
     room_fill_alpha = input$room_fill_alpha
 
+    # For averages mode, we need to react to animation slider changes
+    animationTime <- input$animation
+
     isolate({
       step = as.numeric(postprocObjects$Model$starting$step)
-      timeIn <- input$animation/step
+      timeIn <- animationTime/step
       timeGrid = seq(0,timeIn,1) # number of steps to reach the seconds selected
 
       disease = strsplit( isolate(req("SEIRD")), "" )[[1]]
@@ -7193,73 +7304,148 @@ server <- function(input, output,session) {
                                by.x = "Name", by.y = "Name" )
         roomsINcanvas$IDtoColor = roomsINcanvas$Name
       }else if(colorFeat == "CumulContact"){
-        CONTACT_std = postprocObjects$CONTACT_std   %>%
-          filter(Folder == folder , time <= timeIn) %>%
-          select(-Folder)
+        if (showAverage) {
+          # Average across all folders
+          CONTACT_std = postprocObjects$CONTACT_std %>%
+            filter(time <= timeIn)
 
-        if(dim(CONTACT_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
-          CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
-            summarize(counts = n()) %>%
-            rename(IDtoColor = counts)
+          if(dim(CONTACT_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            # Count per folder, then average
+            CONTACT_std = CONTACT_std %>%
+              group_by(Folder, CanvasID, Name, area, type, ID) %>%
+              summarize(counts = n(), .groups = "drop") %>%
+              group_by(CanvasID, Name, area, type, ID) %>%
+              summarize(IDtoColor = mean(counts), .groups = "drop")
 
-          CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID, type, area, ID) %>% distinct() %>%
+              full_join(CONTACT_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas %>% select(-IDtoColor)
+            roomsINcanvas = merge(roomsINcanvas, CONTACT_std)
+          }
+        } else {
+          CONTACT_std = postprocObjects$CONTACT_std   %>%
+            filter(Folder == folder , time <= timeIn) %>%
+            select(-Folder)
+
+          if(dim(CONTACT_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            CONTACT_std = CONTACT_std %>% group_by(CanvasID,Name,area,type,ID) %>%
+              summarize(counts = n()) %>%
+              rename(IDtoColor = counts)
+
+            CONTACT_std = roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              full_join(CONTACT_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,CONTACT_std)
+          }
         }
 
       }else if(colorFeat == "Aerosol"){
-        AEROSOL_std = postprocObjects$AEROSOL_std %>%
-          filter(Folder == folder , time <= timeIn) %>%
-          select(-Folder)
+        if (showAverage) {
+          # Average across all folders
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(time <= timeIn)
 
-        ### Check if it has all the data for each time step
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            # Get the closest time step per folder, then average across folders
+            AEROSOL_std = AEROSOL_std %>%
+              mutate(difftime = (time - timeIn)) %>%
+              filter(difftime <= 0) %>%
+              group_by(Folder) %>%
+              filter(difftime == max(difftime)) %>%
+              ungroup() %>%
+              group_by(type, area, Name, CanvasID, ID) %>%
+              summarize(IDtoColor = mean(virus_concentration), .groups = "drop")
 
-        if(dim(AEROSOL_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID, type, area, ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-            rename(IDtoColor = virus_concentration)
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas %>% select(-IDtoColor)
+            roomsINcanvas = merge(roomsINcanvas, AEROSOL_std)
+          }
+        } else {
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(Folder == folder , time <= timeIn) %>%
+            select(-Folder)
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          ### Check if it has all the data for each time step
+
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+
+            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+              rename(IDtoColor = virus_concentration)
+            # here i give to each room for each step a virus concetration = 0 when is not present
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c( "Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
         }
       }else if(colorFeat == "CumulAerosol"){
-        AEROSOL_std = postprocObjects$AEROSOL_std %>%
-          filter(Folder == folder , time <= timeIn)%>%
-          group_by(ID, type,area,Name,CanvasID) %>%
-          summarise(virus_concentration = sum(virus_concentration)) %>%
-          mutate(time = timeIn) %>% ungroup()
+        if (showAverage) {
+          # Average across all folders
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(time <= timeIn) %>%
+            group_by(Folder, ID, type, area, Name, CanvasID) %>%
+            summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
+            group_by(ID, type, area, Name, CanvasID) %>%
+            summarise(IDtoColor = mean(virus_concentration), .groups = "drop")
 
-        if(dim(AEROSOL_std)[1] == 0){
-          roomsINcanvas$IDtoColor = 0
-        }else{
-          AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
-            filter(difftime <= 0,  difftime == max(difftime)) %>%
-            select(virus_concentration,type,area,Name,CanvasID,ID) %>%
-            rename(IDtoColor = virus_concentration)
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID, type, area, ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
 
-          # here i give to each room for each step a virus concetration = 0 when is not present
-          AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
-            left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
-            mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas %>% select(-IDtoColor)
+            roomsINcanvas = merge(roomsINcanvas, AEROSOL_std)
+          }
+        } else {
+          AEROSOL_std = postprocObjects$AEROSOL_std %>%
+            filter(Folder == folder , time <= timeIn)%>%
+            group_by(ID, type,area,Name,CanvasID) %>%
+            summarise(virus_concentration = sum(virus_concentration)) %>%
+            mutate(time = timeIn) %>% ungroup()
 
-          if("IDtoColor" %in% colnames(roomsINcanvas))
-            roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
-          roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          if(dim(AEROSOL_std)[1] == 0){
+            roomsINcanvas$IDtoColor = 0
+          }else{
+            AEROSOL_std= AEROSOL_std %>% mutate(difftime = (time-timeIn) ) %>%
+              filter(difftime <= 0,  difftime == max(difftime)) %>%
+              select(virus_concentration,type,area,Name,CanvasID,ID) %>%
+              rename(IDtoColor = virus_concentration)
+
+            # here i give to each room for each step a virus concetration = 0 when is not present
+            AEROSOL_std <- roomsINcanvas %>% select(Name, CanvasID,type,area,ID) %>% distinct() %>%
+              left_join(AEROSOL_std, by = c("Name", "CanvasID","type","area","ID")) %>%
+              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
+
+            if("IDtoColor" %in% colnames(roomsINcanvas))
+              roomsINcanvas = roomsINcanvas%>% select(- IDtoColor )
+            roomsINcanvas = merge(roomsINcanvas,AEROSOL_std)
+          }
         }
       }
 
@@ -7280,22 +7466,49 @@ server <- function(input, output,session) {
       if( colorFeat %in% c("CumulContact","Aerosol","CumulAerosol") ){
         MinCol = 0
 
-        # Calculate data max
-        if(colorFeat == "Aerosol"){
-          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                         filter(Folder == folder) %>% pull(virus_concentration))
-        }else if(colorFeat == "CumulContact"){
-          dataMaxCol = max(postprocObjects$CONTACT_std %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID,ID)   %>%
-                         count() %>%
-                         pull(n) )
-        }else if(colorFeat == "CumulAerosol"){
-          dataMaxCol = max(postprocObjects$AEROSOL_std %>%
-                         filter(Folder == folder) %>%
-                         group_by(type,area,Name,CanvasID,ID) %>%
-                         mutate(virus_concentration = cumsum(virus_concentration)) %>%
-                         pull(virus_concentration))
+        # Calculate data max - for averages, compute max of averages across all folders
+        if (showAverage) {
+          if(colorFeat == "Aerosol"){
+            # Average virus_concentration across folders at each time, then get max
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           group_by(time, type, area, Name, CanvasID, ID) %>%
+                           summarise(avg_conc = mean(virus_concentration), .groups = "drop") %>%
+                           pull(avg_conc), na.rm = TRUE)
+          }else if(colorFeat == "CumulContact"){
+            # Count per folder, average, then get max
+            dataMaxCol = max(postprocObjects$CONTACT_std %>%
+                           group_by(Folder, type, area, Name, CanvasID, ID) %>%
+                           count() %>%
+                           group_by(type, area, Name, CanvasID, ID) %>%
+                           summarise(avg_n = mean(n), .groups = "drop") %>%
+                           pull(avg_n), na.rm = TRUE)
+          }else if(colorFeat == "CumulAerosol"){
+            # Cumulative sum per folder, then average across folders
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           group_by(Folder, type, area, Name, CanvasID, ID) %>%
+                           summarise(cumsum_conc = sum(virus_concentration), .groups = "drop") %>%
+                           group_by(type, area, Name, CanvasID, ID) %>%
+                           summarise(avg_cumsum = mean(cumsum_conc), .groups = "drop") %>%
+                           pull(avg_cumsum), na.rm = TRUE)
+          }
+        } else {
+          # Original logic for single folder
+          if(colorFeat == "Aerosol"){
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           filter(Folder == folder) %>% pull(virus_concentration))
+          }else if(colorFeat == "CumulContact"){
+            dataMaxCol = max(postprocObjects$CONTACT_std %>%
+                           filter(Folder == folder) %>%
+                           group_by(type,area,Name,CanvasID,ID)   %>%
+                           count() %>%
+                           pull(n) )
+          }else if(colorFeat == "CumulAerosol"){
+            dataMaxCol = max(postprocObjects$AEROSOL_std %>%
+                           filter(Folder == folder) %>%
+                           group_by(type,area,Name,CanvasID,ID) %>%
+                           mutate(virus_concentration = cumsum(virus_concentration)) %>%
+                           pull(virus_concentration))
+          }
         }
 
         # Check if custom max value is provided
@@ -7306,14 +7519,18 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        sc_fill <- scale_fill_gradient(low = "green", high = "red",
+        sc_fill <- scale_fill_gradient(low = "blue", high = "red",
                                        limits=c(MinCol,MaxCol),
                                        guide = "colourbar")
-        # Add unit for aerosol-related color features
+        # Add unit for aerosol-related color features - indicate if showing average
         fill_label <- if(colorFeat %in% c("Aerosol", "CumulAerosol")) {
-          expression(paste("PFU/", m^3))
+          if (showAverage) {
+            expression(paste("Avg PFU/", m^3))
+          } else {
+            expression(paste("PFU/", m^3))
+          }
         } else {
-          colorFeat
+          if (showAverage) "Avg Contacts" else colorFeat
         }
         guide_fill = labs(fill = fill_label)
       }else{
@@ -7430,7 +7647,7 @@ server <- function(input, output,session) {
   generate2DPlotWithAgents <- function(pl_base, simulation_log, timeIn, folder, colorFeat, visualAgent,
                               visualAgentID, Label, floorSelected, visualMode,
                               emojiAgents, shapeAgents, floors, roomsINcanvas,
-                              AEROSOL_std, CONTACT_std, initial_time, step, customMax = NULL) {
+                              AEROSOL_std, CONTACT_std, initial_time, step, customMax = NULL, titleSuffix = "") {
 
     pl <- pl_base
 
@@ -7572,17 +7789,19 @@ server <- function(input, output,session) {
     minutes <- remaining_seconds %/% 60
     seconds <- remaining_seconds %% 60
 
+    title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", titleSuffix)
+
     if(visualMode == "emojis") {
-      title <- labs(title = paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")"),
+      title <- labs(title = title_text,
                     x = "", y = "", color = "Disease state")
     } else {
-      title <- labs(title = paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")"),
+      title <- labs(title = title_text,
                     x = "", y = "", color = "Disease state", shape = "Agent type")
     }
 
     # Apply custom max if provided
     if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-      pl <- pl + scale_fill_gradient(low = "green", high = "red",
+      pl <- pl + scale_fill_gradient(low = "blue", high = "red",
                                       limits = c(0, customMax),
                                       guide = "colourbar")
     }
@@ -7592,25 +7811,80 @@ server <- function(input, output,session) {
 
   observe({
     info <- input$PostProc_table_cell_clicked
-    folder = req(info$value)
+    showAverage <- isTRUE(input$visualShowAverage)
 
-    pl = req(postprocObjects$plot_2D)
-    simulation_log = req(postprocObjects$simulation_log_folder)
     timeIn <- req(input$animation)
     colorFeat = input$visualColor_select
+    step = as.numeric(postprocObjects$Model$starting$step)
+    timeIn <- timeIn/step
+
+    # Get folder if available
+    folder <- if (!is.null(info) && !is.null(info$value)) info$value else NULL
+
+    # When showing averages without a folder selected, we still need some data loaded
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && is.null(folder)) {
+      req(postprocObjects$AEROSOL_std) # Require that data is loaded
+    } else if (!showAverage || !(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))) {
+      # For non-average mode, folder is required
+      folder = req(info$value)
+    }
+
     visualAgent = input$visualAgent_select
     visualAgentID = input$visualAgentID_select
 
     isolate({
+      pl = req(postprocObjects$plot_2D)
       roomsINcanvas = postprocObjects$MappingID_room
-      step = as.numeric(postprocObjects$Model$starting$step)
-      timeIn <- input$animation/step
 
       Label = input$visualLabel_select
       floorSelected = input$visualFloor_select
       floors = canvasObjects$floors
       visualMode <- input$agentVisualMode
       if(is.null(visualMode)) visualMode <- "shapes"
+
+      initial_time <- input$initial_time
+      if(is.null(initial_time)) initial_time <- "00:00"
+
+      customMax <- input$visualColor_maxValue
+
+      # Calculate title
+      total_seconds <- timeIn * step + as.numeric(strsplit(initial_time, ":")[[1]][1]) * 60 * 60 +
+                       as.numeric(strsplit(initial_time, ":")[[1]][2]) * 60
+      days <- total_seconds %/% (24 * 3600)
+      remaining_seconds <- total_seconds %% (24 * 3600)
+      hours <- remaining_seconds %/% 3600
+      remaining_seconds <- remaining_seconds %% 3600
+      minutes <- remaining_seconds %/% 60
+      seconds <- remaining_seconds %% 60
+
+      title_suffix <- if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+        " - Average across all folders"
+      } else {
+        ""
+      }
+
+      # Check if we have simulation_log for agents
+      simulation_log <- postprocObjects$simulation_log_folder
+      hasSimulationLog <- !is.null(simulation_log) && nrow(simulation_log) > 0
+
+      # When showing averages WITHOUT a folder AND no simulation log, show just the base plot with title
+      if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && is.null(folder) && !hasSimulationLog) {
+        title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
+        final_plot <- pl + labs(title = title_text, x = "", y = "")
+
+        # Apply custom max if provided
+        if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+          final_plot <- final_plot + scale_fill_gradient(low = "blue", high = "red",
+                                          limits = c(0, customMax),
+                                          guide = "colourbar")
+        }
+
+        output[["plot_map"]] <- renderPlot({ final_plot })
+        return()
+      }
+
+      # For all other cases (with folder selected or with simulation log), show agents
+      req(simulation_log)
 
       # Get agent types from simulation_log
       agentTypesInLog <- unique(simulation_log$agent_type)
@@ -7635,7 +7909,8 @@ server <- function(input, output,session) {
                                  EmojiCode = customEmojiCodes,
                                  stringsAsFactors = F)
         shapeAgents = NULL
-      } else {
+      }
+      else {
         # Shape mode: Get custom shapes and sizes from user input
         customShapes <- sapply(agentTypesInLog, function(at) {
           inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
@@ -7663,11 +7938,6 @@ server <- function(input, output,session) {
         emojiAgents = NULL
       }
 
-      initial_time <- input$initial_time
-      if(is.null(initial_time)) initial_time <- "00:00"
-
-      customMax <- input$visualColor_maxValue
-
       # Use the generate2DPlotWithAgents function
       final_plot <- generate2DPlotWithAgents(
         pl_base = pl,
@@ -7688,7 +7958,8 @@ server <- function(input, output,session) {
         CONTACT_std = postprocObjects$CONTACT_std,
         initial_time = initial_time,
         step = step,
-        customMax = customMax
+        customMax = customMax,
+        titleSuffix = title_suffix
       )
 
       output[["plot_map"]] <- renderPlot({ final_plot })
