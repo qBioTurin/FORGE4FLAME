@@ -5109,7 +5109,7 @@ server <- function(input, output,session) {
 
       pl = ggplot(c, aes(x = type1, y = type2, fill = Mean)) +
         geom_tile() +
-        scale_fill_gradient(low = "blue", high = "red") +
+        scale_fill_gradient(low = "green", high = "red") +
         theme_bw() +
         labs(title = "",
              x = "",
@@ -7519,7 +7519,7 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        sc_fill <- scale_fill_gradient(low = "blue", high = "red",
+        sc_fill <- scale_fill_gradient(low = "green", high = "red",
                                        limits=c(MinCol,MaxCol),
                                        guide = "colourbar")
         # Add unit for aerosol-related color features - indicate if showing average
@@ -7647,7 +7647,7 @@ server <- function(input, output,session) {
   generate2DPlotWithAgents <- function(pl_base, simulation_log, timeIn, folder, colorFeat, visualAgent,
                               visualAgentID, Label, floorSelected, visualMode,
                               emojiAgents, shapeAgents, floors, roomsINcanvas,
-                              AEROSOL_std, CONTACT_std, initial_time, step, customMax = NULL, titleSuffix = "") {
+                              AEROSOL_std, CONTACT_std, initial_time, step, customMax = NULL, titleSuffix = "", showAverage = FALSE) {
 
     pl <- pl_base
 
@@ -7690,24 +7690,46 @@ server <- function(input, output,session) {
     # Update room colors based on colorFeat
     # Note: Layer 1 is normal rooms, Layer 2 is special rooms (Spawnroom, Fillingroom) which stay grey
     if(colorFeat %in% c("CumulAerosol", "Aerosol") && !is.null(AEROSOL_std)) {
-      AEROSOL_data <- AEROSOL_std %>%
-        dplyr::filter(Folder == folder, time <= timeIn)
+      if(showAverage) {
+        # For averages: use data already calculated across all folders
+        AEROSOL_data <- AEROSOL_std %>%
+          dplyr::filter(time <= timeIn)
+      } else {
+        # For single folder: filter by the selected folder
+        AEROSOL_data <- AEROSOL_std %>%
+          dplyr::filter(Folder == folder, time <= timeIn)
+      }
 
       if(colorFeat == "CumulAerosol") {
-        AEROSOL_data <- AEROSOL_data %>%
-          dplyr::group_by(ID, type, area, Name, CanvasID) %>%
-          dplyr::summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
-          dplyr::mutate(time = timeIn)
+        if(showAverage) {
+          # For averages: data is already averaged
+          AEROSOL_data <- AEROSOL_data %>%
+            dplyr::group_by(Folder, ID, type, area, Name, CanvasID) %>%
+            dplyr::summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
+            dplyr::group_by(ID, type, area, Name, CanvasID) %>%
+            dplyr::summarise(IDtoColor = mean(virus_concentration), .groups = "drop")
+        } else {
+          AEROSOL_data <- AEROSOL_data %>%
+            dplyr::group_by(ID, type, area, Name, CanvasID) %>%
+            dplyr::summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
+            dplyr::mutate(time = timeIn)
+        }
       }
 
       if(nrow(AEROSOL_data) == 0) {
         df$IDtoColor <- 0
       } else {
-        AEROSOL_data <- AEROSOL_data %>%
-          dplyr::mutate(difftime = (timeIn - time)) %>%
-          dplyr::filter(difftime >= 0, difftime == min(difftime)) %>%
-          dplyr::select(virus_concentration, type, area, Name, CanvasID, ID) %>%
-          dplyr::rename(IDtoColor = virus_concentration)
+        if(!showAverage) {
+          AEROSOL_data <- AEROSOL_data %>%
+            dplyr::mutate(difftime = (timeIn - time)) %>%
+            dplyr::filter(difftime >= 0, difftime == min(difftime)) %>%
+            dplyr::select(virus_concentration, type, area, Name, CanvasID, ID) %>%
+            dplyr::rename(IDtoColor = virus_concentration)
+        } else if(!("IDtoColor" %in% colnames(AEROSOL_data))) {
+          # For averages when CumulAerosol, IDtoColor is already computed above
+          AEROSOL_data <- AEROSOL_data %>%
+            dplyr::select(type, area, Name, CanvasID, ID, IDtoColor)
+        }
 
         AEROSOL_data <- roomsINcanvas %>%
           dplyr::select(Name, CanvasID, type, area, ID) %>%
@@ -7723,17 +7745,33 @@ server <- function(input, output,session) {
       pl$layers[[room_layer_idx]]$data <- df
 
     } else if(colorFeat == "CumulContact" && !is.null(CONTACT_std)) {
-      CONTACT_data <- CONTACT_std %>%
-        dplyr::filter(Folder == folder, time <= timeIn)
+      if(showAverage) {
+        # For averages: use data already calculated across all folders
+        CONTACT_data <- CONTACT_std %>%
+          dplyr::filter(time <= timeIn)
+      } else {
+        # For single folder: filter by the selected folder
+        CONTACT_data <- CONTACT_std %>%
+          dplyr::filter(Folder == folder, time <= timeIn)
+      }
 
       if(nrow(CONTACT_data) == 0) {
         df$IDtoColor <- 0
       } else {
-        CONTACT_data <- CONTACT_data %>%
-          dplyr::group_by(CanvasID, Name, area, type, ID) %>%
-          dplyr::count() %>%
-          dplyr::rename(IDtoColor = n) %>%
-          dplyr::ungroup()
+        if(showAverage) {
+          # For averages: calculate averages
+          CONTACT_data <- CONTACT_data %>%
+            dplyr::group_by(Folder, CanvasID, Name, area, type, ID) %>%
+            dplyr::summarize(counts = n(), .groups = "drop") %>%
+            dplyr::group_by(CanvasID, Name, area, type, ID) %>%
+            dplyr::summarize(IDtoColor = mean(counts), .groups = "drop")
+        } else {
+          CONTACT_data <- CONTACT_data %>%
+            dplyr::group_by(CanvasID, Name, area, type, ID) %>%
+            dplyr::count() %>%
+            dplyr::rename(IDtoColor = n) %>%
+            dplyr::ungroup()
+        }
 
         CONTACT_data <- roomsINcanvas %>%
           dplyr::select(Name, CanvasID, type, area, ID) %>%
@@ -7801,7 +7839,7 @@ server <- function(input, output,session) {
 
     # Apply custom max if provided
     if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-      pl <- pl + scale_fill_gradient(low = "blue", high = "red",
+      pl <- pl + scale_fill_gradient(low = "green", high = "red",
                                       limits = c(0, customMax),
                                       guide = "colourbar")
     }
@@ -7874,9 +7912,16 @@ server <- function(input, output,session) {
 
         # Apply custom max if provided
         if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-          final_plot <- final_plot + scale_fill_gradient(low = "blue", high = "red",
+          final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
                                           limits = c(0, customMax),
                                           guide = "colourbar")
+        }
+        else{
+          if(showAverage){
+            final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
+                                                           limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
+                                                           guide = "colourbar")
+          }
         }
 
         output[["plot_map"]] <- renderPlot({ final_plot })
@@ -7959,7 +8004,8 @@ server <- function(input, output,session) {
         initial_time = initial_time,
         step = step,
         customMax = customMax,
-        titleSuffix = title_suffix
+        titleSuffix = title_suffix,
+        showAverage = showAverage
       )
 
       output[["plot_map"]] <- renderPlot({ final_plot })
@@ -7980,10 +8026,17 @@ server <- function(input, output,session) {
         return(NULL)
       }
 
+      showAverage <- isTRUE(input$visualShowAverage)
+      colorFeat <- input$visualColor_select
+      
       folder <- input$PostProc_table_cell_clicked$value
-      if(is.null(folder) || folder == "") {
-        showNotification("Please select a simulation folder from the table.", type = "error")
-        return(NULL)
+      
+      # Check if folder is required (not when showing averages for aerosol/contact data)
+      if(!showAverage || !(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))) {
+        if(is.null(folder) || folder == "") {
+          showNotification("Please select a simulation folder from the table.", type = "error")
+          return(NULL)
+        }
       }
 
       pl_base <- postprocObjects$plot_2D
@@ -8009,6 +8062,7 @@ server <- function(input, output,session) {
         floorSelected <- input$visualFloor_select
         visualMode <- input$agentVisualMode
         if(is.null(visualMode)) visualMode <- "shapes"
+        showAverage <- isTRUE(input$visualShowAverage)
 
         # Get shape/emoji mappings
         agentTypesInLog <- unique(simulation_log$agent_type)
@@ -8126,7 +8180,8 @@ server <- function(input, output,session) {
               CONTACT_std = frame_info$CONTACT_std,
               initial_time = frame_info$initial_time,
               step = frame_info$step,
-              customMax = NULL
+              customMax = NULL,
+              showAverage = frame_info$showAverage
             )
 
             # Save frame
@@ -8156,7 +8211,8 @@ server <- function(input, output,session) {
               AEROSOL_std = AEROSOL_std_data,
               CONTACT_std = CONTACT_std_data,
               initial_time = initial_time,
-              step = step
+              step = step,
+              showAverage = showAverage
             )
           })
 
@@ -8209,7 +8265,8 @@ server <- function(input, output,session) {
               CONTACT_std = CONTACT_std_data,
               initial_time = initial_time,
               step = step,
-              customMax = NULL
+              customMax = NULL,
+              showAverage = showAverage
             )
 
             # Save frame
