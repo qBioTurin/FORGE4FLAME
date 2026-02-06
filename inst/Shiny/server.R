@@ -6786,8 +6786,8 @@ server <- function(input, output,session) {
       show_modal_spinner()
       simulation_log = simulation_log %>%
         filter(Folder == folder) %>%
-        select(-Folder) %>%
-        mutate(time = time - min(time))
+        select(-Folder)
+        # mutate(time = time - min(time))
 
       simulation_log = simulation_log %>%
         group_by(id) %>%
@@ -7259,7 +7259,6 @@ server <- function(input, output,session) {
 
     roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
-    Label = input$visualLabel_select
 
     # changes from the BG
     animation_bg = postprocObjects$animation_bg
@@ -7271,6 +7270,7 @@ server <- function(input, output,session) {
     animationTime <- input$animation
 
     isolate({
+      Label = input$visualLabel_select
       step = as.numeric(postprocObjects$Model$starting$step)
       timeIn <- animationTime/step
       timeGrid = seq(0,timeIn,1) # number of steps to reach the seconds selected
@@ -7806,8 +7806,12 @@ server <- function(input, output,session) {
                             size = 4, alpha = 0.7, shape = 19, stroke = 1) +
         guides(color = guide_legend(override.aes = list(size = 5)))
     } else if(!is.null(shapeAgents)) {
-      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
-                                                 color = disease_state, size = agent_type), stroke = 2) +
+      # Add black contour layer first (slightly larger, behind the colored points)
+      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, shape = agent_type, size = agent_type),
+                            color = "black", stroke = 2.5, show.legend = FALSE) +
+        # Add colored points on top
+        geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
+                                                 color = disease_state, size = agent_type), stroke = 1.5) +
         scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
         scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
         guides(shape = guide_legend(ncol = 8, order = 1))
@@ -8028,9 +8032,9 @@ server <- function(input, output,session) {
 
       showAverage <- isTRUE(input$visualShowAverage)
       colorFeat <- input$visualColor_select
-      
+
       folder <- input$PostProc_table_cell_clicked$value
-      
+
       # Check if folder is required (not when showing averages for aerosol/contact data)
       if(!showAverage || !(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))) {
         if(is.null(folder) || folder == "") {
