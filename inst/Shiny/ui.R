@@ -2730,7 +2730,7 @@ ui <- dashboardPage(
                               ),
                               conditionalPanel(
                                 condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
-                                column(3,
+                                column(2,
                                        numericInput("visualColor_maxValue",
                                                     label = div(class = "icon-container",
                                                                 "Max legend value ", icon("info-circle"),
@@ -2738,13 +2738,24 @@ ui <- dashboardPage(
                                                     value = NA,
                                                     min = 0)
                                 ),
-                                column(3,
+                                column(2,
                                        div(style = "padding-top: 25px;",
                                            checkboxInput(
                                              inputId = "visualShowAverage",
                                              label = div(class = "icon-container",
-                                                         tags$b("Show average values "), icon("info-circle"),
+                                                         tags$b("Show average "), icon("info-circle"),
                                                          div(class = "icon-text", "Display average values across all simulation folders.")),
+                                             value = FALSE
+                                           )
+                                       )
+                                ),
+                                column(2,
+                                       div(style = "padding-top: 25px;",
+                                           checkboxInput(
+                                             inputId = "visualLog10Scale",
+                                             label = div(class = "icon-container",
+                                                         tags$b("Log10 scale "), icon("info-circle"),
+                                                         div(class = "icon-text", "Display the color legend using log10 scale for better visualization of wide value ranges.")),
                                              value = FALSE
                                            )
                                        )

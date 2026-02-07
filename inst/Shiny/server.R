@@ -7519,18 +7519,39 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        sc_fill <- scale_fill_gradient(low = "green", high = "red",
-                                       limits=c(MinCol,MaxCol),
-                                       guide = "colourbar")
+        # Check if log10 scale is enabled
+        useLog10 <- isTRUE(input$visualLog10Scale)
+
+        if (useLog10) {
+          # Replace NA with 0, then add small value (10^-10) to IDtoColor to avoid log(0) issues
+          # This ensures rooms with 0 or NA values are colored green instead of grey
+          df <- df %>% mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor) + 1e-10)
+
+          # Use log10 scale
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "red"),
+            values = scales::rescale(c(0, 0.5, 1)),
+            limits = c(1e-10, MaxCol + 1e-10),
+            trans = "log10",
+            guide = "colourbar",
+            oob = scales::squish,
+            na.value = "green"
+          )
+        } else {
+          sc_fill <- scale_fill_gradient(low = "green", high = "red",
+                                         limits=c(MinCol,MaxCol),
+                                         guide = "colourbar")
+        }
         # Add unit for aerosol-related color features - indicate if showing average
         fill_label <- if(colorFeat %in% c("Aerosol", "CumulAerosol")) {
           if (showAverage) {
-            expression(paste("Avg PFU/", m^3))
+            if (useLog10) expression(paste("Avg PFU/", m^3, " (log10)")) else expression(paste("Avg PFU/", m^3))
           } else {
-            expression(paste("PFU/", m^3))
+            if (useLog10) expression(paste("PFU/", m^3, " (log10)")) else expression(paste("PFU/", m^3))
           }
         } else {
-          if (showAverage) "Avg Contacts" else colorFeat
+          label_base <- if (showAverage) "Avg Contacts" else colorFeat
+          if (useLog10) paste0(label_base, " (log10)") else label_base
         }
         guide_fill = labs(fill = fill_label)
       }else{
@@ -7637,7 +7658,14 @@ server <- function(input, output,session) {
       #                        size = 4)
       # }
 
-      postprocObjects$plot_2D <- pl
+      postprocObjects$plot_2D <- pl +
+        theme(
+          panel.border = element_rect(
+            color = "white",
+            fill = NA,
+            linewidth = 15
+          )
+        )
 
     })
 
@@ -7917,8 +7945,8 @@ server <- function(input, output,session) {
         # Apply custom max if provided
         if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
           final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-                                          limits = c(0, customMax),
-                                          guide = "colourbar")
+                                                         limits = c(0, customMax),
+                                                         guide = "colourbar")
         }
         else{
           if(showAverage){
