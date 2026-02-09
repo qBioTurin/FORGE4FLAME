@@ -7525,16 +7525,16 @@ server <- function(input, output,session) {
         if (useLog10) {
           # Replace NA with 0, then add small value (10^-10) to IDtoColor to avoid log(0) issues
           # This ensures rooms with 0 or NA values are colored green instead of grey
-          df <- df %>% mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor) + 1e-10)
+          #df <- df %>% mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor) + 1e-10)
 
           # Use log10 scale
           sc_fill <- scale_fill_gradientn(
             colors = c("green", "yellow", "red"),
-            values = scales::rescale(c(0, 0.5, 1)),
+            #values = scales::rescale(c(0, 0.5, 1)),
             limits = c(1e-10, MaxCol + 1e-10),
             trans = "log10",
             guide = "colourbar",
-            oob = scales::squish,
+            #oob = scales::squish,
             na.value = "green"
           )
         } else {
@@ -7869,13 +7869,6 @@ server <- function(input, output,session) {
                     x = "", y = "", color = "Disease state", shape = "Agent type")
     }
 
-    # Apply custom max if provided
-    if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-      pl <- pl + scale_fill_gradient(low = "green", high = "red",
-                                      limits = c(0, customMax),
-                                      guide = "colourbar")
-    }
-
     pl + title
   }
 
@@ -7942,19 +7935,19 @@ server <- function(input, output,session) {
         title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
         final_plot <- pl + labs(title = title_text, x = "", y = "")
 
-        # Apply custom max if provided
-        if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-          final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-                                                         limits = c(0, customMax),
-                                                         guide = "colourbar")
-        }
-        else{
-          if(showAverage){
-            final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-                                                           limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
-                                                           guide = "colourbar")
-          }
-        }
+        # # Apply custom max if provided
+        # if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+        #   final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
+        #                                                  limits = c(0, customMax),
+        #                                                  guide = "colourbar")
+        # }
+        # else{
+        #   if(showAverage){
+        #     final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
+        #                                                    limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
+        #                                                    guide = "colourbar")
+        #   }
+        # }
 
         output[["plot_map"]] <- renderPlot({ final_plot })
         return()
