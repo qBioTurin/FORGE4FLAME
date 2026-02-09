@@ -7546,10 +7546,10 @@ server <- function(input, output,session) {
           break1 <- if (!is.null(input$customBreak1) && !is.na(input$customBreak1)) input$customBreak1 / 100 else 0.1
           break2 <- if (!is.null(input$customBreak2) && !is.na(input$customBreak2)) input$customBreak2 / 100 else 0.3
           break3 <- if (!is.null(input$customBreak3) && !is.na(input$customBreak3)) input$customBreak3 / 100 else 0.6
-          
+
           # Ensure breaks are in order
           breaks <- sort(c(0, break1, break2, break3, 1))
-          
+
           sc_fill <- scale_fill_gradientn(
             colors = c("green", "yellow", "orange", "orangered", "red"),
             values = breaks,
@@ -7563,7 +7563,7 @@ server <- function(input, output,session) {
                                          limits=c(MinCol,MaxCol),
                                          guide = "colourbar")
         }
-        
+
         # Add unit for aerosol-related color features - indicate scale type
         scale_suffix <- switch(scaleType,
                                "Log10" = " (log10)",
@@ -7862,11 +7862,11 @@ server <- function(input, output,session) {
         guides(color = guide_legend(override.aes = list(size = 5)))
     } else if(!is.null(shapeAgents)) {
       # Add black contour layer first (slightly larger, behind the colored points)
-      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, shape = agent_type, size = agent_type),
+      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, shape = agent_type), size = 6,
                             color = "black", stroke = 2.5, show.legend = FALSE) +
         # Add colored points on top
         geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
-                                                 color = disease_state, size = agent_type), stroke = 1.5) +
+                                                 color = disease_state), size = 6, stroke = 1.5) +
         scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
         scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
         guides(shape = guide_legend(ncol = 8, order = 1))
