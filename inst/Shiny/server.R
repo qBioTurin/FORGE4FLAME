@@ -7519,39 +7519,66 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        # Check if log10 scale is enabled
-        useLog10 <- isTRUE(input$visualLog10Scale)
+        # Get scale type selection
+        scaleType <- input$visualScaleType
+        if (is.null(scaleType)) scaleType <- "Linear"
 
-        if (useLog10) {
-          # Replace NA with 0, then add small value (10^-10) to IDtoColor to avoid log(0) issues
-          # This ensures rooms with 0 or NA values are colored green instead of grey
-          #df <- df %>% mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor) + 1e-10)
-
-          # Use log10 scale
+        if (scaleType == "Log10") {
+          # Log10 scale
           sc_fill <- scale_fill_gradientn(
             colors = c("green", "yellow", "red"),
-            #values = scales::rescale(c(0, 0.5, 1)),
             limits = c(1e-10, MaxCol + 1e-10),
             trans = "log10",
             guide = "colourbar",
-            #oob = scales::squish,
+            na.value = "green"
+          )
+        } else if (scaleType == "Sqrt") {
+          # Square root scale - good compromise between linear and log
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "red"),
+            limits = c(MinCol, MaxCol),
+            trans = "sqrt",
+            guide = "colourbar",
+            na.value = "green"
+          )
+        } else if (scaleType == "Custom") {
+          # Custom breakpoints defined by user (as percentages)
+          break1 <- if (!is.null(input$customBreak1) && !is.na(input$customBreak1)) input$customBreak1 / 100 else 0.1
+          break2 <- if (!is.null(input$customBreak2) && !is.na(input$customBreak2)) input$customBreak2 / 100 else 0.3
+          break3 <- if (!is.null(input$customBreak3) && !is.na(input$customBreak3)) input$customBreak3 / 100 else 0.6
+          
+          # Ensure breaks are in order
+          breaks <- sort(c(0, break1, break2, break3, 1))
+          
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "orange", "orangered", "red"),
+            values = breaks,
+            limits = c(MinCol, MaxCol),
+            guide = "colourbar",
             na.value = "green"
           )
         } else {
+          # Linear scale (default)
           sc_fill <- scale_fill_gradient(low = "green", high = "red",
                                          limits=c(MinCol,MaxCol),
                                          guide = "colourbar")
         }
-        # Add unit for aerosol-related color features - indicate if showing average
+        
+        # Add unit for aerosol-related color features - indicate scale type
+        scale_suffix <- switch(scaleType,
+                               "Log10" = " (log10)",
+                               "Sqrt" = " (sqrt)",
+                               "Custom" = " (custom)",
+                               "")
         fill_label <- if(colorFeat %in% c("Aerosol", "CumulAerosol")) {
           if (showAverage) {
-            if (useLog10) expression(paste("Avg PFU/", m^3, " (log10)")) else expression(paste("Avg PFU/", m^3))
+            if (scaleType != "Linear") bquote(paste("Avg PFU/", m^3, .(scale_suffix))) else expression(paste("Avg PFU/", m^3))
           } else {
-            if (useLog10) expression(paste("PFU/", m^3, " (log10)")) else expression(paste("PFU/", m^3))
+            if (scaleType != "Linear") bquote(paste("PFU/", m^3, .(scale_suffix))) else expression(paste("PFU/", m^3))
           }
         } else {
           label_base <- if (showAverage) "Avg Contacts" else colorFeat
-          if (useLog10) paste0(label_base, " (log10)") else label_base
+          if (scaleType != "Linear") paste0(label_base, scale_suffix) else label_base
         }
         guide_fill = labs(fill = fill_label)
       }else{

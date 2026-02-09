@@ -2731,14 +2731,6 @@ ui <- dashboardPage(
                               conditionalPanel(
                                 condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
                                 column(2,
-                                       numericInput("visualColor_maxValue",
-                                                    label = div(class = "icon-container",
-                                                                "Max legend value ", icon("info-circle"),
-                                                                div(class = "icon-text", "Set a custom maximum for the color legend. Leave empty to use data max.")),
-                                                    value = NA,
-                                                    min = 0)
-                                ),
-                                column(2,
                                        div(style = "padding-top: 25px;",
                                            checkboxInput(
                                              inputId = "visualShowAverage",
@@ -2748,17 +2740,44 @@ ui <- dashboardPage(
                                              value = FALSE
                                            )
                                        )
+                                )
+                              )
+                            ),
+                            # Second row for legend options: Max value and Scale type
+                            conditionalPanel(
+                              condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
+                              fluidRow(
+                                column(3,
+                                       numericInput("visualColor_maxValue",
+                                                    label = div(class = "icon-container",
+                                                                "Max legend value ", icon("info-circle"),
+                                                                div(class = "icon-text", "Set a custom maximum for the color legend. Leave empty to use data max.")),
+                                                    value = NA,
+                                                    min = 0)
                                 ),
-                                column(2,
-                                       div(style = "padding-top: 25px;",
-                                           checkboxInput(
-                                             inputId = "visualLog10Scale",
-                                             label = div(class = "icon-container",
-                                                         tags$b("Log10 scale "), icon("info-circle"),
-                                                         div(class = "icon-text", "Display the color legend using log10 scale for better visualization of wide value ranges.")),
-                                             value = FALSE
-                                           )
+                                column(3,
+                                       selectInput(
+                                         inputId = "visualScaleType",
+                                         label = div(class = "icon-container",
+                                                     "Scale type ", icon("info-circle"),
+                                                     div(class = "icon-text", "Linear: standard scale. Sqrt: square root (good compromise). Log10: logarithmic (expands low values). Custom: define your own color breakpoints.")),
+                                         choices = c("Linear", "Sqrt", "Log10", "Custom"),
+                                         selected = "Linear"
                                        )
+                                ),
+                                # Custom breakpoints - only shown when Custom scale is selected
+                                conditionalPanel(
+                                  condition = "input.visualScaleType == 'Custom'",
+                                  column(6,
+                                         div(style = "background-color: #f5f5f5; padding: 10px; border-radius: 5px;",
+                                             tags$b("Custom color breakpoints (as % of max value):"),
+                                             fluidRow(
+                                               column(4, numericInput("customBreak1", "Yellow %", value = 10, min = 1, max = 99, step = 1)),
+                                               column(4, numericInput("customBreak2", "Orange %", value = 30, min = 1, max = 99, step = 1)),
+                                               column(4, numericInput("customBreak3", "Red %", value = 60, min = 1, max = 99, step = 1))
+                                             )
+                                         )
+                                  )
                                 )
                               )
                             )
