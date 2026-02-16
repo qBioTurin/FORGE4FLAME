@@ -8028,9 +8028,9 @@ server <- function(input, output,session) {
 
       showAverage <- isTRUE(input$visualShowAverage)
       colorFeat <- input$visualColor_select
-      
+
       folder <- input$PostProc_table_cell_clicked$value
-      
+
       # Check if folder is required (not when showing averages for aerosol/contact data)
       if(!showAverage || !(colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol"))) {
         if(is.null(folder) || folder == "") {

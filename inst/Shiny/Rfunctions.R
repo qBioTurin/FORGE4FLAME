@@ -1184,6 +1184,12 @@ check <- function(canvasObjects, input, output, InfoApp){
     return(NULL)
   }
 
+  if(is.null(canvasObjects$resources)){
+    shinyalert("Error", "No resources are setted.", type = "error")
+    remove_modal_spinner()
+    return(NULL)
+  }
+
   spawnroom <- canvasObjects$roomsINcanvas %>%
     filter(type == "Spawnroom")
 
