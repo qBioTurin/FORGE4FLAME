@@ -2730,6 +2730,23 @@ ui <- dashboardPage(
                               ),
                               conditionalPanel(
                                 condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
+                                column(2,
+                                       div(style = "padding-top: 25px;",
+                                           checkboxInput(
+                                             inputId = "visualShowAverage",
+                                             label = div(class = "icon-container",
+                                                         tags$b("Show average "), icon("info-circle"),
+                                                         div(class = "icon-text", "Display average values across all simulation folders.")),
+                                             value = FALSE
+                                           )
+                                       )
+                                )
+                              )
+                            ),
+                            # Second row for legend options: Max value and Scale type
+                            conditionalPanel(
+                              condition = "input.visualColor_select == 'CumulContact' || input.visualColor_select == 'Aerosol' || input.visualColor_select == 'CumulAerosol'",
+                              fluidRow(
                                 column(3,
                                        numericInput("visualColor_maxValue",
                                                     label = div(class = "icon-container",
@@ -2739,15 +2756,28 @@ ui <- dashboardPage(
                                                     min = 0)
                                 ),
                                 column(3,
-                                       div(style = "padding-top: 25px;",
-                                           checkboxInput(
-                                             inputId = "visualShowAverage",
-                                             label = div(class = "icon-container",
-                                                         tags$b("Show average values "), icon("info-circle"),
-                                                         div(class = "icon-text", "Display average values across all simulation folders.")),
-                                             value = FALSE
-                                           )
+                                       selectInput(
+                                         inputId = "visualScaleType",
+                                         label = div(class = "icon-container",
+                                                     "Scale type ", icon("info-circle"),
+                                                     div(class = "icon-text", "Linear: standard scale. Sqrt: square root (good compromise). Log10: logarithmic (expands low values). Custom: define your own color breakpoints.")),
+                                         choices = c("Linear", "Sqrt", "Log10", "Custom"),
+                                         selected = "Linear"
                                        )
+                                ),
+                                # Custom breakpoints - only shown when Custom scale is selected
+                                conditionalPanel(
+                                  condition = "input.visualScaleType == 'Custom'",
+                                  column(6,
+                                         div(style = "background-color: #f5f5f5; padding: 10px; border-radius: 5px;",
+                                             tags$b("Custom color breakpoints (as % of max value):"),
+                                             fluidRow(
+                                               column(4, numericInput("customBreak1", "Yellow %", value = 10, min = 1, max = 99, step = 1)),
+                                               column(4, numericInput("customBreak2", "Orange %", value = 30, min = 1, max = 99, step = 1)),
+                                               column(4, numericInput("customBreak3", "Red %", value = 60, min = 1, max = 99, step = 1))
+                                             )
+                                         )
+                                  )
                                 )
                               )
                             )
@@ -2973,6 +3003,43 @@ ui <- dashboardPage(
                     )
                 )
               )
+      ),
+      ## Tab Post Processing ####
+      tabItem(
+        tabName = "post_process",
+        fluidRow(
+          box(
+            title = h3("Post Processing Options"),
+            width = 12,
+            collapsible = TRUE,
+            fluidRow(
+              column(4,
+                     selectInput(
+                       inputId = "post_proc_option",
+                       label = "Select Analysis:",
+                       choices = c("2D Animation", "Infection Plot", "Agent State Plot", "Agent Location Plot"),
+                       selected = "2D Animation"
+                     )
+              ),
+              column(4,
+                     sliderInput("emoji_size_slider", "Emoji Size:",
+                                 min = 1, max = 20, value = 5, step = 1)
+              ),
+              column(2,
+                     actionButton("run_post_proc", "Run Analysis", style = "margin-top: 25px;")
+              )
+            )
+          )
+        ),
+        fluidRow(
+          box(
+            title = h3("Output"),
+            width = 12,
+            collapsible = TRUE,
+            imageOutput("post_proc_plot"),
+            hidden(downloadButton("DownloadPostProc_Button", "Download"))
+          )
+        )
       )
       #### END tabs ####
     )

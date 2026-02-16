@@ -6786,8 +6786,8 @@ server <- function(input, output,session) {
       show_modal_spinner()
       simulation_log = simulation_log %>%
         filter(Folder == folder) %>%
-        select(-Folder) %>%
-        mutate(time = time - min(time))
+        select(-Folder)
+        # mutate(time = time - min(time))
 
       simulation_log = simulation_log %>%
         group_by(id) %>%
@@ -7259,7 +7259,6 @@ server <- function(input, output,session) {
 
     roomsINcanvas = req(postprocObjects$MappingID_room)
     floorSelected = input$visualFloor_select
-    Label = input$visualLabel_select
 
     # changes from the BG
     animation_bg = postprocObjects$animation_bg
@@ -7271,6 +7270,7 @@ server <- function(input, output,session) {
     animationTime <- input$animation
 
     isolate({
+      Label = input$visualLabel_select
       step = as.numeric(postprocObjects$Model$starting$step)
       timeIn <- animationTime/step
       timeGrid = seq(0,timeIn,1) # number of steps to reach the seconds selected
@@ -7519,18 +7519,66 @@ server <- function(input, output,session) {
           MaxCol <- dataMaxCol
         }
 
-        sc_fill <- scale_fill_gradient(low = "green", high = "red",
-                                       limits=c(MinCol,MaxCol),
-                                       guide = "colourbar")
-        # Add unit for aerosol-related color features - indicate if showing average
+        # Get scale type selection
+        scaleType <- input$visualScaleType
+        if (is.null(scaleType)) scaleType <- "Linear"
+
+        if (scaleType == "Log10") {
+          # Log10 scale
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "red"),
+            limits = c(1e-10, MaxCol + 1e-10),
+            trans = "log10",
+            guide = "colourbar",
+            na.value = "green"
+          )
+        } else if (scaleType == "Sqrt") {
+          # Square root scale - good compromise between linear and log
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "red"),
+            limits = c(MinCol, MaxCol),
+            trans = "sqrt",
+            guide = "colourbar",
+            na.value = "green"
+          )
+        } else if (scaleType == "Custom") {
+          # Custom breakpoints defined by user (as percentages)
+          break1 <- if (!is.null(input$customBreak1) && !is.na(input$customBreak1)) input$customBreak1 / 100 else 0.1
+          break2 <- if (!is.null(input$customBreak2) && !is.na(input$customBreak2)) input$customBreak2 / 100 else 0.3
+          break3 <- if (!is.null(input$customBreak3) && !is.na(input$customBreak3)) input$customBreak3 / 100 else 0.6
+
+          # Ensure breaks are in order
+          breaks <- sort(c(0, break1, break2, break3, 1))
+
+          sc_fill <- scale_fill_gradientn(
+            colors = c("green", "yellow", "orange", "orangered", "red"),
+            values = breaks,
+            limits = c(MinCol, MaxCol),
+            guide = "colourbar",
+            na.value = "green"
+          )
+        } else {
+          # Linear scale (default)
+          sc_fill <- scale_fill_gradient(low = "green", high = "red",
+                                         limits=c(MinCol,MaxCol),
+                                         guide = "colourbar")
+        }
+
+        # Add unit for aerosol-related color features - indicate scale type
+        scale_suffix <- switch(scaleType,
+                               "Log10" = " (log10)",
+                               "Sqrt" = " (sqrt)",
+                               "Custom" = " (custom)",
+                               "")
         fill_label <- if(colorFeat %in% c("Aerosol", "CumulAerosol")) {
           if (showAverage) {
-            expression(paste("Avg PFU/", m^3))
+            if (scaleType != "Linear") bquote(paste("Avg PFU/", m^3, .(scale_suffix))) else expression(paste("Avg PFU/", m^3))
           } else {
-            expression(paste("PFU/", m^3))
+            if (scaleType != "Linear") bquote(paste("PFU/", m^3, .(scale_suffix))) else expression(paste("PFU/", m^3))
           }
         } else {
-          if (showAverage) "Avg Contacts" else colorFeat
+          label_base <- if (showAverage) "Avg Contacts" else colorFeat
+          if (scaleType != "Linear") paste0(label_base, scale_suffix) else label_base
         }
         guide_fill = labs(fill = fill_label)
       }else{
@@ -7637,7 +7685,14 @@ server <- function(input, output,session) {
       #                        size = 4)
       # }
 
-      postprocObjects$plot_2D <- pl
+      postprocObjects$plot_2D <- pl +
+        theme(
+          panel.border = element_rect(
+            color = "white",
+            fill = NA,
+            linewidth = 15
+          )
+        )
 
     })
 
@@ -7806,8 +7861,12 @@ server <- function(input, output,session) {
                             size = 4, alpha = 0.7, shape = 19, stroke = 1) +
         guides(color = guide_legend(override.aes = list(size = 5)))
     } else if(!is.null(shapeAgents)) {
-      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
-                                                 color = disease_state, size = agent_type), stroke = 2) +
+      # Add black contour layer first (slightly larger, behind the colored points)
+      pl <- pl + geom_point(data = sim_log, aes(x = x, y = z, shape = agent_type), size = 6,
+                            color = "black", stroke = 2.5, show.legend = FALSE) +
+        # Add colored points on top
+        geom_point(data = sim_log, aes(x = x, y = z, group = id, shape = agent_type,
+                                                 color = disease_state), size = 6, stroke = 1.5) +
         scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
         scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
         guides(shape = guide_legend(ncol = 8, order = 1))
@@ -7835,13 +7894,6 @@ server <- function(input, output,session) {
     } else {
       title <- labs(title = title_text,
                     x = "", y = "", color = "Disease state", shape = "Agent type")
-    }
-
-    # Apply custom max if provided
-    if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-      pl <- pl + scale_fill_gradient(low = "green", high = "red",
-                                      limits = c(0, customMax),
-                                      guide = "colourbar")
     }
 
     pl + title
@@ -7910,19 +7962,19 @@ server <- function(input, output,session) {
         title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
         final_plot <- pl + labs(title = title_text, x = "", y = "")
 
-        # Apply custom max if provided
-        if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-          final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-                                          limits = c(0, customMax),
-                                          guide = "colourbar")
-        }
-        else{
-          if(showAverage){
-            final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-                                                           limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
-                                                           guide = "colourbar")
-          }
-        }
+        # # Apply custom max if provided
+        # if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
+        #   final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
+        #                                                  limits = c(0, customMax),
+        #                                                  guide = "colourbar")
+        # }
+        # else{
+        #   if(showAverage){
+        #     final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
+        #                                                    limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
+        #                                                    guide = "colourbar")
+        #   }
+        # }
 
         output[["plot_map"]] <- renderPlot({ final_plot })
         return()
