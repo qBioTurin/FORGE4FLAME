@@ -6810,7 +6810,8 @@ server <- function(input, output,session) {
                         max = max(simulation_log$time)*step, min = 0,
                         value = 0, step = step )
       updateSelectInput("visualFloor_select", session = session,
-                        choices = c("All",unique(floors$CanvasID)))
+                        choices = c("All",unique(floors$Name)))
+                       # choices = c("All",unique(floors$CanvasID)))
       updateSelectInput("visualAgent_select", session = session,
                         choices = c("All",sort(unique(simulation_log$agent_type))))
 
