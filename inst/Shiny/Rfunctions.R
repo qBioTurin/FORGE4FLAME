@@ -216,6 +216,61 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   return(matrixCanvas)
 }
 
+CanvasRoomToMatrix = function(canvasObjects,canvas){
+
+  roomsMatrix = lapply(names(canvasObjects$roomObjects),function(n){
+
+    objects_list = canvasObjects$roomObjects[[n]]
+
+    objects_df <- do.call(rbind, lapply(objects_list, function(obj) {
+      data.frame(
+        Name = obj$name,
+        ID = obj$id,
+        X = round(obj$x, 2),
+        Y = round(obj$y, 2),
+        Width = obj$width,
+        Length = obj$length,
+        Color = obj$color,
+        Obstacle = ifelse(is.null(obj$isObstacle), FALSE, obj$isObstacle),
+        Capacity = ifelse(is.null(obj$capacity) || is.na(obj$capacity), NA, obj$capacity),
+        stringsAsFactors = FALSE
+      )
+    }))
+
+    room= canvasObjects$roomsINcanvas %>%
+      filter(Name == n, CanvasID == canvas)
+
+    matrixCanvas = matrix(1,
+                          nrow = room$w+2,
+                          ncol = room$l+2)
+    matrixCanvas[1,] = 0
+    matrixCanvas[,1] = 0
+    matrixCanvas[nrow(matrixCanvas),] = 0
+    matrixCanvas[,ncol(matrixCanvas)] = 0
+
+    for(i in 1:nrow(objects_df) ){
+      r = objects_df[i,]
+
+      x = floor(r$X)
+      y = floor(r$Y)
+
+      r$l <- ceiling(r$Length)
+      r$w <- ceiling(r$Width)
+
+      matrixCanvas[(y + 1:(r$l))+1,(x + 1:(r$w))+1] = - r$ID
+    }
+
+    ## Door position definition as 2
+    if(room$door != "none")
+      matrixCanvas[abs(room$y - room$door_y)+1, abs(room$x - room$door_x)+1] =  2
+
+    return(matrixCanvas)
+  })
+  names(roomsMatrix) = names(canvasObjects$roomObjects)
+  return(roomsMatrix)
+}
+
+
 command_addRoomObject = function(newroom){
   txt = paste0("// Crea un nuovo oggetto Square con le proprietà desiderate
                 const newRoom = new Room(",newroom$ID,",",
