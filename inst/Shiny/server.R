@@ -7729,9 +7729,9 @@ server <- function(input, output, session) {
 
     # For averages mode, we need to react to animation slider changes
     animationTime <- input$animation
+    Label <- input$visualLabel_select
 
     isolate({
-      Label <- input$visualLabel_select
       step <- as.numeric(postprocObjects$Model$starting$step)
       timeIn <- animationTime / step
       timeGrid <- seq(0, timeIn, 1) # number of steps to reach the seconds selected
@@ -8431,157 +8431,139 @@ server <- function(input, output, session) {
 
     visualAgent <- input$visualAgent_select
     visualAgentID <- input$visualAgentID_select
+    Label <- input$visualLabel_select
+    floorSelected <- input$visualFloor_select
+    visualMode <- input$agentVisualMode
+    initial_time <- input$initial_time
+    customMax <- input$visualColor_maxValue
+    pl <- req(postprocObjects$plot_2D)
 
-    isolate({
-      pl <- req(postprocObjects$plot_2D)
-      roomsINcanvas <- postprocObjects$MappingID_room
+    roomsINcanvas <- postprocObjects$MappingID_room
+    floors <- canvasObjects$floors
+    if (is.null(visualMode)) visualMode <- "shapes"
 
-      Label <- input$visualLabel_select
-      floorSelected <- input$visualFloor_select
-      floors <- canvasObjects$floors
-      visualMode <- input$agentVisualMode
-      if (is.null(visualMode)) visualMode <- "shapes"
+    if (is.null(initial_time)) initial_time <- "00:00"
 
-      initial_time <- input$initial_time
-      if (is.null(initial_time)) initial_time <- "00:00"
+    # Calculate title
+    total_seconds <- timeIn * step + as.numeric(strsplit(initial_time, ":")[[1]][1]) * 60 * 60 +
+      as.numeric(strsplit(initial_time, ":")[[1]][2]) * 60
+    days <- total_seconds %/% (24 * 3600)
+    remaining_seconds <- total_seconds %% (24 * 3600)
+    hours <- remaining_seconds %/% 3600
+    remaining_seconds <- remaining_seconds %% 3600
+    minutes <- remaining_seconds %/% 60
+    seconds <- remaining_seconds %% 60
 
-      customMax <- input$visualColor_maxValue
+    title_suffix <- if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      " - Average across all folders"
+    } else {
+      ""
+    }
 
-      # Calculate title
-      total_seconds <- timeIn * step + as.numeric(strsplit(initial_time, ":")[[1]][1]) * 60 * 60 +
-        as.numeric(strsplit(initial_time, ":")[[1]][2]) * 60
-      days <- total_seconds %/% (24 * 3600)
-      remaining_seconds <- total_seconds %% (24 * 3600)
-      hours <- remaining_seconds %/% 3600
-      remaining_seconds <- remaining_seconds %% 3600
-      minutes <- remaining_seconds %/% 60
-      seconds <- remaining_seconds %% 60
+    # Check if we have simulation_log for agents
+    simulation_log <- postprocObjects$simulation_log_folder
+    hasSimulationLog <- !is.null(simulation_log) && nrow(simulation_log) > 0
 
-      title_suffix <- if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
-        " - Average across all folders"
-      } else {
-        ""
-      }
-
-      # Check if we have simulation_log for agents
-      simulation_log <- postprocObjects$simulation_log_folder
-      hasSimulationLog <- !is.null(simulation_log) && nrow(simulation_log) > 0
-
-      # When showing averages WITHOUT a folder AND no simulation log, show just the base plot with title
-      if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && is.null(folder) && !hasSimulationLog) {
-        title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
-        final_plot <- pl + labs(title = title_text, x = "", y = "")
-
-        # # Apply custom max if provided
-        # if(!is.null(customMax) && !is.na(customMax) && customMax > 0) {
-        #   final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-        #                                                  limits = c(0, customMax),
-        #                                                  guide = "colourbar")
-        # }
-        # else{
-        #   if(showAverage){
-        #     final_plot <- final_plot + scale_fill_gradient(low = "green", high = "red",
-        #                                                    limits = c(0, max(postprocObjects$AEROSOL_std$virus_concentration)),
-        #                                                    guide = "colourbar")
-        #   }
-        # }
-
-        output[["plot_map"]] <- renderPlot({
-          final_plot
-        })
-        return()
-      }
-
-      # For all other cases (with folder selected or with simulation log), show agents
-      req(simulation_log)
-
-      # Get agent types from simulation_log
-      agentTypesInLog <- unique(simulation_log$agent_type)
-
-      if (visualMode == "emojis") {
-        # Emoji mode: Get emoji codes from emojiAssignments reactive
-        defaultEmojiCodes <- c(
-          "1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
-          "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d"
-        )
-
-        assignments <- emojiAssignments()
-
-        customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
-          at <- agentTypesInLog[i]
-          if (!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
-            return(assignments[[at]]$code)
-          }
-          return(defaultEmojiCodes[min(i, length(defaultEmojiCodes))])
-        })
-        names(customEmojiCodes) <- NULL
-
-        emojiAgents <- data.frame(
-          Agents = agentTypesInLog,
-          EmojiCode = customEmojiCodes,
-          stringsAsFactors = F
-        )
-        shapeAgents <- NULL
-      } else {
-        # Shape mode: Get custom shapes and sizes from user input
-        customShapes <- sapply(agentTypesInLog, function(at) {
-          inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
-          val <- input[[inputId]]
-          if (is.null(val) || is.na(val)) {
-            idx <- which(agentTypesInLog == at)
-            return(as.numeric(c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)[min(idx, 10)]))
-          }
-          as.numeric(val)
-        })
-        names(customShapes) <- NULL
-
-        customSizes <- sapply(agentTypesInLog, function(at) {
-          inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
-          val <- input[[inputId]]
-          if (is.null(val) || is.na(val)) {
-            return(5)
-          }
-          as.numeric(val)
-        })
-        names(customSizes) <- NULL
-
-        shapeAgents <- data.frame(
-          Agents = agentTypesInLog,
-          Shape = customShapes,
-          Size = customSizes,
-          stringsAsFactors = F
-        )
-        emojiAgents <- NULL
-      }
-
-      # Use the generate2DPlotWithAgents function
-      final_plot <- generate2DPlotWithAgents(
-        pl_base = pl,
-        simulation_log = simulation_log,
-        timeIn = timeIn,
-        folder = folder,
-        colorFeat = colorFeat,
-        visualAgent = visualAgent,
-        visualAgentID = visualAgentID,
-        Label = Label,
-        floorSelected = floorSelected,
-        visualMode = visualMode,
-        emojiAgents = emojiAgents,
-        shapeAgents = shapeAgents,
-        floors = floors,
-        roomsINcanvas = roomsINcanvas,
-        AEROSOL_std = postprocObjects$AEROSOL_std,
-        CONTACT_std = postprocObjects$CONTACT_std,
-        initial_time = initial_time,
-        step = step,
-        customMax = customMax,
-        titleSuffix = title_suffix,
-        showAverage = showAverage
-      )
+    # When showing averages WITHOUT a folder AND no simulation log, show just the base plot with title
+    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && is.null(folder) && !hasSimulationLog) {
+      title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
+      final_plot <- pl + labs(title = title_text, x = "", y = "")
 
       output[["plot_map"]] <- renderPlot({
         final_plot
       })
+      return()
+    }
+
+    # For all other cases (with folder selected or with simulation log), show agents
+    req(simulation_log)
+
+    # Get agent types from simulation_log
+    agentTypesInLog <- unique(simulation_log$agent_type)
+
+    if (visualMode == "emojis") {
+      # Emoji mode: Get emoji codes from emojiAssignments reactive
+      defaultEmojiCodes <- c(
+        "1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
+        "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d"
+      )
+
+      assignments <- emojiAssignments()
+
+      customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
+        at <- agentTypesInLog[i]
+        if (!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
+          return(assignments[[at]]$code)
+        }
+        return(defaultEmojiCodes[min(i, length(defaultEmojiCodes))])
+      })
+      names(customEmojiCodes) <- NULL
+
+      emojiAgents <- data.frame(
+        Agents = agentTypesInLog,
+        EmojiCode = customEmojiCodes,
+        stringsAsFactors = F
+      )
+      shapeAgents <- NULL
+    } else {
+      # Shape mode: Get custom shapes and sizes from user input
+      customShapes <- sapply(agentTypesInLog, function(at) {
+        inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
+        val <- input[[inputId]]
+        if (is.null(val) || is.na(val)) {
+          idx <- which(agentTypesInLog == at)
+          return(as.numeric(c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)[min(idx, 10)]))
+        }
+        as.numeric(val)
+      })
+      names(customShapes) <- NULL
+
+      customSizes <- sapply(agentTypesInLog, function(at) {
+        inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
+        val <- input[[inputId]]
+        if (is.null(val) || is.na(val)) {
+          return(5)
+        }
+        as.numeric(val)
+      })
+      names(customSizes) <- NULL
+
+      shapeAgents <- data.frame(
+        Agents = agentTypesInLog,
+        Shape = customShapes,
+        Size = customSizes,
+        stringsAsFactors = F
+      )
+      emojiAgents <- NULL
+    }
+
+    # Use the generate2DPlotWithAgents function
+    final_plot <- generate2DPlotWithAgents(
+      pl_base = pl,
+      simulation_log = simulation_log,
+      timeIn = timeIn,
+      folder = folder,
+      colorFeat = colorFeat,
+      visualAgent = visualAgent,
+      visualAgentID = visualAgentID,
+      Label = Label,
+      floorSelected = floorSelected,
+      visualMode = visualMode,
+      emojiAgents = emojiAgents,
+      shapeAgents = shapeAgents,
+      floors = floors,
+      roomsINcanvas = roomsINcanvas,
+      AEROSOL_std = postprocObjects$AEROSOL_std,
+      CONTACT_std = postprocObjects$CONTACT_std,
+      initial_time = initial_time,
+      step = step,
+      customMax = customMax,
+      titleSuffix = title_suffix,
+      showAverage = showAverage
+    )
+
+    output[["plot_map"]] <- renderPlot({
+      final_plot
     })
   })
 
