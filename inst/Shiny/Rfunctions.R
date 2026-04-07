@@ -298,9 +298,9 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   ### UPDATING THE CANVAS ####
   # deleting everything from canvas
-  js$clearCanvas()
+  runjs("shinyjs.clearCanvas()")
   # update the canvas dimension
-  js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
+  runjs(paste0("shinyjs.canvasDimension({w:", canvasObjects$canvasDimension$canvasWidth, ", h:", canvasObjects$canvasDimension$canvasHeight, "})"))
 
   for(floor in canvasObjects$floors$Name){
     runjs(paste0("
