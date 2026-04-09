@@ -144,9 +144,10 @@ function drawObject(obj, isSelected) {
 
         // Add diagonal stripes for obstacles
         objectsCtx.save();
-        objectsCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        objectsCtx.strokeStyle = 'rgba(0,0,0,0.2)';
         objectsCtx.lineWidth = 2;
-        for (let i = -length; i < width; i += 10) {
+        const stripeSpacing = 10;
+        for (let i = -length; i < width; i += stripeSpacing) {
             objectsCtx.beginPath();
             objectsCtx.moveTo(x + i, y);
             objectsCtx.lineTo(x + i + length, y + length);
@@ -178,6 +179,56 @@ function drawObject(obj, isSelected) {
     }
 }
 
+// Get door clear zone (1m x 1m centered on the wall)
+function getDoorClearZone() {
+    if (!currentRoomData || !currentRoomData.door || currentRoomData.door === 'none') {
+        return null;
+    }
+
+    const roomWidth = currentRoomData.width;
+    const roomLength = currentRoomData.length;
+
+    switch (currentRoomData.door) {
+        case 'left':
+            return { x: 0, y: Math.floor(roomLength / 2), width: 1, length: 1 };
+        case 'right':
+            return { x: roomWidth - 1, y: Math.floor(roomLength / 2), width: 1, length: 1 };
+        case 'top':
+            return { x: Math.floor(roomWidth / 2), y: 0, width: 1, length: 1 };
+        case 'bottom':
+            return { x: Math.floor(roomWidth / 2), y: roomLength - 1, width: 1, length: 1 };
+        default:
+            return null;
+    }
+}
+
+// Draw door indicator
+function drawDoor() {
+    const zone = getDoorClearZone();
+    if (!zone) return;
+
+    objectsCtx.save();
+    objectsCtx.fillStyle = 'rgba(255, 165, 0, 0.3)'; // Orange semi-transparent
+    objectsCtx.strokeStyle = '#ff8c00';
+    objectsCtx.lineWidth = 2;
+
+    const x = zone.x * SCALE;
+    const y = zone.y * SCALE;
+    const w = zone.width * SCALE;
+    const l = zone.length * SCALE;
+
+    objectsCtx.fillRect(x, y, w, l);
+    objectsCtx.strokeRect(x, y, w, l);
+
+    // Door Label
+    objectsCtx.fillStyle = '#cc7a00';
+    objectsCtx.font = 'bold 11px Arial';
+    objectsCtx.textAlign = 'center';
+    objectsCtx.fillText('DOOR', x + w / 2, y + l / 2 + 4);
+
+    objectsCtx.restore();
+}
+
 // Check if two objects overlap
 function checkOverlap(obj1, obj2) {
     // Check if rectangles overlap
@@ -189,13 +240,35 @@ function checkOverlap(obj1, obj2) {
 
 // Check if an object overlaps with any existing objects
 function hasCollision(newObj, excludeIndex = -1) {
+    // Check for collisions with other objects
     for (let i = 0; i < objectsArray.length; i++) {
         if (i === excludeIndex) continue; // Skip the object being moved
         if (checkOverlap(newObj, objectsArray[i])) {
             return true;
         }
     }
+
+    // Check for collisions with door clear zone
+    const doorZone = getDoorClearZone();
+    if (doorZone && checkOverlap(newObj, doorZone)) {
+        return true;
+    }
+
     return false;
+}
+
+// Draw all objects and door on canvas
+function redrawObjectsCanvas() {
+    // Clear canvas
+    objectsCtx.clearRect(0, 0, objectsCanvas.width, objectsCanvas.height);
+
+    // Draw door indicator first (lowest layer)
+    drawDoor();
+
+    // Draw all objects
+    objectsArray.forEach((obj, index) => {
+        drawObject(obj, index === selectedObjectIndex);
+    });
 }
 
 // Find a non-overlapping position for a new object
@@ -354,8 +427,8 @@ objectsCanvas.addEventListener('mouseup', function (e) {
             const oldY = obj.y;
 
             // Round to nearest  meter
-            obj.x = Math.round(obj.x ) ;
-            obj.y = Math.round(obj.y ) ;
+            obj.x = Math.round(obj.x);
+            obj.y = Math.round(obj.y);
 
             // Check if snapped position causes overlap
             if (hasCollision(obj, selectedObjectIndex)) {
