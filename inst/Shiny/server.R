@@ -159,8 +159,7 @@ server <- function(input, output, session) {
 
       canvasObjects$canvasDimension$canvasWidth <- max(canvasObjects$canvasDimension$canvasWidth, canvas_w * 10)
       canvasObjects$canvasDimension$canvasHeight <- max(canvasObjects$canvasDimension$canvasHeight, canvas_h * 10)
-      js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
-
+      runjs(paste0("shinyjs.canvasDimension({w:", canvasObjects$canvasDimension$canvasWidth, ", h:", canvasObjects$canvasDimension$canvasHeight, "})"))
       canvasObjects$matrixCanvas <- matrix(
         data = 1,
         nrow = canvas_h + 2,
@@ -245,7 +244,7 @@ server <- function(input, output, session) {
 
     canvasObjects$canvasDimension$canvasWidth <- max(canvasObjects$canvasDimension$canvasWidth, canvas_w * 10)
     canvasObjects$canvasDimension$canvasHeight <- max(canvasObjects$canvasDimension$canvasHeight, canvas_h * 10)
-    js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
+    runjs(paste0("shinyjs.canvasDimension({w:", canvasObjects$canvasDimension$canvasWidth, ", h:", canvasObjects$canvasDimension$canvasHeight, "})"))
 
     canvasObjects$matrixCanvas <- matrix(
       data = 1,
@@ -307,8 +306,7 @@ server <- function(input, output, session) {
     }
 
     # Passa i valori al canvas in JavaScript
-    js$canvasDimension(canvasObjects$canvasDimension$canvasWidth, canvasObjects$canvasDimension$canvasHeight)
-
+    runjs(paste0("shinyjs.canvasDimension({w:", canvasObjects$canvasDimension$canvasWidth, ", h:", canvasObjects$canvasDimension$canvasHeight, "})"))
     # we add two rows and columns to ensure that the walls are inside the canvas
     canvasObjects$matrixCanvas <- matrix(0,
       nrow = canvasObjects$canvasDimension$canvasHeight / 10,
