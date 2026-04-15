@@ -3321,7 +3321,7 @@ server <- function(input, output, session) {
               EntryTime <- paste0(EntryTime, ":00")
             }
 
-            if (is.na(input[[paste0("num_agent_", num_shift)]]) || !is.numeric(input[[paste0("num_agent_", num_shift)]]) ||
+            if (is.na(input[[paste0("num_agent_", num_shift)]]) || is.na(as.numeric(input[[paste0("num_agent_", num_shift)]])) ||
               as.numeric(input[[paste0("num_agent_", num_shift)]]) <= 0) {
               shinyalert("Error", "The number of agents must be a number > 0 for each shift.", type = "error")
               return()
