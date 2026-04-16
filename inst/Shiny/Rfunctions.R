@@ -420,6 +420,35 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
 
     canvasObjects$agents[[a]]$RandFlow <- canvasObjects$agents[[a]]$RandFlow %>% filter(Room != "Do nothing")
+
+    # Healing: Reset AgentLinked if the linked agent no longer exists
+    all_agents_names <- names(canvasObjects$agents)
+    if (!is.null(canvasObjects$agents[[a]]$DeterFlow)) {
+      mask <- !(canvasObjects$agents[[a]]$DeterFlow$AgentLinked %in% c("None", all_agents_names))
+      if (any(mask)) {
+        canvasObjects$agents[[a]]$DeterFlow$AgentLinked[mask] <- "None"
+        canvasObjects$agents[[a]]$DeterFlow$AgentLinkedType[mask] <- "None"
+        # Update labels to remove the invalid agent name
+        canvasObjects$agents[[a]]$DeterFlow$Label[mask] <- sapply(
+          canvasObjects$agents[[a]]$DeterFlow$Label[mask],
+          function(lbl) {
+            parts <- strsplit(lbl, " - ")[[1]]
+            if (length(parts) >= 4) {
+              parts[length(parts)] <- "None"
+              return(paste(parts, collapse = " - "))
+            }
+            return(lbl)
+          }
+        )
+      }
+    }
+    if (!is.null(canvasObjects$agents[[a]]$RandFlow)) {
+      mask <- !(canvasObjects$agents[[a]]$RandFlow$AgentLinked %in% c("None", all_agents_names))
+      if (any(mask)) {
+        canvasObjects$agents[[a]]$RandFlow$AgentLinked[mask] <- "None"
+        canvasObjects$agents[[a]]$RandFlow$AgentLinkedType[mask] <- "None"
+      }
+    }
   }
 
   ####
@@ -554,6 +583,41 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   }
   else{
     updateSelectizeInput(session, "selectInput_resources_type", choices = "", selected= "", server = TRUE)
+  }
+
+  # Healing: Remove orphaned agents and invalid keys from resources (Relocated and Hardened)
+  if (!is.null(canvasObjects$resources)) {
+    all_agents_list <- names(canvasObjects$agents)
+    
+    # Keep only resource entries whose keys are valid (Type-Area currently in canvas)
+    if (!is.null(canvasObjects$roomsINcanvas)) {
+      valid_keys <- unique(paste0(canvasObjects$roomsINcanvas$type, "-", canvasObjects$roomsINcanvas$area))
+      current_res_names <- names(canvasObjects$resources)
+      if (!is.null(current_res_names)) {
+        canvasObjects$resources <- canvasObjects$resources[current_res_names %in% valid_keys]
+      }
+    }
+
+    for (i in seq_along(canvasObjects$resources)) {
+      # Clean roomResource columns
+      if (!is.null(canvasObjects$resources[[i]]$roomResource)) {
+        # Force conversion to data frame in case it was loaded as a list
+        df_res <- as.data.frame(canvasObjects$resources[[i]]$roomResource, stringsAsFactors = FALSE)
+        current_cols <- names(df_res)
+        # Keep only 'room', 'MAX', and agents that actually exist
+        cols_to_keep <- current_cols[current_cols %in% c("room", "MAX", all_agents_list)]
+        canvasObjects$resources[[i]]$roomResource <- df_res[, cols_to_keep, drop = FALSE]
+      }
+      # Clean waiting rooms
+      if (!is.null(canvasObjects$resources[[i]]$waitingRoomsRand)) {
+        df_rand <- as.data.frame(canvasObjects$resources[[i]]$waitingRoomsRand, stringsAsFactors = FALSE)
+        canvasObjects$resources[[i]]$waitingRoomsRand <- df_rand[df_rand$Agent %in% all_agents_list, ]
+      }
+      if (!is.null(canvasObjects$resources[[i]]$waitingRoomsDeter)) {
+        df_deter <- as.data.frame(canvasObjects$resources[[i]]$waitingRoomsDeter, stringsAsFactors = FALSE)
+        canvasObjects$resources[[i]]$waitingRoomsDeter <- df_deter[df_deter$Agent %in% all_agents_list, ]
+      }
+    }
   }
 
   "The file has been uploaded with success!"

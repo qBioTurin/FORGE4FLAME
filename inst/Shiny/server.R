@@ -2244,9 +2244,38 @@ server <- function(input, output, session) {
         )
       )
 
+      # Cleanup linked agents in other agents' flows
+      for (otherAgent in names(canvasObjects$agents)) {
+        if (otherAgent == Agent) next
+        if (!is.null(canvasObjects$agents[[otherAgent]]$DeterFlow)) {
+          # Update Label to remove agent name if present
+          mask <- canvasObjects$agents[[otherAgent]]$DeterFlow$AgentLinked == Agent
+          if (any(mask)) {
+            canvasObjects$agents[[otherAgent]]$DeterFlow$Label[mask] <- sapply(
+              canvasObjects$agents[[otherAgent]]$DeterFlow$Label[mask],
+              function(lbl) {
+                parts <- strsplit(lbl, " - ")[[1]]
+                if (length(parts) >= 4) {
+                  parts[length(parts)] <- "None"
+                  return(paste(parts, collapse = " - "))
+                }
+                return(lbl)
+              }
+            )
+            canvasObjects$agents[[otherAgent]]$DeterFlow$AgentLinked[mask] <- "None"
+            canvasObjects$agents[[otherAgent]]$DeterFlow$AgentLinkedType[mask] <- "None"
+          }
+        }
+        if (!is.null(canvasObjects$agents[[otherAgent]]$RandFlow)) {
+          mask <- canvasObjects$agents[[otherAgent]]$RandFlow$AgentLinked == Agent
+          if (any(mask)) {
+            canvasObjects$agents[[otherAgent]]$RandFlow$AgentLinked[mask] <- "None"
+            canvasObjects$agents[[otherAgent]]$RandFlow$AgentLinkedType[mask] <- "None"
+          }
+        }
+      }
+
       canvasObjects$agents <- canvasObjects$agents[-which(names(canvasObjects$agents) == Agent)]
-      canvasObjects$agents_whatif <- canvasObjects$agents_whatif %>%
-        filter(Type != Agent)
 
       if (length(names(canvasObjects$agents)) == 0) {
         canvasObjects$agents <- NULL
@@ -2289,6 +2318,9 @@ server <- function(input, output, session) {
           session = session, "agent_initial_infected",
           choices = ""
         )
+
+        updateSelectizeInput(session, inputId = "agentLink_rand_flow", choices = "", selected = "")
+        updateSelectizeInput(session, inputId = "agentLink_det_flow", choices = "", selected = "")
       } else {
         updateSelectizeInput(session, inputId = "id_new_agent", choices = names(canvasObjects$agents), selected = "")
 
@@ -2321,12 +2353,23 @@ server <- function(input, output, session) {
           session = session, "agent_initial_infected",
           choices = c("", names(canvasObjects$agents))
         )
+
+        updateSelectizeInput(session, inputId = "agentLink_rand_flow", choices = c("", names(canvasObjects$agents)), selected = "")
+        updateSelectizeInput(session, inputId = "agentLink_det_flow", choices = c("", names(canvasObjects$agents)), selected = "")
       }
 
-      for (i in 1:length(canvasObjects$resources)) {
-        canvasObjects$resources[[i]]$roomResource <- canvasObjects$resources[[i]]$roomResource[, which(!names(canvasObjects$resources[[i]]$roomResource) == Agent)]
-        canvasObjects$resources[[i]]$waitingRoomsRand[which(!canvasObjects$resources[[i]]$waitingRoomsRand$Agent == Agent), ]
-        canvasObjects$resources[[i]]$waitingRoomsDeter[which(!canvasObjects$resources[[i]]$waitingRoomsDeter$Agent == Agent), ]
+      if (!is.null(canvasObjects$resources)) {
+        for (i in seq_along(canvasObjects$resources)) {
+          if (!is.null(canvasObjects$resources[[i]]$roomResource) && Agent %in% names(canvasObjects$resources[[i]]$roomResource)) {
+            canvasObjects$resources[[i]]$roomResource[[Agent]] <- NULL
+          }
+          if (!is.null(canvasObjects$resources[[i]]$waitingRoomsRand)) {
+            canvasObjects$resources[[i]]$waitingRoomsRand <- canvasObjects$resources[[i]]$waitingRoomsRand[which(canvasObjects$resources[[i]]$waitingRoomsRand$Agent != Agent), ]
+          }
+          if (!is.null(canvasObjects$resources[[i]]$waitingRoomsDeter)) {
+            canvasObjects$resources[[i]]$waitingRoomsDeter <- canvasObjects$resources[[i]]$waitingRoomsDeter[which(canvasObjects$resources[[i]]$waitingRoomsDeter$Agent != Agent), ]
+          }
+        }
       }
 
       if (nrow(canvasObjects$agents_whatif) > 0) {
