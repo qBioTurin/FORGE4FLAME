@@ -5357,6 +5357,12 @@ server <- function(input, output, session) {
     req(postprocObjects$FLAGmodelLoaded)
     dir <- req(postprocObjects$dirPath)
     Mapping <- req(postprocObjects$Mapping)
+
+    # Only run if Mapping has not been enriched yet (y is still present)
+    if (!"y" %in% names(Mapping)) {
+      return()
+    }
+
     isolate({
       roomsINcanvas <- req(canvasObjects$roomsINcanvas)
       roomsINcanvas <- roomsINcanvas %>% mutate(coord = ifelse(type == "Fillingroom", paste0(x + ceiling(w / 2), "-", y + ceiling(h / 2), "-", CanvasID), paste0(center_x, "-", center_y, "-", CanvasID)))
@@ -5387,6 +5393,8 @@ server <- function(input, output, session) {
     AEROSOLcsv <- req(postprocObjects$AEROSOLcsv)
     req(postprocObjects$FLAGmodelLoaded)
     req(postprocObjects$MappingID_room)
+    Mapping <- req(postprocObjects$Mapping)
+
     show_modal_spinner(text = "We are preparing everything.")
 
     isolate({
@@ -5398,13 +5406,8 @@ server <- function(input, output, session) {
 
       AEROSOLcsv$time <- as.numeric(AEROSOLcsv$time)
 
-      Mapping <- req(postprocObjects$Mapping)
-
       postprocObjects$AEROSOL_std <- merge(Mapping, AEROSOLcsv, by.x = "ID", by.y = "room_id")
-
       postprocObjects$CONTACT_std <- merge(Mapping, CONTACTcsv, by.x = "ID", by.y = "room_id")
-
-      # CONTACTcsv =  merge(Mapping , CONTACTcsv, by.x = "ID", by.y = "room_id" )
 
 
       agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
