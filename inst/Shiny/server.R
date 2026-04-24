@@ -6137,15 +6137,15 @@ server <- function(input, output, session) {
     cumulative <- input$diseaseEvol_cumulative
     if (is.null(cumulative)) cumulative <- FALSE
 
-    # Get the appropriate data
+    # Get the appropriate data and ensure RoomID is present
     if (metric_type == "contacts") {
-      df_raw <- postprocObjects$CONTACT_std
+      df_raw <- req(postprocObjects$CONTACT_std)
       y_label <- if (cumulative) "Cumulative Number of Contacts" else "Number of Contacts"
       title_text <- if (cumulative) "Cumulative Contacts Evolution" else "Contacts Evolution"
       metric_color <- "#E5D05AFF"
     } else {
-      df_raw <- postprocObjects$AEROSOL_std
-      y_label <- if (cumulative) expression(paste("Cumulative Virus Concentration (", PFU / m^3, ")")) else expression(paste("Virus Concentration (", PFU / m^3, ")"))
+      df_raw <- req(postprocObjects$AEROSOL_std)
+      y_label <- if (cumulative) "Cumulative Virus Concentration (PFU/m³)" else "Virus Concentration (PFU/m³)"
       title_text <- if (cumulative) "Cumulative Aerosol Concentration Evolution" else "Aerosol Concentration Evolution"
       metric_color <- "#3498db"
     }
@@ -6162,11 +6162,9 @@ server <- function(input, output, session) {
       )
     }
 
-    # Create RoomID column for aerosol data
-    if (metric_type == "aerosol") {
-      df_raw <- df_raw %>%
-        mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
-    }
+    # Always ensure RoomID is present for filtering and faceting
+    df_raw <- df_raw %>%
+      mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
 
     # Get simulation filter
     sim_filter <- input$diseaseEvol_simulation
@@ -6179,13 +6177,7 @@ server <- function(input, output, session) {
     floor_filter <- input$diseaseEvol_floor
 
     if (!is.null(room_filter) && !"All" %in% room_filter) {
-      if (metric_type == "contacts") {
-        df_raw <- df_raw %>%
-          mutate(RoomID = paste0(Name, " (", type, " - ", area, ")")) %>%
-          filter(RoomID %in% room_filter)
-      } else {
-        df_raw <- df_raw %>% filter(RoomID %in% room_filter)
-      }
+      df_raw <- df_raw %>% filter(RoomID %in% room_filter)
     }
 
     if (!is.null(floor_filter) && !"All" %in% floor_filter) {
@@ -6398,48 +6390,7 @@ server <- function(input, output, session) {
           )
       }
 
-      if (facet_room && "RoomID" %in% names(agg_stats)) {
-        p <- ggplot(agg_stats, aes(x = time_granular, color = RoomID, fill = RoomID))
-      } else {
-        p <- ggplot(agg_stats, aes(x = time_granular))
-      }
-
-      # Add ribbon based on aggregate mode
-      if (show_ribbon && plot_type == "line") {
-        if (aggregate_mode == "mean_sd") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
-        } else if (aggregate_mode == "mean_ci") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
-        } else if (aggregate_mode == "minmax") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
-        }
-      }
-
-      # Calculate ymin and ymax for bar plot error bars
+      # Calculate ymin and ymax for ribbon and error bars
       if (aggregate_mode == "mean_sd") {
         agg_stats <- agg_stats %>%
           mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
@@ -6451,22 +6402,41 @@ server <- function(input, output, session) {
           mutate(ymin = Min, ymax = Max)
       }
 
+      if (facet_room && "RoomID" %in% names(agg_stats)) {
+        p <- ggplot(agg_stats, aes(x = time_granular, y = Mean, color = RoomID, fill = RoomID))
+      } else {
+        p <- ggplot(agg_stats, aes(x = time_granular, y = Mean))
+      }
+
+      # Add ribbon based on aggregate mode
+      if (show_ribbon && plot_type == "line") {
+        if (facet_room && "RoomID" %in% names(agg_stats)) {
+          p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
+            alpha = ribbon_alpha, color = NA
+          )
+        } else {
+          p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
+            fill = metric_color, alpha = ribbon_alpha
+          )
+        }
+      }
+
       # Add line or bar plot
       if (plot_type == "line") {
         if (facet_room && "RoomID" %in% names(agg_stats)) {
-          p <- p + geom_line(aes(y = Mean, group = RoomID), linewidth = 1.2)
+          p <- p + geom_line(aes(group = RoomID), linewidth = 1.2)
           if ("points" %in% options) {
-            p <- p + geom_point(aes(y = Mean), size = 2)
+            p <- p + geom_point(size = 2)
           }
         } else {
-          p <- p + geom_line(aes(y = Mean), color = metric_color, linewidth = 1.2)
+          p <- p + geom_line(color = metric_color, linewidth = 1.2)
           if ("points" %in% options) {
-            p <- p + geom_point(aes(y = Mean), color = metric_color, size = 2)
+            p <- p + geom_point(color = metric_color, size = 2)
           }
         }
       } else if (plot_type == "bar") {
         if (facet_room && "RoomID" %in% names(agg_stats)) {
-          p <- p + geom_col(aes(y = Mean), position = "dodge", alpha = 0.8)
+          p <- p + geom_col(position = "dodge", alpha = 0.8)
           if (show_ribbon) {
             p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
               position = position_dodge(width = 0.9),
@@ -6474,7 +6444,7 @@ server <- function(input, output, session) {
             )
           }
         } else {
-          p <- p + geom_col(aes(y = Mean), fill = metric_color, alpha = 0.8)
+          p <- p + geom_col(fill = metric_color, alpha = 0.8)
           if (show_ribbon) {
             p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
               color = metric_color,
@@ -6722,7 +6692,7 @@ server <- function(input, output, session) {
       }
 
       # Base plot with aggregated data
-      pl <- ggplot(agg_stats, aes(x = time_granular, color = disease_state, fill = disease_state))
+      pl <- ggplot(agg_stats, aes(x = time_granular, y = Mean, color = disease_state, fill = disease_state))
 
       # Add ribbon for uncertainty
       if (show_ribbon && plot_type == "line") {
@@ -6731,12 +6701,12 @@ server <- function(input, output, session) {
 
       # Add plot type
       if (plot_type == "line") {
-        pl <- pl + geom_line(aes(y = Mean), linewidth = 1.2)
+        pl <- pl + geom_line(linewidth = 1.2)
         if ("points" %in% options) {
-          pl <- pl + geom_point(aes(y = Mean), size = 2.5)
+          pl <- pl + geom_point(size = 2.5)
         }
       } else if (plot_type == "bar") {
-        pl <- pl + geom_col(aes(y = Mean), position = "dodge", alpha = 0.8)
+        pl <- pl + geom_col(position = "dodge", alpha = 0.8)
         if (show_ribbon) {
           pl <- pl + geom_errorbar(aes(ymin = ymin, ymax = ymax),
             position = position_dodge(width = 0.9),
