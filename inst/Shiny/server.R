@@ -8585,17 +8585,26 @@ server <- function(input, output, session) {
       shapeAgents <- NULL
     } else {
       # Shape mode: Get custom shapes and sizes from user input
+      # Extract prefix and assign shapes by prefix (not by individual agent type)
+      prefixes <- gsub("[_0-9].*", "", agentTypesInLog)
+      unique_prefixes <- unique(prefixes)
+      
+      # Shape sequence for different prefixes
+      shape_sequence <- c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)
+      
+      # Create a mapping of prefix to shape
+      prefix_to_shape <- setNames(
+        shape_sequence[seq_along(unique_prefixes)],
+        unique_prefixes
+      )
+      
+      # Assign shapes and sizes based on prefix
       customShapes <- sapply(agentTypesInLog, function(at) {
-        inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
-        val <- input[[inputId]]
-        if (is.null(val) || is.na(val)) {
-          idx <- which(agentTypesInLog == at)
-          return(as.numeric(c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)[min(idx, 10)]))
-        }
-        as.numeric(val)
+        # Get prefix and assign shape based on prefix (ignore individual user inputs)
+        prefix <- gsub("[_0-9].*", "", at)
+        as.numeric(prefix_to_shape[prefix])
       })
-      names(customShapes) <- NULL
-
+      
       customSizes <- sapply(agentTypesInLog, function(at) {
         inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
         val <- input[[inputId]]
@@ -8612,6 +8621,7 @@ server <- function(input, output, session) {
         Size = customSizes,
         stringsAsFactors = F
       )
+      
       emojiAgents <- NULL
     }
 
@@ -8715,15 +8725,26 @@ server <- function(input, output, session) {
           emojiAgents <- data.frame(Agents = agentTypesInLog, EmojiCode = customEmojiCodes, stringsAsFactors = FALSE)
           shapeAgents <- NULL
         } else {
+          # Extract prefix and assign shapes by prefix (not by individual agent type)
+          prefixes <- gsub("[_0-9].*", "", agentTypesInLog)
+          unique_prefixes <- unique(prefixes)
+          
+          # Shape sequence for different prefixes
+          shape_sequence <- c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)
+          
+          # Create a mapping of prefix to shape
+          prefix_to_shape <- setNames(
+            shape_sequence[seq_along(unique_prefixes)],
+            unique_prefixes
+          )
+          
+          # Assign shapes and sizes based on prefix
           customShapes <- sapply(agentTypesInLog, function(at) {
-            inputId <- paste0("agentShape_", gsub("[^[:alnum:]]", "_", at))
-            val <- input[[inputId]]
-            if (is.null(val) || is.na(val)) {
-              idx <- which(agentTypesInLog == at)
-              return(as.numeric(c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)[min(idx, 10)]))
-            }
-            as.numeric(val)
+            # Get prefix and assign shape based on prefix (ignore individual user inputs)
+            prefix <- gsub("[_0-9].*", "", at)
+            as.numeric(prefix_to_shape[prefix])
           })
+          
           customSizes <- sapply(agentTypesInLog, function(at) {
             inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
             val <- input[[inputId]]
@@ -8733,6 +8754,7 @@ server <- function(input, output, session) {
             as.numeric(val)
           })
           shapeAgents <- data.frame(Agents = agentTypesInLog, Shape = customShapes, Size = customSizes, stringsAsFactors = FALSE)
+          
           emojiAgents <- NULL
         }
 
