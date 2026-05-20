@@ -1979,12 +1979,34 @@ server <- function(input, output, session) {
         postprocObjects$Mapping <- NULL
         postprocObjects$MappingID_room <- FALSE
         postprocObjects$Model <- NULL
-        if (is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)) {
+        if (is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath)) {
           shinyalert("Error", "Please select one RDs file.", "error")
           return()
         }
 
-        mess <- readRDS(input$RDsImport$datapath)
+        # Check extension (case-insensitive)
+        if (!grepl("\\.RDs$|\\.rds$", input$RDsImport$name)) {
+          shinyalert("Error", "The selected file must have a .RDs or .rds extension.", "error")
+          return()
+        }
+
+        # Check if file is empty
+        if (file.info(input$RDsImport$datapath)$size == 0) {
+          shinyalert("Error", "The selected file is empty.", "error")
+          return()
+        }
+
+        mess <- tryCatch(
+          readRDS(input$RDsImport$datapath),
+          error = function(e) {
+            return(NULL)
+          }
+        )
+
+        if (is.null(mess)) {
+          shinyalert("Error", "The file is not a valid RDs file or it is corrupted.", "error")
+          return()
+        }
         messNames <- names(mess)
 
         if (!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART))) {
@@ -2015,12 +2037,34 @@ server <- function(input, output, session) {
 
     # output$LoadingError_RDs <- renderText(
     isolate({
-      if (is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath) || !grepl(".RDs", input$RDsImport$datapath)) {
+      if (is.null(input$RDsImport) || !file.exists(input$RDsImport$datapath)) {
         shinyalert("Error", "Please select one RDs file.", "error")
         return()
       }
 
-      mess <- readRDS(input$RDsImport$datapath)
+      # Check extension (case-insensitive)
+      if (!grepl("\\.RDs$|\\.rds$", input$RDsImport$name)) {
+        shinyalert("Error", "The selected file must have a .RDs or .rds extension.", "error")
+        return()
+      }
+
+      # Check if file is empty
+      if (file.info(input$RDsImport$datapath)$size == 0) {
+        shinyalert("Error", "The selected file is empty.", "error")
+        return()
+      }
+
+      mess <- tryCatch(
+        readRDS(input$RDsImport$datapath),
+        error = function(e) {
+          return(NULL)
+        }
+      )
+
+      if (is.null(mess)) {
+        shinyalert("Error", "The file is not a valid RDs file or it is corrupted.", "error")
+        return()
+      }
       messNames <- names(mess)
 
       if (!all(messNames[-length(messNames)] %in% names(canvasObjectsSTART))) {
@@ -5283,7 +5327,28 @@ server <- function(input, output, session) {
       remove_modal_progress()
       return()
     }
-    postprocObjects$Model <- readRDS(model_file)
+
+    # Check if file is empty
+    if (file.info(model_file)$size == 0) {
+      shinyalert("Error", "The RDs file of the model is empty.", "error")
+      postprocObjects$dirPath <- NULL
+      remove_modal_progress()
+      return()
+    }
+
+    postprocObjects$Model <- tryCatch(
+      readRDS(model_file),
+      error = function(e) {
+        return(NULL)
+      }
+    )
+
+    if (is.null(postprocObjects$Model)) {
+      shinyalert("Error", "Failed to read the RDs file of the model. It might be corrupted.", "error")
+      postprocObjects$dirPath <- NULL
+      remove_modal_progress()
+      return()
+    }
 
     isolate({
       G <- read_table(rooms_file, col_names = FALSE)
@@ -6509,7 +6574,6 @@ server <- function(input, output, session) {
     if (!"legend" %in% options) {
       p <- p + theme(legend.position = "none")
     }
-
     p
   }
 
