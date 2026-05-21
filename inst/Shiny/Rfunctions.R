@@ -588,7 +588,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   # Healing: Remove orphaned agents and invalid keys from resources (Relocated and Hardened)
   if (!is.null(canvasObjects$resources)) {
     all_agents_list <- names(canvasObjects$agents)
-    
+
     # Keep only resource entries whose keys are valid (Type-Area currently in canvas)
     if (!is.null(canvasObjects$roomsINcanvas)) {
       valid_keys <- unique(paste0(canvasObjects$roomsINcanvas$type, "-", canvasObjects$roomsINcanvas$area))
@@ -1359,24 +1359,24 @@ check <- function(canvasObjects, input, output, InfoApp){
         return(NULL)
       }
 
-      spawnroom_indices <- grep("^Spawnroom", df_local$Room)
-      middle_spawnrooms <- spawnroom_indices[-c(1, length(spawnroom_indices))]
+      # spawnroom_indices <- grep("^Spawnroom", df_local$Room)
+      # middle_spawnrooms <- spawnroom_indices[-c(1, length(spawnroom_indices))]
 
-      if (length(middle_spawnrooms) %% 2 != 0) {
-        shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
-        remove_modal_spinner()
-        return(NULL)
-      }
+      # if (length(middle_spawnrooms) %% 2 != 0) {
+      #   shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
+      #   remove_modal_spinner()
+      #   return(NULL)
+      # }
 
-      if(length(middle_spawnrooms) > 0){
-        for (i in seq(1, length(middle_spawnrooms), by = 2)) {
-          if (middle_spawnrooms[i + 1] - middle_spawnrooms[i] != 1) {
-            shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
-            remove_modal_spinner()
-            return(NULL)
-          }
-        }
-      }
+      # if(length(middle_spawnrooms) > 0){
+      #   for (i in seq(1, length(middle_spawnrooms), by = 2)) {
+      #     if (middle_spawnrooms[i + 1] - middle_spawnrooms[i] != 1) {
+      #       shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
+      #       remove_modal_spinner()
+      #       return(NULL)
+      #     }
+      #   }
+      # }
 
       df_local$Time[nrow(df_local)] <- 0
       label <- strsplit(df_local$Label[nrow(df_local)], "-")[[1]]
