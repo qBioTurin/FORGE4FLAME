@@ -387,14 +387,22 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   ### updating the old RDs version with v.2 format ####
   for(a in names(canvasObjects$agents)){
-    if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
+    if(nrow(canvasObjects$agents[[a]]$RandFlow) > 0){
+      if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
 
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "None")
+      if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "None")
 
-    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedType = "None")
+      if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedType = "None")
+
+      if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeout = "None")
+
+      if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeoutBehave = "None")
+    }
 
     if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
       canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
@@ -403,6 +411,12 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
     if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
       canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
+
+    if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeout = "None")
+
+    if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
 
 
     if(! "Shift" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){

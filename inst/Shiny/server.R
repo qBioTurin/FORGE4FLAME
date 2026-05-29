@@ -2191,6 +2191,8 @@ server <- function(input, output, session) {
         }
       }
 
+      updateSelectizeInput(session, inputId = "agentLink_rand_flow", choices = c("", names(canvasObjects$agents)), selected = "")
+      updateSelectizeInput(session, inputId = "agentLink_det_flow", choices = c("", names(canvasObjects$agents)), selected = "")
 
       ### END updating
 
@@ -2223,7 +2225,7 @@ server <- function(input, output, session) {
         DT::datatable(
           data.frame(
             Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-            Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+            Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), AgentLinkedTimeout = character(0), AgentLinkedTimeoutBehave = character(0)
           ) %>% select(-c(Name, Activity)),
           options = list(
             columnDefs = list(
@@ -2234,13 +2236,15 @@ server <- function(input, output, session) {
               list(className = "dt-left", targets = 4),
               list(className = "dt-left", targets = 5),
               list(className = "dt-left", targets = 6),
-              list(className = "dt-left", targets = 7)
+              list(className = "dt-left", targets = 7),
+              list(className = "dt-left", targets = 8),
+              list(className = "dt-left", targets = 9)
             ),
             pageLength = 5
           ),
           selection = "single",
           rownames = F,
-          colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+          colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
         )
       )
 
@@ -2529,8 +2533,15 @@ server <- function(input, output, session) {
         return()
       }
 
+      if (input$max_wait_time_det == "" || is.na(input$max_wait_time_det == "") || input$max_wait_time_det < 1) {
+        shinyalert("Error", "You must specify aa timeout > 0.", type = "error")
+        return()
+      }
+
       agentlinked <- ifelse(input$agentLink_det_flow == "", "None", input$agentLink_det_flow)
       agentlinkedtype <- ifelse(input$agentLink_det_flow == "", "None", input$ckbox_agentLink_det_flow)
+      agentlinkedtimeout <- ifelse(input$agentLink_det_flow == "", "None", input$max_wait_time_det)
+      agentlinkedtimeoutbehave <- ifelse(input$agentLink_det_flow == "", "None", input$ckbox_agentLink_timeout_det)
 
       if (new_room != "" && new_time != "") {
         agentsOLD <- canvasObjects$agents[[name]]$DeterFlow
@@ -2542,10 +2553,12 @@ server <- function(input, output, session) {
           Time = new_time,
           Flow = length(agentsOLD_filter[, "Flow"]) + 1,
           Activity = activity,
-          Label = paste0(new_room, " - ", new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked),
+          Label = paste0(new_room, " - ", new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked, " (", agentlinkedtype, ",  ", agentlinkedtimeout, ", ", agentlinkedtimeoutbehave, ") "),
           FlowID = FlowID,
           AgentLinked = agentlinked,
-          AgentLinkedType = agentlinkedtype
+          AgentLinkedType = agentlinkedtype,
+          AgentLinkedTimeout = agentlinkedtimeout,
+          AgentLinkedTimeoutBehave = agentlinkedtimeoutbehave
         )
 
         if (agent$Label %in% agentsOLD_filter[, "Label"]) {
@@ -2715,7 +2728,7 @@ server <- function(input, output, session) {
             Flow = 1:length(list_detflow)
           )
           DeterFlow <- merge(agent %>% select(-Flow), newOrder, by = c("Name", "Label")) %>%
-            select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType) %>%
+            select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType, AgentLinkedTimeout, AgentLinkedTimeoutBehave) %>%
             arrange(Flow)
           canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
         }
@@ -2793,8 +2806,15 @@ server <- function(input, output, session) {
       return()
     }
 
+    if (input$max_wait_time_rand == "" || is.na(input$max_wait_time_rand == "") || input$max_wait_time_rand < 1) {
+      shinyalert("Error", "You must specify aa timeout > 0.", type = "error")
+      return()
+    }
+
     agentlinked <- agentlinkedtype <- ifelse(input$agentLink_rand_flow == "", "None", input$agentLink_rand_flow)
     agentlinkedtype <- ifelse(input$agentLink_rand_flow == "", "None", input$ckbox_agentLink_rand_flow)
+    agentlinkedtimeout <- ifelse(input$agentLink_rand_flow == "", "None", input$max_wait_time_rand)
+    agentlinkedtimeoutbehave <- ifelse(input$agentLink_rand_flow == "", "None", input$ckbox_agentLink_timeout_rand)
 
     if (input$Rand_select_room_flow != "") {
       newOrder <- data.frame(
@@ -2807,7 +2827,9 @@ server <- function(input, output, session) {
         Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
         TimeSlot = times[1],
         AgentLinked = agentlinked,
-        AgentLinkedType = agentlinkedtype
+        AgentLinkedType = agentlinkedtype,
+        AgentLinkedTimeout = agentlinkedtimeout,
+        AgentLinkedTimeoutBehave = agentlinkedtimeoutbehave
       )
       canvasObjects$agents[[name]]$RandFlow <- rbind(canvasObjects$agents[[name]]$RandFlow, newOrder)
     }
@@ -2823,13 +2845,15 @@ server <- function(input, output, session) {
             list(className = "dt-left", targets = 4),
             list(className = "dt-left", targets = 5),
             list(className = "dt-left", targets = 6),
-            list(className = "dt-left", targets = 7)
+            list(className = "dt-left", targets = 7),
+            list(className = "dt-left", targets = 8),
+            list(className = "dt-left", targets = 9)
           ),
           pageLength = 5
         ),
         selection = "single",
         rownames = F,
-        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
       )
     )
 
@@ -2852,13 +2876,15 @@ server <- function(input, output, session) {
                 list(className = "dt-left", targets = 4),
                 list(className = "dt-left", targets = 5),
                 list(className = "dt-left", targets = 6),
-                list(className = "dt-left", targets = 7)
+                list(className = "dt-left", targets = 7),
+                list(className = "dt-left", targets = 8),
+                list(className = "dt-left", targets = 9)
               ),
               pageLength = 5
             ),
             selection = "single",
             rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       } else {
@@ -2866,7 +2892,7 @@ server <- function(input, output, session) {
           DT::datatable(
             data.frame(
               Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-              Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+              Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
             ) %>% select(-c(Name, Activity)),
             options = list(
               columnDefs = list(
@@ -2877,13 +2903,15 @@ server <- function(input, output, session) {
                 list(className = "dt-left", targets = 4),
                 list(className = "dt-left", targets = 5),
                 list(className = "dt-left", targets = 6),
-                list(className = "dt-left", targets = 7)
+                list(className = "dt-left", targets = 7),
+                list(className = "dt-left", targets = 8),
+                list(className = "dt-left", targets = 9)
               ),
               pageLength = 5
             ),
             selection = "single",
             rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       }
@@ -2913,7 +2941,7 @@ server <- function(input, output, session) {
                 DT::datatable(
                   data.frame(
                     Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-                    Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+                    Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
                   ) %>% select(-c(Name, Activity)),
                   options = list(
                     columnDefs = list(
@@ -2924,13 +2952,15 @@ server <- function(input, output, session) {
                       list(className = "dt-left", targets = 4),
                       list(className = "dt-left", targets = 5),
                       list(className = "dt-left", targets = 6),
-                      list(className = "dt-left", targets = 7)
+                      list(className = "dt-left", targets = 7),
+                      list(className = "dt-left", targets = 8),
+                      list(className = "dt-left", targets = 9)
                     ),
                     pageLength = 5
                   ),
                   selection = "single",
                   rownames = F,
-                  colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+                  colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
                 )
               )
             } else {
@@ -8524,23 +8554,23 @@ server <- function(input, output, session) {
       # Extract prefix and assign shapes by prefix (not by individual agent type)
       prefixes <- gsub("[_0-9].*", "", agentTypesInLog)
       unique_prefixes <- unique(prefixes)
-      
+
       # Shape sequence for different prefixes
       shape_sequence <- c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)
-      
+
       # Create a mapping of prefix to shape
       prefix_to_shape <- setNames(
         shape_sequence[seq_along(unique_prefixes)],
         unique_prefixes
       )
-      
+
       # Assign shapes and sizes based on prefix
       customShapes <- sapply(agentTypesInLog, function(at) {
         # Get prefix and assign shape based on prefix (ignore individual user inputs)
         prefix <- gsub("[_0-9].*", "", at)
         as.numeric(prefix_to_shape[prefix])
       })
-      
+
       customSizes <- sapply(agentTypesInLog, function(at) {
         inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
         val <- input[[inputId]]
@@ -8557,7 +8587,7 @@ server <- function(input, output, session) {
         Size = customSizes,
         stringsAsFactors = F
       )
-      
+
       emojiAgents <- NULL
     }
 
@@ -8664,23 +8694,23 @@ server <- function(input, output, session) {
           # Extract prefix and assign shapes by prefix (not by individual agent type)
           prefixes <- gsub("[_0-9].*", "", agentTypesInLog)
           unique_prefixes <- unique(prefixes)
-          
+
           # Shape sequence for different prefixes
           shape_sequence <- c(16, 15, 17, 18, 1, 0, 2, 3, 4, 5)
-          
+
           # Create a mapping of prefix to shape
           prefix_to_shape <- setNames(
             shape_sequence[seq_along(unique_prefixes)],
             unique_prefixes
           )
-          
+
           # Assign shapes and sizes based on prefix
           customShapes <- sapply(agentTypesInLog, function(at) {
             # Get prefix and assign shape based on prefix (ignore individual user inputs)
             prefix <- gsub("[_0-9].*", "", at)
             as.numeric(prefix_to_shape[prefix])
           })
-          
+
           customSizes <- sapply(agentTypesInLog, function(at) {
             inputId <- paste0("agentSize_", gsub("[^[:alnum:]]", "_", at))
             val <- input[[inputId]]
@@ -8690,7 +8720,7 @@ server <- function(input, output, session) {
             as.numeric(val)
           })
           shapeAgents <- data.frame(Agents = agentTypesInLog, Shape = customShapes, Size = customSizes, stringsAsFactors = FALSE)
-          
+
           emojiAgents <- NULL
         }
 
