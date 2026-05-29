@@ -62,7 +62,7 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     ),
     outside_contagion = NULL,
-    virus_parameters = data.frame(virus_variant = 1, ngen_base = 0.589, vl = 9, decay_rate = 0.636, gravitational_settling_rate = 0.39, inhalation_rate_pure = 0.521),
+    virus_parameters = data.frame(radius = 1.05, virus_variant = 1, ngen_base = 0.589, vl = 9, decay_rate = 0.636, gravitational_settling_rate = 0.39, inhalation_rate_pure = 0.521),
     cancel_button_selected = FALSE,
     TwoDVisual = NULL,
     width = NULL,
