@@ -3504,7 +3504,7 @@ server <- function(input, output, session) {
         !is.null(input$textInput_resources_global) &&
         !grepl("^[0-9]+$", input$textInput_resources_global) &&
         input$textInput_resources_global >= 0) {
-        shinyalert("Error", "You must specify a numeric value greater or equals than 0 (>= 0) for the global number of resources.", type = "error")
+        shinyalert("Error", "You must specify a numeric value greater or equals than 0 for the global number of resources.", type = "error")
         return()
       }
 
@@ -4017,11 +4017,17 @@ server <- function(input, output, session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
+    radius <- input$radius
     ngen_base <- input$ngen_base
     vl <- input$vl
     decay_rate <- input$decay_rate
     gravitational_settling_rate <- input$gravitational_settling_rate
     inhalation_rate_pure <- input$inhalation_rate_pure
+
+    if (is.null(radius) || !is.numeric(radius) || radius < 0) {
+      shinyalert("Error", "The contact radius must be a number greater than 0.", "error")
+      return()
+    }
 
     if (is.null(ngen_base) || !is.numeric(ngen_base) || ngen_base < 0) {
       shinyalert("Error", "The exhalation rate pure must be a number greater than 0.", "error")
@@ -4048,6 +4054,7 @@ server <- function(input, output, session) {
       return()
     }
 
+    canvasObjects$virus_parameters$radius <- radius
     canvasObjects$virus_parameters$ngen_base <- ngen_base
     canvasObjects$virus_parameters$vl <- vl
     canvasObjects$virus_parameters$decay_rate <- decay_rate
@@ -4701,7 +4708,7 @@ server <- function(input, output, session) {
     req(input$virus_variant)
 
     if ((input$virus_variant) < 0) {
-      shinyalert("Error", "Virus variant must be > 0.", type = "error")
+      shinyalert("Error", "Virus variant must be greater than 0.", type = "error")
       return()
     }
 
@@ -5105,7 +5112,7 @@ server <- function(input, output, session) {
     seed <- input$seed
 
     if (seed == "" || !grepl("(^[0-9]+).*", seed) || seed < 0) {
-      shinyalert("Error", "You must specify a number greater then or equal to 0 (>= 0).", type = "error")
+      shinyalert("Error", "You must specify a number greater than or equal to 0.", type = "error")
       return()
     }
 
@@ -5128,7 +5135,7 @@ server <- function(input, output, session) {
     nrun <- input$nrun
 
     if (nrun == "" || !grepl("(^[0-9]+).*", nrun) || nrun <= 0) {
-      shinyalert("Error", "You must specify a number greater than 0 (> 0).", type = "error")
+      shinyalert("Error", "You must specify a number greater than 0.", type = "error")
       return()
     }
 
@@ -5145,7 +5152,7 @@ server <- function(input, output, session) {
     prun <- input$prun
 
     if (prun == "" || !grepl("(^[0-9]+).*", prun) || prun <= 0) {
-      shinyalert("Error", "You must specify a number greater than 0 (> 0).", type = "error")
+      shinyalert("Error", "You must specify a number greater than 0.", type = "error")
       return()
     }
 

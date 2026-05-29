@@ -535,6 +535,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(inputId = "disease_model",
                        selected = selected)
 
+  updateNumericInput(session, "radius", value = canvasObjects$virus_parameters$radius)
   updateNumericInput(session, "ngen_base", value = canvasObjects$virus_parameters$ngen_base)
   updateNumericInput(session, "vl", value = canvasObjects$virus_parameters$vl)
   updateNumericInput(session, "decay_rate", value = canvasObjects$virus_parameters$decay_rate)
@@ -879,7 +880,7 @@ check_distribution_parameters <- function(input, suffix){
 
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
-      shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
+      shinyalert("Error", "You must specify a time greater than 0 (in minutes).", type = "error")
       return(list(NULL, NULL))
     }
     new_time = input[[paste0("DetTime_", suffix)]]
@@ -892,7 +893,7 @@ check_distribution_parameters <- function(input, suffix){
         return(list(NULL, NULL))
 
       if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]])) <= 0 ){
-        shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
+        shinyalert("Error", "You must specify a time greater than (in minutes).", type = "error")
         return(list(NULL, NULL))
       }
       new_time = input[[paste0("DistStoc_ExpRate_", suffix)]]
@@ -904,7 +905,7 @@ check_distribution_parameters <- function(input, suffix){
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]]))) ||
           as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]])) >= as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]])) ||
           as.numeric(input[[paste0("DistStoc_UnifRate_a_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_UnifRate_b_", suffix)]]) <= 0){
-        shinyalert("Error", "You must specify a and b as numeric (in minutes and both > 0), with a < b.", type = "error")
+        shinyalert("Error", "You must specify a and b as numeric (in minutes and both greater than), with a < b.", type = "error")
         return(list(NULL, NULL))
       }
       new_time = paste0("a = ",input[[paste0("DistStoc_UnifRate_a_", suffix)]] ,"; b = ",input[[paste0("DistStoc_UnifRate_b_", suffix)]])
@@ -1483,19 +1484,19 @@ check <- function(canvasObjects, input, output, InfoApp){
   }
 
   if(input$seed == "" || !grepl("(^[0-9]+).*", input$seed) || input$seed < 0){
-    shinyalert("Error", "You must specify a number greater or equals than 0 (>= 0) as seed (Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater or equals than 0 as seed (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days <= 0){
-    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of days to simulate (Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater than 0 as number of days to simulate (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$nrun == "" || !grepl("(^[0-9]+).*", input$nrun) || input$nrun <= 0){
-    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater than 0 as number of run to execute (in the Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }

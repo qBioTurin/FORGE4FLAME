@@ -1572,6 +1572,20 @@ ui <- dashboardPage(
             collapsible = T,
             collapsed = F,
             title = h3("Detailed virus parameters"),
+            h3(tags$b("Close-range contacts")),
+            fluidRow(
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "radius",
+                  label = "Contact radius:",
+                  value = 1.05,
+                  min = 0
+                )
+              )
+            ),
+            h3(tags$b("Aerosol transmission")),
             fluidRow(
               column(
                 2,
