@@ -985,7 +985,7 @@ ui <- dashboardPage(
                        numericInput("max_wait_time_det",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Indicate the maximum time (in minutes) to wait for linked agent (timeout):"),
-                                                div(class = "icon-text", "...")
+                                                div(class = "icon-text", "All agents of the selected type may not be available for a certain amount of time. To avoid long waiting times, the user can set a maximum timeout.")
                                     ),
                                     value = 15, min = 1)
                 )
@@ -993,10 +993,7 @@ ui <- dashboardPage(
               fluidRow(
                 column(3,offset=1,
                        radioButtons(inputId = "ckbox_agentLink_timeout_det",
-                                    label = div(class = "icon-container",
-                                                h4(icon("info-circle"), "What to do the agent linked is not available after timeout:"),
-                                                div(class = "icon-text", "...")
-                                    ),
+                                    label = "What to do if the timeout expires:",
                                     choices = c("Proceed alone", "Skip this piece of the flow"),
                                     selected = "Proceed alone"
                        )
@@ -1079,7 +1076,7 @@ ui <- dashboardPage(
                        numericInput("max_wait_time_rand",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Indicate the max time (in minutes) to wait for linked agent (timeout):"),
-                                                div(class = "icon-text", "...")
+                                                div(class = "icon-text", "All agents of the selected type may not be available for a certain amount of time. To avoid long waiting times, the user can set a maximum timeout.")
                                     ),
                                     value = 15, min = 1)
                 )
@@ -1087,11 +1084,8 @@ ui <- dashboardPage(
               fluidRow(
                 column(3,offset=1,
                        radioButtons(inputId = "ckbox_agentLink_timeout_rand",
-                                    label = div(class = "icon-container",
-                                                h4(icon("info-circle"), "What to do the agent linked is not available after timeout:"),
-                                                div(class = "icon-text", "...")
-                                    ),
-                                    choices = c("Proceed alone", "Skip this piece of the flow"),
+                                    label = "What to do if the timeout expires:",
+                                    choices = c("Proceed alone", "Skip the event"),
                                     selected = "Proceed alone"
                        )
                 )
