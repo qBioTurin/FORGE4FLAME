@@ -971,7 +971,7 @@ ui <- dashboardPage(
             conditionalPanel(
               condition="input.agentLink_det_flow != ''",
               fluidRow(
-                column(2, offset = 1,
+                column(3, offset = 1,
                        radioButtons(inputId = "ckbox_agentLink_det_flow",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Select type of link:"),
@@ -979,6 +979,23 @@ ui <- dashboardPage(
                                     ),
                                     choices = c("Accompaniment only", "Accompaniment and stay"),
                                     selected = "Accompaniment only"
+                      )
+                ),
+                column(3,offset=2,
+                       numericInput("max_wait_time_det",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Indicate the maximum time (in minutes) to wait for linked agent (timeout):"),
+                                                div(class = "icon-text", "All agents of the selected type may not be available for a certain amount of time. To avoid long waiting times, the user can set a maximum timeout.")
+                                    ),
+                                    value = 15, min = 1)
+                )
+              ),
+              fluidRow(
+                column(3,offset=1,
+                       radioButtons(inputId = "ckbox_agentLink_timeout_det",
+                                    label = "What to do if the timeout expires:",
+                                    choices = c("Proceed alone", "Skip this piece of the flow"),
+                                    selected = "Proceed alone"
                        )
                 )
               )
@@ -995,7 +1012,7 @@ ui <- dashboardPage(
               )
             ),
             fluidRow(
-              column(5,offset = 1,
+              column(7,offset = 1,
                      tabsetPanel(
                        id = "DetFlow_tabs"
                      )
@@ -1045,7 +1062,7 @@ ui <- dashboardPage(
             conditionalPanel(
               condition="input.agentLink_rand_flow != ''",
               fluidRow(
-                column(2, offset = 1,
+                column(3, offset = 1,
                        radioButtons(inputId = "ckbox_agentLink_rand_flow",
                                     label = div(class = "icon-container",
                                                 h4(icon("info-circle"), "Select type of link:"),
@@ -1053,6 +1070,23 @@ ui <- dashboardPage(
                                     ),
                                     choices = c("Accompaniment only", "Accompaniment and stay"),
                                     selected = "Accompaniment only"
+                       )
+                ),
+                column(3,offset=2,
+                       numericInput("max_wait_time_rand",
+                                    label = div(class = "icon-container",
+                                                h4(icon("info-circle"), "Indicate the max time (in minutes) to wait for linked agent (timeout):"),
+                                                div(class = "icon-text", "All agents of the selected type may not be available for a certain amount of time. To avoid long waiting times, the user can set a maximum timeout.")
+                                    ),
+                                    value = 15, min = 1)
+                )
+              ),
+              fluidRow(
+                column(3,offset=1,
+                       radioButtons(inputId = "ckbox_agentLink_timeout_rand",
+                                    label = "What to do if the timeout expires:",
+                                    choices = c("Proceed alone", "Skip the event"),
+                                    selected = "Proceed alone"
                        )
                 )
               )
@@ -1538,6 +1572,20 @@ ui <- dashboardPage(
             collapsible = T,
             collapsed = F,
             title = h3("Detailed virus parameters"),
+            h3(tags$b("Close-range contacts")),
+            fluidRow(
+              column(
+                2,
+                offset = 1,
+                numericInput(
+                  inputId = "radius",
+                  label = "Contact radius:",
+                  value = 1.05,
+                  min = 0
+                )
+              )
+            ),
+            h3(tags$b("Aerosol transmission")),
             fluidRow(
               column(
                 2,
@@ -2714,7 +2762,7 @@ ui <- dashboardPage(
                             tags$h5(icon("palette"), " Room Coloring", style = "color: #337ab7; margin-bottom: 10px;"),
                             fluidRow(
                               column(3,
-                                     selectizeInput("visualColor_select", "Color by:", 
+                                     selectizeInput("visualColor_select", "Color by:",
                                                     choices = c("Name", "Type", "Area",
                                                                 "Cumulative #Contacts" = "CumulContact",
                                                                 "Aerosol" = "Aerosol",
