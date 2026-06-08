@@ -2577,8 +2577,8 @@ server <- function(input, output, session) {
         return()
       }
 
-      if (input$max_wait_time_det == "" || is.na(input$max_wait_time_det == "") || input$max_wait_time_det < 1) {
-        shinyalert("Error", "You must specify aa timeout > 0.", type = "error")
+      if (input$max_wait_time_det == "" || is.na(input$max_wait_time_det) || input$max_wait_time_det < 1) {
+        shinyalert("Error", "You must specify a timeout > 0.", type = "error")
         return()
       }
 
@@ -2597,7 +2597,7 @@ server <- function(input, output, session) {
           Time = new_time,
           Flow = length(agentsOLD_filter[, "Flow"]) + 1,
           Activity = activity,
-          Label = paste0(new_room, " - ", new_dist, " ", new_time, " min", " - ", activityLabel, " - ", agentlinked, " (", agentlinkedtype, ",  ", agentlinkedtimeout, ", ", agentlinkedtimeoutbehave, ") "),
+          Label = paste0(new_room, " - ", new_dist, " ", new_time, " min - ", activityLabel, " - ", agentlinked, " (", agentlinkedtype, ", ", agentlinkedtimeout, ", ", agentlinkedtimeoutbehave, ")"),
           FlowID = FlowID,
           AgentLinked = agentlinked,
           AgentLinkedType = agentlinkedtype,
@@ -2742,8 +2742,9 @@ server <- function(input, output, session) {
           canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- canvasObjects$agents[[input$id_new_agent]]$DeterFlow[-nrow, ]
         } else {
           canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- data.frame(
-            Name = character(0), Room = character(0), Time = numeric(0), Flow = numeric(0), Activity = numeric(0),
-            Label = character(0), FlowID = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+            Name = character(0), Room = character(0), Dist = character(0), Time = character(0), Flow = numeric(0), Activity = numeric(0),
+            Label = character(0), FlowID = character(0), AgentLinked = character(0), AgentLinkedType = character(0),
+            AgentLinkedTimeout = character(0), AgentLinkedTimeoutBehave = character(0)
           )
         }
       }
@@ -2766,15 +2767,22 @@ server <- function(input, output, session) {
         if (!is.null(list_detflow) &&
           length(agent$Room) > 0 &&
           length(list_detflow) == length(agent$Label)) {
-          newOrder <- data.frame(
-            Name = input$id_new_agent,
-            Label = list_detflow,
-            Flow = 1:length(list_detflow)
-          )
-          DeterFlow <- merge(agent %>% select(-Flow), newOrder, by = c("Name", "Label")) %>%
-            select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType, AgentLinkedTimeout, AgentLinkedTimeoutBehave) %>%
-            arrange(Flow)
-          canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
+          
+          # Use match to reorder based on labels, which is more robust than merge
+          indices <- match(list_detflow, agent$Label)
+          
+          # Only update if all labels were found (no NAs)
+          if (!any(is.na(indices))) {
+            DeterFlow <- agent[indices, ]
+            DeterFlow$Flow <- 1:nrow(DeterFlow)
+            DeterFlow <- DeterFlow %>%
+              select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType, AgentLinkedTimeout, AgentLinkedTimeoutBehave)
+            
+            # Check if anything actually changed before updating to avoid unnecessary reactivity
+            if (!identical(agent, DeterFlow)) {
+              canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
+            }
+          }
         }
       })
     }
@@ -2850,8 +2858,8 @@ server <- function(input, output, session) {
       return()
     }
 
-    if (input$max_wait_time_rand == "" || is.na(input$max_wait_time_rand == "") || input$max_wait_time_rand < 1) {
-      shinyalert("Error", "You must specify aa timeout > 0.", type = "error")
+    if (input$max_wait_time_rand == "" || is.na(input$max_wait_time_rand) || input$max_wait_time_rand < 1) {
+      shinyalert("Error", "You must specify a timeout > 0.", type = "error")
       return()
     }
 
