@@ -2590,6 +2590,10 @@ server <- function(input, output, session) {
       if (new_room != "" && new_time != "") {
         agentsOLD <- canvasObjects$agents[[name]]$DeterFlow
         agentsOLD_filter <- agentsOLD[agentsOLD$FlowID == FlowID, ]
+        label <- paste0(new_room, " - ", new_dist, " ", new_time, " min - ", activityLabel, " - ", agentlinked, " (", agentlinkedtype, ", ", agentlinkedtimeout, ", ", agentlinkedtimeoutbehave, ")")
+        if(agentlinked == "None")
+          label <- paste0(new_room, " - ", new_dist, " ", new_time, " min - ", activityLabel)
+
         agent <- data.frame(
           Name = name,
           Room = new_room,
@@ -2597,7 +2601,7 @@ server <- function(input, output, session) {
           Time = new_time,
           Flow = length(agentsOLD_filter[, "Flow"]) + 1,
           Activity = activity,
-          Label = paste0(new_room, " - ", new_dist, " ", new_time, " min - ", activityLabel, " - ", agentlinked, " (", agentlinkedtype, ", ", agentlinkedtimeout, ", ", agentlinkedtimeoutbehave, ")"),
+          Label = label,
           FlowID = FlowID,
           AgentLinked = agentlinked,
           AgentLinkedType = agentlinkedtype,
@@ -2767,17 +2771,17 @@ server <- function(input, output, session) {
         if (!is.null(list_detflow) &&
           length(agent$Room) > 0 &&
           length(list_detflow) == length(agent$Label)) {
-          
+
           # Use match to reorder based on labels, which is more robust than merge
           indices <- match(list_detflow, agent$Label)
-          
+
           # Only update if all labels were found (no NAs)
           if (!any(is.na(indices))) {
             DeterFlow <- agent[indices, ]
             DeterFlow$Flow <- 1:nrow(DeterFlow)
             DeterFlow <- DeterFlow %>%
               select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType, AgentLinkedTimeout, AgentLinkedTimeoutBehave)
-            
+
             # Check if anything actually changed before updating to avoid unnecessary reactivity
             if (!identical(agent, DeterFlow)) {
               canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
@@ -2876,7 +2880,7 @@ server <- function(input, output, session) {
         Time = new_time,
         Activity = activity,
         ActivityLabel = activityLabel,
-        Weight = gsub(",", "\\.", as.numeric(input$RandWeight)),
+        Weight = paste0(gsub(",", "\\.", as.numeric(input$RandWeight)), " (", input$UnitMeasureWeight, ")"),
         TimeSlot = times[1],
         AgentLinked = agentlinked,
         AgentLinkedType = agentlinkedtype,

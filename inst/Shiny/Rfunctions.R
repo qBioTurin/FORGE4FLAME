@@ -404,20 +404,40 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
         canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeoutBehave = "None")
     }
 
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
-      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - None" )
+    # Define the time units to check
+    time_units <- c("second", "minute", "hour", "day", "week")
+
+    # Get the Weight vector
+    weights <- canvasObjects$agents[[a]]$RandFlow$Weight
+
+    # Find rows where NONE of the time_units appear in the weight string
+    # Use grepl to check if any time unit exists in each weight entry
+    has_time_unit <- sapply(weights, function(w) {
+      any(grepl(time_units, w, fixed = TRUE))
+    })
+
+    # Rows without any time unit
+    rows_to_add <- which(!has_time_unit)
+
+    # Add " (minute)" to those rows
+    canvasObjects$agents[[a]]$RandFlow$Weight[rows_to_add] <-
+      paste0(canvasObjects$agents[[a]]$RandFlow$Weight[rows_to_add], " (minute)")
+
+    if(nrow(canvasObjects$agents[[a]]$DeterFlow) > 0){
+      if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
+        canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - None" )
+      }
+
+      if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
+
+      if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeout = "None")
+
+      if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
     }
-
-    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
-
-    if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeout = "None")
-
-    if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
-
 
     if(! "Shift" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){
       canvasObjects$agents[[a]]$EntryExitTime$Shift <- "1 shift"
@@ -479,6 +499,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
       updateSelectizeInput(session, "disease_model", selected = canvasObjects$disease[[1]]$disease_model_name)
       updateNumericInput(session, "num_risk_classes", value = length(canvasObjects$disease))
 
+      # Load data for each risk class
       print("TO DO")
     }
     else{

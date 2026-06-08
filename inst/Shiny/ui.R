@@ -1043,7 +1043,10 @@ ui <- dashboardPage(
               column(3,offset=1,
                      textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
               ),
-              column(3,offset=2,
+              column(1,
+                     selectizeInput(inputId = "UnitMeasureWeight", label = "Weight per:", choices = c("second", "minute", "hour", "day", "week"), selected="minute")
+              ),
+              column(3,offset=1,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
               ),
               column(3,offset=6,
