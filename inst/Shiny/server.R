@@ -2559,6 +2559,7 @@ server <- function(input, output, session) {
         "Quite Hard - e.g. speak/walk while standing" = 2.5556,
         "Hard - e.g. loudly speaking" = 6.1111
       )
+
       activityLabel <- switch(input$DetActivity,
         "Very Light - e.g. resting" = "Very Light",
         "Light - e.g. speak while resting" = "Light",

@@ -437,6 +437,21 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
       if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
         canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
+
+      for(i in 1:nrow(canvasObjects$agents[[a]]$DeterFlow)){
+        if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None"){
+          activityLabel <- switch(paste(canvasObjects$agents[[a]]$DeterFlow$Activity[i]),
+                                  "1" = "Very Light",
+                                  "1.7777" = "Light",
+                                  "2.5556" ="Quite Hard",
+                                  "6.1111" = "Hard"
+          )
+
+          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
+        }
+
+        canvasObjects$agents[[a]]$DeterFlow$Label[i] <- label
+      }
     }
 
     if(! "Shift" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){
