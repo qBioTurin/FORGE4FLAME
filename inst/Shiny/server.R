@@ -4825,7 +4825,7 @@ server <- function(input, output, session) {
           distinct()
         NumAgent <- sum(as.numeric(eet$NumAgent))
         if (as.integer(input$initial_infected_global) > NumAgent) {
-          shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", names(canvasObjects$agents)[a], " there are ", NumAgent, " agents)."), type = "error")
+          shinyalert("Error", paste0("Initial infected must be a number smaller or equal (<=) the number of agents (for the agent ", a, " there are ", NumAgent, " agents)."), type = "error")
           return()
         }
       }
