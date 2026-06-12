@@ -1041,12 +1041,12 @@ ui <- dashboardPage(
             ),
             fluidRow(
               column(3,offset=1,
-                     textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
+                     textInput(inputId = "RandTimes", label = "Number of times:",placeholder = "")
               ),
-              column(1,
-                     selectizeInput(inputId = "UnitMeasureWeight", label = "Weight per:", choices = c("second", "minute", "hour", "day", "week"), selected="minute")
+              column(2,
+                     selectizeInput(inputId = "UnitMeasureTimes", label = "Number of times per:", choices = c("minute", "hour", "day", "week"), selected="minute")
               ),
-              column(3,offset=1,
+              column(3,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
               ),
               column(3,offset=6,

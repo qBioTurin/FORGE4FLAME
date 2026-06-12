@@ -2146,7 +2146,7 @@ server <- function(input, output, session) {
         ),
         RandFlow = data.frame(
           Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-          Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+          Times = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
         ),
         EntryExitTime = NULL,
         NumAgent = "1"
@@ -2269,7 +2269,7 @@ server <- function(input, output, session) {
         DT::datatable(
           data.frame(
             Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-            Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), AgentLinkedTimeout = character(0), AgentLinkedTimeoutBehave = character(0)
+            Times = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), AgentLinkedTimeout = character(0), AgentLinkedTimeoutBehave = character(0)
           ) %>% select(-c(Name, Activity)),
           options = list(
             columnDefs = list(
@@ -2288,7 +2288,7 @@ server <- function(input, output, session) {
           ),
           selection = "single",
           rownames = F,
-          colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+          colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
         )
       )
 
@@ -2832,10 +2832,8 @@ server <- function(input, output, session) {
       return()
     }
 
-    if (input$RandWeight == "" ||
-      (as.double(as.numeric(gsub(",", "\\.", input$RandWeight))) <= 0 ||
-        as.double((as.numeric(gsub(",", "\\.", input$RandWeight)))) >= 1)) {
-      shinyalert("Error", "You must specify a weight between 0 and 1.", type = "error")
+    if (input$RandTimes == "" || as.double(as.numeric(gsub(",", "\\.", input$RandTimes))) <= 0) {
+      shinyalert("Error", "You must specify a number of times greater than 0.", type = "error")
       return()
     }
 
@@ -2868,6 +2866,63 @@ server <- function(input, output, session) {
       return()
     }
 
+    step <- as.numeric(canvasObjects$starting$step)
+
+    probabilities = matrix(0, nrow = 1440 * (60 / step), ncol = 7)
+    if(nrow(canvasObjects$agents[[name]]$RandFlow) > 0){
+      for(rf in 1:nrow(canvasObjects$agents[[name]]$RandFlow)){
+        randflow_local = canvasObjects$agents[[name]]$RandFlow[rf,]
+
+        EntryTime_local <- strsplit(randflow_local$TimeSlot, " - ")[[1]][1]
+        ExitTime_local <- strsplit(randflow_local$TimeSlot, " - ")[[1]][2]
+
+        entry <- as.numeric(strsplit(EntryTime_local, ":")[[1]][1]) * 60 * (60 / step) + as.numeric(strsplit(EntryTime_local, ":")[[1]][2]) * (60 / step)
+        exit <- as.numeric(strsplit(ExitTime_local, ":")[[1]][1]) * 60 * (60 / step) + as.numeric(strsplit(ExitTime_local, ":")[[1]][2]) * (60 / step)
+
+        if(as.numeric(strsplit(ExitTime_local, ":")[[1]][1]) == 23 && as.numeric(strsplit(ExitTime_local, ":")[[1]][2]) == 59)
+          exit <- exit + (60 / step)
+
+        number_of_times <- as.numeric(strsplit(randflow_local$Times, " ")[[1]][1])
+
+        if(grepl("minute", randflow_local$Times)){
+          probabilities[entry:exit,] <- probabilities[entry:exit,] + number_of_times / (60 / step)
+        }
+        else if(grepl("hour", randflow_local$Times)){
+          probabilities[entry:exit,] <- probabilities[entry:exit,] + number_of_times / (60 * (60 / step))
+        }
+        else if(grepl("day", randflow_local$Times)){
+          probabilities[entry:exit,] <- probabilities[entry:exit,] + number_of_times / (exit-entry)
+        }
+        else if(grepl("week", randflow_local$Times)){
+          probabilities[entry:exit,] <- probabilities[entry:exit,] + number_of_times / ((exit-entry) * 7)
+        }
+      }
+    }
+
+    entry <- as.numeric(strsplit(EntryTime, ":")[[1]][1]) * 60 * (60 / step) + as.numeric(strsplit(EntryTime, ":")[[1]][2]) * (60 / step)
+    exit <- as.numeric(strsplit(ExitTime, ":")[[1]][1]) * 60 * (60 / step) + as.numeric(strsplit(ExitTime, ":")[[1]][2]) * (60 / step)
+
+    if(as.numeric(strsplit(ExitTime, ":")[[1]][1]) == 23 && as.numeric(strsplit(ExitTime, ":")[[1]][2]) == 59)
+      exit <- exit + (60 / step)
+
+    if("minute" == input$UnitMeasureTimes){
+      probabilities[entry:exit,] <- probabilities[entry:exit,] + as.numeric(input$RandTimes) / (60 / step)
+    }
+    else if("hour" == input$UnitMeasureTimes){
+      probabilities[entry:exit,] <- probabilities[entry:exit,] + as.numeric(input$RandTimes) / (60 * (60 / step))
+    }
+    else if("day" == input$UnitMeasureTimes){
+      probabilities[entry:exit,] <- probabilities[entry:exit,] + as.numeric(input$RandTimes) / (exit-entry)
+    }
+    else if("week" == input$UnitMeasureTimes){
+      probabilities[entry:exit,] <- probabilities[entry:exit,] + as.numeric(input$RandTimes) / ((exit-entry) * 7)
+    }
+
+    if(any(probabilities > 1)){
+      shinyalert("Error", "Probability values have exceeded 1 in at least one time slot. Check the inserted values.", type = "error")
+      return()
+    }
+
     agentlinked <- agentlinkedtype <- ifelse(input$agentLink_rand_flow == "", "None", input$agentLink_rand_flow)
     agentlinkedtype <- ifelse(input$agentLink_rand_flow == "", "None", input$ckbox_agentLink_rand_flow)
     agentlinkedtimeout <- ifelse(input$agentLink_rand_flow == "", "None", input$max_wait_time_rand)
@@ -2881,7 +2936,7 @@ server <- function(input, output, session) {
         Time = new_time,
         Activity = activity,
         ActivityLabel = activityLabel,
-        Weight = paste0(gsub(",", "\\.", as.numeric(input$RandWeight)), " (", input$UnitMeasureWeight, ")"),
+        Times = paste0(gsub(",", "\\.", as.numeric(input$RandTimes)), " (", input$UnitMeasureTimes, ")"),
         TimeSlot = times[1],
         AgentLinked = agentlinked,
         AgentLinkedType = agentlinkedtype,
@@ -2910,7 +2965,7 @@ server <- function(input, output, session) {
         ),
         selection = "single",
         rownames = F,
-        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+        colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
       )
     )
 
@@ -2941,7 +2996,7 @@ server <- function(input, output, session) {
             ),
             selection = "single",
             rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+            colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       } else {
@@ -2949,7 +3004,7 @@ server <- function(input, output, session) {
           DT::datatable(
             data.frame(
               Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-              Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
+              Times = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
             ) %>% select(-c(Name, Activity)),
             options = list(
               columnDefs = list(
@@ -2968,7 +3023,7 @@ server <- function(input, output, session) {
             ),
             selection = "single",
             rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+            colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       }
@@ -2991,14 +3046,14 @@ server <- function(input, output, session) {
             if (nrow(canvasObjects$agents[[input$id_new_agent]]$RandFlow) == 1) {
               canvasObjects$agents[[input$id_new_agent]]$RandFlow <- data.frame(
                 Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-                Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
+                Times = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0)
               )
 
               output$RandomEvents_table <- DT::renderDataTable(
                 DT::datatable(
                   data.frame(
                     Name = character(0), Room = character(0), Dist = character(0), Activity = numeric(0), ActivityLabel = character(0), Time = numeric(0),
-                    Weight = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
+                    Times = numeric(0), TimeSlot = character(0), AgentLinked = character(0), AgentLinkedType = character(0), Timeout = character(0), AgentLinkedTimeoutBehave = character(0)
                   ) %>% select(-c(Name, Activity)),
                   options = list(
                     columnDefs = list(
@@ -3017,7 +3072,7 @@ server <- function(input, output, session) {
                   ),
                   selection = "single",
                   rownames = F,
-                  colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+                  colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
                 )
               )
             } else {
