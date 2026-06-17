@@ -1041,12 +1041,15 @@ ui <- dashboardPage(
             ),
             fluidRow(
               column(3,offset=1,
-                     textInput(inputId = "RandWeight", label = "Weight:",placeholder = "")
+                     textInput(inputId = "RandTimes", label = div(class = "icon-container",
+                                                                  h4("Number of times", icon("info-circle")),
+                                                                  div(class = "icon-text", "This is the expected value of a binomial random variable X, E[X] = np, where n is the number of steps simulated in the specified time interval (see the Configuration page to define the step duration in seconds) and p is the per-step probability (computed as p = E[X] / n).")
+                     ),placeholder = "")
               ),
-              column(1,
-                     selectizeInput(inputId = "UnitMeasureWeight", label = "Weight per:", choices = c("second", "minute", "hour", "day", "week"), selected="minute")
+              column(2,
+                     selectizeInput(inputId = "UnitMeasureTimes", label = "Number of times per:", choices = c("minute", "hour", "day", "week"), selected="minute")
               ),
-              column(3,offset=1,
+              column(3,
                      textInput(inputId = "EntryTimeRate_rand_flow", label = "Initial time:", placeholder = "hh:mm")
               ),
               column(3,offset=6,

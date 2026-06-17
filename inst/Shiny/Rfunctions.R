@@ -404,24 +404,23 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
         canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeoutBehave = "None")
     }
 
-    # Define the time units to check
-    time_units <- c("second", "minute", "hour", "day", "week")
+    colnames(canvasObjects$agents[[a]]$RandFlow)[colnames(canvasObjects$agents[[a]]$RandFlow) == 'Weight'] <- 'Times'
 
     # Get the Weight vector
-    weights <- canvasObjects$agents[[a]]$RandFlow$Weight
+    times <- canvasObjects$agents[[a]]$RandFlow$Times
 
     # Find rows where NONE of the time_units appear in the weight string
     # Use grepl to check if any time unit exists in each weight entry
-    has_time_unit <- sapply(weights, function(w) {
-      any(grepl(time_units, w, fixed = TRUE))
+    has_time_unit <- sapply(times, function(w) {
+      grepl("minute", w, fixed = TRUE) || grepl("hour", w, fixed = TRUE) || grepl("day", w, fixed = TRUE) || grepl("week", w, fixed = TRUE)
     })
 
     # Rows without any time unit
     rows_to_add <- which(!has_time_unit)
 
     # Add " (minute)" to those rows
-    canvasObjects$agents[[a]]$RandFlow$Weight[rows_to_add] <-
-      paste0(canvasObjects$agents[[a]]$RandFlow$Weight[rows_to_add], " (minute)")
+    canvasObjects$agents[[a]]$RandFlow$Times[rows_to_add] <-
+      paste0(canvasObjects$agents[[a]]$RandFlow$Times[rows_to_add], " (minute)")
 
     if(nrow(canvasObjects$agents[[a]]$DeterFlow) > 0){
       if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
