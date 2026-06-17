@@ -1043,7 +1043,7 @@ ui <- dashboardPage(
               column(3,offset=1,
                      textInput(inputId = "RandTimes", label = div(class = "icon-container",
                                                                   h4("Number of times", icon("info-circle")),
-                                                                  div(class = "icon-text", "This is the expected value of a binomial random variable X, E[X] = np, where n is the number of steps simulated in the specified time interval (see the Configuration page to define the step duration in seconds) and p is the per-step probability (computed as p = E[X] / n).")
+                                                                  div(class = "icon-text", "This is the expected value of a binomial random variable X, E[X] = np, where n is the number of steps simulated in a minute, hour, day, or week based on the user choice (see the Configuration page to define the step duration in seconds) and mapped on the selected time interval and p is the per-step probability (computed as p = E[X] / n).")
                      ),placeholder = "")
               ),
               column(2,
