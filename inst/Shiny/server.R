@@ -2832,7 +2832,8 @@ server <- function(input, output, session) {
       return()
     }
 
-    if (input$RandTimes == "" || as.double(as.numeric(gsub(",", "\\.", input$RandTimes))) <= 0) {
+    val_rand_times <- as.double(as.numeric(gsub(",", "\\.", input$RandTimes)))
+    if (is.null(input$RandTimes) || input$RandTimes == "" || is.na(val_rand_times) || val_rand_times <= 0) {
       shinyalert("Error", "You must specify a number of times greater than 0.", type = "error")
       return()
     }
@@ -2860,6 +2861,9 @@ server <- function(input, output, session) {
       shinyalert("Error", times[2], type = "error")
       return()
     }
+
+    EntryTime <- strsplit(times[1], " - ")[[1]][1]
+    ExitTime <- strsplit(times[1], " - ")[[1]][2]
 
     if (input$max_wait_time_rand == "" || is.na(input$max_wait_time_rand) || input$max_wait_time_rand < 1) {
       shinyalert("Error", "You must specify a timeout > 0.", type = "error")

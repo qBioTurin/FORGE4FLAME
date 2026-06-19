@@ -808,7 +808,7 @@ UpdatingTimeSlots_tabs = function(input,output,canvasObjects, InfoApp, session, 
                 )
       )
 
-      InfoApp$NumTabsTimeShift[paste0("shift_", j)] = slots
+      InfoApp$NumTabsTimeShift[[paste0("shift_", j)]] = slots
     }
 
     showTab(inputId = "Shift_tabs", target = paste0("shift_", shifts[1]), select = T)
