@@ -72,17 +72,17 @@ theme_fancy <- function() {
       panel.background = element_rect(fill = "#3c3c3c", color = NA),
       panel.grid.major = element_line(color = "#666666", size = 0.3),
       panel.grid.minor = element_line(color = "#444444", size = 0.2),
-      axis.text = element_text(color = "white", size = 16),
-      axis.title = element_text(color = "white", size = 20, face = "bold"),
-      plot.title = element_text(color = "white", size = 22, face = "bold", hjust = 0.5),
+      axis.text = element_text(color = "white", size = 10),
+      axis.title = element_text(color = "white", size = 12, face = "bold"),
+      plot.title = element_text(color = "white", size = 14, face = "bold", hjust = 0.5),
       legend.background = element_rect(fill = "#2b2b2b"),
-      legend.text = element_text(color = "white", size = 18),
-      legend.key.size = unit(1.5, 'cm'),
+      legend.text = element_text(color = "white", size = 10),
+      legend.key.size = unit(0.8, "cm"),
       legend.key = element_rect(fill = "white"),
-      legend.title = element_text(color = "white", face = "bold", size = 18),
+      legend.title = element_text(color = "white", face = "bold", size = 10),
       legend.position = "bottom",
-      strip.background = element_rect(fill = "white",color = "white"),
-      strip.text = element_text(color = "black", size = 18, face = "bold")
+      strip.background = element_rect(fill = "white", color = "white"),
+      strip.text = element_text(color = "black", size = 7, face = "bold")
     )
 }
 
@@ -387,23 +387,71 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   ### updating the old RDs version with v.2 format ####
   for(a in names(canvasObjects$agents)){
-    if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
+    if(nrow(canvasObjects$agents[[a]]$RandFlow) > 0){
+      if(! "TimeSlot" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow,TimeSlot = "00:00 - 23:59")
 
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "None")
+      if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinked = "None")
 
-    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
-      canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedType = "None")
+      if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedType = "None")
 
-    if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
-      canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - None" )
+      if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeout = "None")
+
+      if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$RandFlow))
+        canvasObjects$agents[[a]]$RandFlow = data.frame(canvasObjects$agents[[a]]$RandFlow, AgentLinkedTimeoutBehave = "None")
     }
 
-    if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
-      canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
+    colnames(canvasObjects$agents[[a]]$RandFlow)[colnames(canvasObjects$agents[[a]]$RandFlow) == 'Weight'] <- 'Times'
 
+    # Get the Weight vector
+    times <- canvasObjects$agents[[a]]$RandFlow$Times
+
+    # Find rows where NONE of the time_units appear in the weight string
+    # Use grepl to check if any time unit exists in each weight entry
+    has_time_unit <- sapply(times, function(w) {
+      grepl("minute", w, fixed = TRUE) || grepl("hour", w, fixed = TRUE) || grepl("day", w, fixed = TRUE) || grepl("week", w, fixed = TRUE)
+    })
+
+    # Rows without any time unit
+    rows_to_add <- which(!has_time_unit)
+
+    # Add " (minute)" to those rows
+    canvasObjects$agents[[a]]$RandFlow$Times[rows_to_add] <-
+      paste0(canvasObjects$agents[[a]]$RandFlow$Times[rows_to_add], " (minute)")
+
+    if(nrow(canvasObjects$agents[[a]]$DeterFlow) > 0){
+      if(! "AgentLinked" %in% colnames(canvasObjects$agents[[a]]$DeterFlow)){
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinked = "None")
+        canvasObjects$agents[[a]]$DeterFlow$Label = paste0(canvasObjects$agents[[a]]$DeterFlow$Label, " - None" )
+      }
+
+      if(! "AgentLinkedType" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow,AgentLinkedType = "None")
+
+      if(! "AgentLinkedTimeout" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeout = "None")
+
+      if(! "AgentLinkedTimeoutBehave" %in% colnames(canvasObjects$agents[[a]]$DeterFlow))
+        canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
+
+      for(i in 1:nrow(canvasObjects$agents[[a]]$DeterFlow)){
+        if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None"){
+          activityLabel <- switch(paste(canvasObjects$agents[[a]]$DeterFlow$Activity[i]),
+                                  "1" = "Very Light",
+                                  "1.7777" = "Light",
+                                  "2.5556" ="Quite Hard",
+                                  "6.1111" = "Hard"
+          )
+
+          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
+        }
+
+        canvasObjects$agents[[a]]$DeterFlow$Label[i] <- label
+      }
+    }
 
     if(! "Shift" %in% colnames(canvasObjects$agents[[a]]$EntryExitTime)){
       canvasObjects$agents[[a]]$EntryExitTime$Shift <- "1 shift"
@@ -420,6 +468,35 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
 
     canvasObjects$agents[[a]]$RandFlow <- canvasObjects$agents[[a]]$RandFlow %>% filter(Room != "Do nothing")
+
+    # Healing: Reset AgentLinked if the linked agent no longer exists
+    all_agents_names <- names(canvasObjects$agents)
+    if (!is.null(canvasObjects$agents[[a]]$DeterFlow)) {
+      mask <- !(canvasObjects$agents[[a]]$DeterFlow$AgentLinked %in% c("None", all_agents_names))
+      if (any(mask)) {
+        canvasObjects$agents[[a]]$DeterFlow$AgentLinked[mask] <- "None"
+        canvasObjects$agents[[a]]$DeterFlow$AgentLinkedType[mask] <- "None"
+        # Update labels to remove the invalid agent name
+        canvasObjects$agents[[a]]$DeterFlow$Label[mask] <- sapply(
+          canvasObjects$agents[[a]]$DeterFlow$Label[mask],
+          function(lbl) {
+            parts <- strsplit(lbl, " - ")[[1]]
+            if (length(parts) >= 4) {
+              parts[length(parts)] <- "None"
+              return(paste(parts, collapse = " - "))
+            }
+            return(lbl)
+          }
+        )
+      }
+    }
+    if (!is.null(canvasObjects$agents[[a]]$RandFlow)) {
+      mask <- !(canvasObjects$agents[[a]]$RandFlow$AgentLinked %in% c("None", all_agents_names))
+      if (any(mask)) {
+        canvasObjects$agents[[a]]$RandFlow$AgentLinked[mask] <- "None"
+        canvasObjects$agents[[a]]$RandFlow$AgentLinkedType[mask] <- "None"
+      }
+    }
   }
 
   ####
@@ -436,6 +513,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
       updateSelectizeInput(session, "disease_model", selected = canvasObjects$disease[[1]]$disease_model_name)
       updateNumericInput(session, "num_risk_classes", value = length(canvasObjects$disease))
 
+      # Load data for each risk class
       print("TO DO")
     }
     else{
@@ -492,6 +570,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   updateSelectizeInput(inputId = "disease_model",
                        selected = selected)
 
+  updateNumericInput(session, "radius", value = canvasObjects$virus_parameters$radius)
   updateNumericInput(session, "ngen_base", value = canvasObjects$virus_parameters$ngen_base)
   updateNumericInput(session, "vl", value = canvasObjects$virus_parameters$vl)
   updateNumericInput(session, "decay_rate", value = canvasObjects$virus_parameters$decay_rate)
@@ -554,6 +633,41 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   }
   else{
     updateSelectizeInput(session, "selectInput_resources_type", choices = "", selected= "", server = TRUE)
+  }
+
+  # Healing: Remove orphaned agents and invalid keys from resources (Relocated and Hardened)
+  if (!is.null(canvasObjects$resources)) {
+    all_agents_list <- names(canvasObjects$agents)
+
+    # Keep only resource entries whose keys are valid (Type-Area currently in canvas)
+    if (!is.null(canvasObjects$roomsINcanvas)) {
+      valid_keys <- unique(paste0(canvasObjects$roomsINcanvas$type, "-", canvasObjects$roomsINcanvas$area))
+      current_res_names <- names(canvasObjects$resources)
+      if (!is.null(current_res_names)) {
+        canvasObjects$resources <- canvasObjects$resources[current_res_names %in% valid_keys]
+      }
+    }
+
+    for (i in seq_along(canvasObjects$resources)) {
+      # Clean roomResource columns
+      if (!is.null(canvasObjects$resources[[i]]$roomResource)) {
+        # Force conversion to data frame in case it was loaded as a list
+        df_res <- as.data.frame(canvasObjects$resources[[i]]$roomResource, stringsAsFactors = FALSE)
+        current_cols <- names(df_res)
+        # Keep only 'room', 'MAX', and agents that actually exist
+        cols_to_keep <- current_cols[current_cols %in% c("room", "MAX", all_agents_list)]
+        canvasObjects$resources[[i]]$roomResource <- df_res[, cols_to_keep, drop = FALSE]
+      }
+      # Clean waiting rooms
+      if (!is.null(canvasObjects$resources[[i]]$waitingRoomsRand)) {
+        df_rand <- as.data.frame(canvasObjects$resources[[i]]$waitingRoomsRand, stringsAsFactors = FALSE)
+        canvasObjects$resources[[i]]$waitingRoomsRand <- df_rand[df_rand$Agent %in% all_agents_list, ]
+      }
+      if (!is.null(canvasObjects$resources[[i]]$waitingRoomsDeter)) {
+        df_deter <- as.data.frame(canvasObjects$resources[[i]]$waitingRoomsDeter, stringsAsFactors = FALSE)
+        canvasObjects$resources[[i]]$waitingRoomsDeter <- df_deter[df_deter$Agent %in% all_agents_list, ]
+      }
+    }
   }
 
   "The file has been uploaded with success!"
@@ -801,7 +915,7 @@ check_distribution_parameters <- function(input, suffix){
 
     if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
       print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
-      shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
+      shinyalert("Error", "You must specify a time greater than 0 (in minutes).", type = "error")
       return(list(NULL, NULL))
     }
     new_time = input[[paste0("DetTime_", suffix)]]
@@ -814,7 +928,7 @@ check_distribution_parameters <- function(input, suffix){
         return(list(NULL, NULL))
 
       if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]])) <= 0 ){
-        shinyalert("Error", "You must specify a time > 0 (in minutes).", type = "error")
+        shinyalert("Error", "You must specify a time greater than (in minutes).", type = "error")
         return(list(NULL, NULL))
       }
       new_time = input[[paste0("DistStoc_ExpRate_", suffix)]]
@@ -826,7 +940,7 @@ check_distribution_parameters <- function(input, suffix){
           is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]]))) ||
           as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]])) >= as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]])) ||
           as.numeric(input[[paste0("DistStoc_UnifRate_a_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_UnifRate_b_", suffix)]]) <= 0){
-        shinyalert("Error", "You must specify a and b as numeric (in minutes and both > 0), with a < b.", type = "error")
+        shinyalert("Error", "You must specify a and b as numeric (in minutes and both greater than), with a < b.", type = "error")
         return(list(NULL, NULL))
       }
       new_time = paste0("a = ",input[[paste0("DistStoc_UnifRate_a_", suffix)]] ,"; b = ",input[[paste0("DistStoc_UnifRate_b_", suffix)]])
@@ -1295,25 +1409,6 @@ check <- function(canvasObjects, input, output, InfoApp){
         return(NULL)
       }
 
-      spawnroom_indices <- grep("^Spawnroom", df_local$Room)
-      middle_spawnrooms <- spawnroom_indices[-c(1, length(spawnroom_indices))]
-
-      if (length(middle_spawnrooms) %% 2 != 0) {
-        shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
-        remove_modal_spinner()
-        return(NULL)
-      }
-
-      if(length(middle_spawnrooms) > 0){
-        for (i in seq(1, length(middle_spawnrooms), by = 2)) {
-          if (middle_spawnrooms[i + 1] - middle_spawnrooms[i] != 1) {
-            shinyalert("Error", paste0("There is currently a Spawnroom not coupled with another Spawnroom in the middle of the ", df, " for agent ", names(canvasObjects$agents)[[agent]], " (Agent page). For correct behavior, spawn rooms must be placed in pairs to properly manage both the agent’s exit and its next entrance (except the first and the last)."), type = "error")
-            remove_modal_spinner()
-            return(NULL)
-          }
-        }
-      }
-
       df_local$Time[nrow(df_local)] <- 0
       label <- strsplit(df_local$Label[nrow(df_local)], "-")[[1]]
       df_local$Label[nrow(df_local)] <- paste0(label[1], " - ", label[2], " - 0 min - ", label[4])
@@ -1405,19 +1500,19 @@ check <- function(canvasObjects, input, output, InfoApp){
   }
 
   if(input$seed == "" || !grepl("(^[0-9]+).*", input$seed) || input$seed < 0){
-    shinyalert("Error", "You must specify a number greater or equals than 0 (>= 0) as seed (Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater or equals than 0 as seed (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$simulation_days == "" || !grepl("(^[0-9]+).*", input$simulation_days) || input$simulation_days <= 0){
-    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of days to simulate (Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater than 0 as number of days to simulate (Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }
 
   if(input$nrun == "" || !grepl("(^[0-9]+).*", input$nrun) || input$nrun <= 0){
-    shinyalert("Error", "You must specify a number greater than 0 (> 0) as number of run to execute (in the Configuration page).", type = "error")
+    shinyalert("Error", "You must specify a number greater than 0 as number of run to execute (in the Configuration page).", type = "error")
     remove_modal_spinner()
     return(NULL)
   }

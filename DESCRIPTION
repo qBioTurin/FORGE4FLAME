@@ -14,7 +14,6 @@ Description: Forge4Flame (F4F) is a user-friendly R Shiny dashboard designed
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports: 
     shinydashboard,
     shinyjs,
@@ -40,3 +39,4 @@ Imports:
     shinyFiles,
     shinyjqui,
     emoGG
+Config/roxygen2/version: 8.0.0
