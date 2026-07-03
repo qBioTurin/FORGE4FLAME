@@ -28,6 +28,9 @@
 #' @import lubridate
 #' @import sf
 #' @import purrr
+#' @import magick
+#' @import plotly
+#' @import av
 # @import future.apply
 #'
 #' @importFrom utils read.table write.table

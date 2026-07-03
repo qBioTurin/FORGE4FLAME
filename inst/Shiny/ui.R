@@ -1029,10 +1029,6 @@ ui <- dashboardPage(
                       )
                     ),
                     column(
-                      4,
-                      uiOutput("selectInput_alternative_object_resources_global")
-                    ),
-                    column(
                       2,
                       actionButton("set_object_resources", "Apply Defaults",
                         icon = icon("sync-alt"),
@@ -1089,13 +1085,6 @@ ui <- dashboardPage(
                       DT::dataTableOutput("ObjectAgentResTable")
                     )
                   )
-                ),
-                br(),
-                wellPanel(
-                  style = "background-color: #e3fafc; border-radius: 10px; border-left: 5px solid #99e9f2;",
-                  h4(style = "color: #0b7285; font-weight: bold;", icon("directions"), "Object Alternative Pathways"),
-                  p(style = "color: #0b7285; font-size: 0.9em;", "Configure alternative objects for each agent type when these objects are occupied."),
-                  uiOutput("dynamicSelectizeInputs_waitingObjects")
                 )
               )
             )
