@@ -39,6 +39,7 @@ function initObjectsCanvas() {
     obj_w = objectsCanvas.width = objectsBgCanvas.width;
     obj_h = objectsCanvas.height = objectsBgCanvas.height;
     drawObjectsGrid();
+    drawReferenceIndicator();
 }
 
 // Draw grid on background canvas
@@ -99,6 +100,35 @@ function drawObjectsGrid() {
     objectsBgCtx.restore();
 }
 
+// Draw reference indicator (yellow dot at bottom of room)
+function drawReferenceIndicator() {
+    // Draw a yellow dot at the bottom-left corner as a reference point
+    const dotX = SCALE * 0.5;  // 0.5 meters from the left
+    const dotY = obj_h - SCALE * 0.5;  // 0.5 meters from the bottom
+    const dotRadius = 8;
+
+    objectsBgCtx.save();
+
+    // Draw yellow dot
+    objectsBgCtx.fillStyle = '#FFD700';  // Gold/Yellow color
+    objectsBgCtx.beginPath();
+    objectsBgCtx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+    objectsBgCtx.fill();
+
+    // Draw border around dot
+    objectsBgCtx.strokeStyle = '#FF8C00';  // Orange border
+    objectsBgCtx.lineWidth = 2;
+    objectsBgCtx.stroke();
+
+    // Draw label
+    objectsBgCtx.fillStyle = '#333';
+    objectsBgCtx.font = 'bold 11px Arial';
+    objectsBgCtx.textAlign = 'left';
+    objectsBgCtx.fillText('Room Reference', dotX + 15, dotY + 5);
+
+    objectsBgCtx.restore();
+}
+
 // Set room dimensions and update canvas
 Shiny.addCustomMessageHandler("setRoomForObjects", function (data) {
     currentRoomData = data;
@@ -115,6 +145,7 @@ Shiny.addCustomMessageHandler("setRoomForObjects", function (data) {
 
     // Redraw grid with new dimensions
     drawObjectsGrid();
+    drawReferenceIndicator();
     redrawObjectsCanvas();
 });
 

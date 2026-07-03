@@ -77,6 +77,9 @@ server <- function(input, output, session) {
   hideElement("outside_contagion_plot")
   hideElement("DownloadPostProc_Button")
 
+  # Initialize agent-resource links structure
+  canvasObjects$agent_resource_links <- list()
+
   observeEvent(input$link_canvas_tab, {
     updateTabItems(session, "SideTabs", "canvas_tab")
   })
@@ -2770,17 +2773,24 @@ server <- function(input, output, session) {
         DeterFlow_tmp <- canvasObjects$agents[[input$id_new_agent]]$DeterFlow %>% filter(FlowID != input$DetFlow_tabs)
 
         if (!is.null(list_detflow) &&
-          length(agent$Room) > 0 &&
-          length(list_detflow) == length(agent$Label)) {
-          newOrder <- data.frame(
-            Name = input$id_new_agent,
-            Label = list_detflow,
-            Flow = 1:length(list_detflow)
-          )
-          DeterFlow <- merge(agent %>% select(-Flow), newOrder, by = c("Name", "Label")) %>%
-            select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType) %>%
-            arrange(Flow)
-          canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
+            length(agent$Room) > 0 &&
+            length(list_detflow) == length(agent$Label)) {
+
+          # Use match to reorder based on labels, which is more robust than merge
+          indices <- match(list_detflow, agent$Label)
+
+          # Only update if all labels were found (no NAs)
+          if (!any(is.na(indices))) {
+            DeterFlow <- agent[indices, ]
+            DeterFlow$Flow <- 1:nrow(DeterFlow)
+            DeterFlow <- DeterFlow %>%
+              select(Name, Room, Dist, Time, Flow, Activity, Label, FlowID, AgentLinked, AgentLinkedType, AgentLinkedTimeout, AgentLinkedTimeoutBehave)
+
+            # Check if anything actually changed before updating to avoid unnecessary reactivity
+            if (!identical(agent, DeterFlow)) {
+              canvasObjects$agents[[input$id_new_agent]]$DeterFlow <- rbind(DeterFlow_tmp, DeterFlow)
+            }
+          }
         }
       })
     }
@@ -2825,10 +2835,8 @@ server <- function(input, output, session) {
       return()
     }
 
-    if (input$RandWeight == "" ||
-      (as.double(as.numeric(gsub(",", "\\.", input$RandWeight))) <= 0 ||
-        as.double((as.numeric(gsub(",", "\\.", input$RandWeight)))) >= 1)) {
-      shinyalert("Error", "You must specify a weight between 0 and 1.", type = "error")
+    if (input$RandTimes == "" || as.double(as.numeric(gsub(",", "\\.", input$RandTimes))) <= 0) {
+      shinyalert("Error", "You must specify a number of times greater than 0.", type = "error")
       return()
     }
 
@@ -2943,22 +2951,24 @@ server <- function(input, output, session) {
 
     output$RandomEvents_table <- DT::renderDataTable(
       DT::datatable(canvasObjects$agents[[name]]$RandFlow %>% select(-c(Name, Activity)),
-        options = list(
-          columnDefs = list(
-            list(className = "dt-left", targets = 0),
-            list(className = "dt-left", targets = 1),
-            list(className = "dt-left", targets = 2),
-            list(className = "dt-left", targets = 3),
-            list(className = "dt-left", targets = 4),
-            list(className = "dt-left", targets = 5),
-            list(className = "dt-left", targets = 6),
-            list(className = "dt-left", targets = 7)
-          ),
-          pageLength = 5
-        ),
-        selection = "single",
-        rownames = F,
-        colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+                    options = list(
+                      columnDefs = list(
+                        list(className = "dt-left", targets = 0),
+                        list(className = "dt-left", targets = 1),
+                        list(className = "dt-left", targets = 2),
+                        list(className = "dt-left", targets = 3),
+                        list(className = "dt-left", targets = 4),
+                        list(className = "dt-left", targets = 5),
+                        list(className = "dt-left", targets = 6),
+                        list(className = "dt-left", targets = 7),
+                        list(className = "dt-left", targets = 8),
+                        list(className = "dt-left", targets = 9)
+                      ),
+                      pageLength = 5
+                    ),
+                    selection = "single",
+                    rownames = F,
+                    colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
       )
     )
 
@@ -2972,22 +2982,24 @@ server <- function(input, output, session) {
       if (length(agent$Room) != 0) {
         output$RandomEvents_table <- DT::renderDataTable(
           DT::datatable(agent %>% select(-c(Name, Activity)),
-            options = list(
-              columnDefs = list(
-                list(className = "dt-left", targets = 0),
-                list(className = "dt-left", targets = 1),
-                list(className = "dt-left", targets = 2),
-                list(className = "dt-left", targets = 3),
-                list(className = "dt-left", targets = 4),
-                list(className = "dt-left", targets = 5),
-                list(className = "dt-left", targets = 6),
-                list(className = "dt-left", targets = 7)
-              ),
-              pageLength = 5
-            ),
-            selection = "single",
-            rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Weight", "Time Slot", "Agent Linked", "Agent Linked Type")
+                        options = list(
+                          columnDefs = list(
+                            list(className = "dt-left", targets = 0),
+                            list(className = "dt-left", targets = 1),
+                            list(className = "dt-left", targets = 2),
+                            list(className = "dt-left", targets = 3),
+                            list(className = "dt-left", targets = 4),
+                            list(className = "dt-left", targets = 5),
+                            list(className = "dt-left", targets = 6),
+                            list(className = "dt-left", targets = 7),
+                            list(className = "dt-left", targets = 8),
+                            list(className = "dt-left", targets = 9)
+                          ),
+                          pageLength = 5
+                        ),
+                        selection = "single",
+                        rownames = F,
+                        colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       } else {
@@ -3495,8 +3507,8 @@ server <- function(input, output, session) {
               EntryTime <- paste0(EntryTime, ":00")
             }
 
-            if (is.na(input[[paste0("num_agent_", num_shift)]]) || !is.numeric(input[[paste0("num_agent_", num_shift)]]) ||
-              as.numeric(input[[paste0("num_agent_", num_shift)]]) <= 0) {
+            if (is.na(input[[paste0("num_agent_", num_shift)]]) || is.na(as.numeric(input[[paste0("num_agent_", num_shift)]])) ||
+                as.numeric(input[[paste0("num_agent_", num_shift)]]) <= 0) {
               shinyalert("Error", "The number of agents must be a number > 0 for each shift.", type = "error")
               return()
             }
@@ -3600,40 +3612,14 @@ server <- function(input, output, session) {
     )
   })
 
-  output$selectInput_alternative_object_resources_global <- renderUI({
-    choicesRoom <- c("Same object", "Skip object")
-
-    if (!is.null(canvasObjects$roomsINcanvas)) {
-      rooms <- canvasObjects$roomsINcanvas %>%
-        select(type, Name, area) %>%
-        filter(!type %in% c("Spawnroom", "Fillingroom", "Stair")) %>%
-        mutate(NameTypeArea = paste0(type, " - ", area)) %>%
-        distinct()
-
-      choicesRoom <- c("Same object", "Skip object", unique(rooms$NameTypeArea))
-    }
-
-    # Add objects to choices
-    if (!is.null(objectsINcanvas())) {
-      choicesRoom <- c(choicesRoom, unique(objectsINcanvas()$Area))
-    }
-
-    selectizeInput(
-      inputId = "selectInput_alternative_object_resources_global",
-      label = "Select second choice for each agent:",
-      choices = choicesRoom,
-      selected = "Same object"
-    )
-  })
-
   observeEvent(input$set_resources, {
     show_modal_spinner()
     if (!is.null(canvasObjects$roomsINcanvas)) {
       if (input$textInput_resources_global != "" &&
-        !is.null(input$textInput_resources_global) &&
-        !grepl("^[0-9]+$", input$textInput_resources_global) &&
-        input$textInput_resources_global >= 0) {
-        shinyalert("Error", "You must specify a numeric value greater or equals than 0 (>= 0) for the global number of resources.", type = "error")
+          !is.null(input$textInput_resources_global) &&
+          !grepl("^[0-9]+$", input$textInput_resources_global) &&
+          input$textInput_resources_global >= 0) {
+        shinyalert("Error", "You must specify a numeric value greater or equals than 0 for the global number of resources.", type = "error")
         return()
       }
 
@@ -3660,28 +3646,6 @@ server <- function(input, output, session) {
               nrow(canvasObjects$resources[[i]]$roomResource)
             )
           }
-        }
-      }
-    }
-    remove_modal_spinner()
-  })
-
-  observeEvent(input$set_object_resources, {
-    show_modal_spinner()
-    if (!is.null(objectsINcanvas())) {
-      all_objs <- objectsINcanvas()
-      canvasObjects$objectResources <- NULL
-      for (i in unique(all_objs$Area)) {
-        if (is.null(canvasObjects$objectResources[[i]])) {
-          obj_names <- all_objs %>% filter(Area == i)
-          canvasObjects$objectResources[[i]]$objectResource <- obj_names %>% select(Name, Capacity)
-          canvasObjects$objectResources[[i]]$waitingRoomsDeter <- data.frame(Agent = NULL, Room = NULL)
-          canvasObjects$objectResources[[i]]$waitingRoomsRand <- data.frame(Agent = NULL, Room = NULL)
-        }
-
-        for (Agent in names(canvasObjects$agents)) {
-          canvasObjects$objectResources[[i]]$waitingRoomsDeter <- rbind(canvasObjects$objectResources[[i]]$waitingRoomsDeter, data.frame(Agent = Agent, Room = input$selectInput_alternative_object_resources_global))
-          canvasObjects$objectResources[[i]]$waitingRoomsRand <- rbind(canvasObjects$objectResources[[i]]$waitingRoomsRand, data.frame(Agent = Agent, Room = input$selectInput_alternative_object_resources_global))
         }
       }
     }
@@ -3829,77 +3793,6 @@ server <- function(input, output, session) {
       waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsRand
     })
   })
-
-  # Dynamic selectors for Objects (Unified)
-  output$dynamicSelectizeInputs_waitingObjects <- renderUI({
-    resources_type <- req(selected_object_key())
-    if (resources_type == " - ") {
-      return()
-    }
-    relevantAgents <- names(canvasObjects$agents)
-
-    rooms <- canvasObjects$roomsINcanvas %>%
-      select(type, Name, area) %>%
-      filter(!type %in% c("Spawnroom", "Fillingroom", "Stair")) %>%
-      mutate(NameTypeArea = paste0(type, " - ", area)) %>%
-      distinct()
-
-    choicesRoom <- c("Same object", "Skip object", unique(rooms$NameTypeArea))
-    if (!is.null(objectsINcanvas())) {
-      choicesRoom <- c(choicesRoom, unique(objectsINcanvas()$Area))
-    }
-
-    ListSel <- lapply(relevantAgents, function(agent) {
-      # Use Deter as primary source of truth for the selector, they should be synced
-      waitingRooms <- canvasObjects$objectResources[[resources_type]]$waitingRoomsDeter
-      if (!is.null(waitingRooms)) {
-        waitingRooms <- waitingRooms %>% filter(Agent == agent)
-      }
-
-      if (!is.null(waitingRooms) && dim(waitingRooms)[1] > 0) {
-        roomSelected <- waitingRooms$Room
-      } else {
-        roomSelected <- "Same object"
-      }
-
-      selectizeInput(
-        inputId = paste0("selectInput_WaitingObjectSelect_", agent),
-        label = paste0("Select second choice for ", agent, " at ", resources_type, ":"),
-        choices = choicesRoom,
-        selected = roomSelected
-      )
-    })
-    return(ListSel)
-  })
-
-  observe({
-    selectW <- grep(x = names(input), pattern = "selectInput_WaitingObjectSelect_", value = T)
-    isolate({
-      resources_type <- selected_object_key()
-      if (is.null(resources_type) || resources_type == "" || resources_type == " - ") {
-        return()
-      }
-    })
-
-    if (length(selectW) > 0) {
-      waitingRooms <- do.call(
-        rbind,
-        lapply(selectW, function(W) {
-          data.frame(
-            Agent = gsub(pattern = "selectInput_WaitingObjectSelect_", replacement = "", x = W),
-            Room = input[[W]]
-          )
-        })
-      )
-
-      isolate({
-        if (!is.null(resources_type) && resources_type != "") {
-          canvasObjects$objectResources[[resources_type]]$waitingRoomsDeter <- waitingRooms
-          canvasObjects$objectResources[[resources_type]]$waitingRoomsRand <- waitingRooms
-        }
-      })
-    }
-  })
   observe({
     if (!is.null(allResRooms())) {
       choices <- unique(allResRooms()$Room)
@@ -3908,80 +3801,6 @@ server <- function(input, output, session) {
       choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
 
       updateSelectizeInput(session, "selectInput_resources_type", choices = choices, selected = "", server = TRUE)
-    }
-  })
-
-  observe({
-    if (!is.null(allResObjects())) {
-      choices <- unique(allResObjects()$Room)
-      updateSelectizeInput(session, "selectInput_object_resources_room", choices = choices, selected = "", server = TRUE)
-    }
-  })
-
-  # Sync room policy selector when room AND object change OR when the underlying data changes
-  observe({
-    res_type <- req(selected_object_key())
-    if (res_type == " - ") {
-      return()
-    }
-    obj_name <- req(input$selectInput_object_resources_name)
-
-    # Accessing objectResource here makes this observer reactive to changes in it
-    res_data <- canvasObjects$objectResources[[res_type]]$objectResource
-
-    if (!is.null(res_data) && nrow(res_data) > 0) {
-      row_idx <- which(res_data$object == obj_name)
-      if (length(row_idx) > 0) {
-        current_policy <- res_data$Policy[row_idx]
-        if (!is.null(input$selectInput_obj_policy_room) && input$selectInput_obj_policy_room != current_policy) {
-          updateSelectInput(session, "selectInput_obj_policy_room", selected = current_policy)
-        }
-      }
-    }
-  })
-
-  # Update object-specific policy only when save button is clicked
-  observeEvent(input$save_room_policy_btn, {
-    res_type <- req(selected_object_key())
-    obj_name <- req(input$selectInput_object_resources_name)
-    policy <- input$selectInput_obj_policy_room
-
-    isolate({
-      if (!is.null(canvasObjects$objectResources[[res_type]]$objectResource)) {
-        data <- canvasObjects$objectResources[[res_type]]$objectResource
-        row_idx <- which(data$object == obj_name)
-        if (length(row_idx) > 0) {
-          data$Policy[row_idx] <- policy
-          canvasObjects$objectResources[[res_type]]$objectResource <- data
-          shinyalert("Success", paste0("Selection policy for ", obj_name, " in ", res_type, " updated to: ", policy), type = "success")
-        }
-      }
-    })
-  })
-
-  # Apply global policy to all objects in all rooms
-  observeEvent(input$set_object_resources, {
-    global_policy <- input$selectInput_obj_policy_global
-    isolate({
-      for (res_type in names(canvasObjects$objectResources)) {
-        data <- canvasObjects$objectResources[[res_type]]$objectResource
-        if (!is.null(data)) {
-          data$Policy <- global_policy
-          canvasObjects$objectResources[[res_type]]$objectResource <- data
-        }
-      }
-      shinyalert("Success", paste0("Global policy applied: all objects set to '", global_policy, "'"), type = "success")
-    })
-  })
-
-  observe({
-    req(input$selectInput_object_resources_room)
-    if (!is.null(allResObjects())) {
-      choices <- allResObjects() %>%
-        filter(Room == input$selectInput_object_resources_room) %>%
-        pull(Name) %>%
-        unique()
-      updateSelectizeInput(session, "selectInput_object_resources_name", choices = choices, selected = "", server = TRUE)
     }
   })
 
@@ -4113,221 +3932,38 @@ server <- function(input, output, session) {
   })
 
   observe({
-    # give a default to resources and waitingrooms for objects
-    resources_type <- req(selected_object_key())
-    if (resources_type == " - ") {
-      return()
-    }
-    relevantAgents <- names(canvasObjects$agents)
-
-    objs <- objectsINcanvas() %>%
-      filter(Area == resources_type) %>%
-      distinct()
-
-    isolate({
-      if (dim(objs)[1] == 0) {
-        data <- data.frame()
-      } else if (is.null(canvasObjects$objectResources[[resources_type]]$objectResource)) {
-        data <- data.frame(object = objs$Name, MAX = objs$Capacity, Policy = "Random")
-        for (a in relevantAgents) {
-          data[, a] <- 0
-        }
-      } else {
-        # If there exist already the dataset, then it is used and we have to check that there is already the agents
-        dataOLD <- canvasObjects$objectResources[[resources_type]]$objectResource
-
-        data <- dataOLD[, c("object", "MAX", "Policy")]
-        for (a in relevantAgents) {
-          if (a %in% colnames(dataOLD)) {
-            data[, a] <- dataOLD[, a]
-          } else {
-            data[, a] <- 0
-          }
-        }
-        # filter the objects already present to keep only the new added in the canvas
-        dataNEW <- objs %>% filter(!Name %in% dataOLD$object)
-
-        if (dim(dataNEW)[1] > 0) {
-          dataNew <- setNames(data.frame(matrix(0, ncol = length(colnames(dataOLD)), nrow = dim(dataNEW)[1])), colnames(dataOLD))
-          dataNew$object <- dataNEW$Name
-          dataNew$Policy <- "Random"
-          data <- rbind(data, dataNew)
-        }
-      }
-
-      if (dim(data)[1] > 0) {
-        canvasObjects$objectResources[[resources_type]]$objectResource <- data
-      }
-    })
-
-    isolate({
-      ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
-      data_waiting <- data.frame()
-
-      data_waitingOLD <- canvasObjects$objectResources[[resources_type]]$waitingRoomsDeter
-      if (is.null(data_waitingOLD) || nrow(data_waitingOLD) == 0) {
-        if (length(relevantAgents) > 0) {
-          data_waiting <- data.frame(Agent = relevantAgents, Room = "Same object")
-        }
-      } else {
-        # If there exist already the dataset, then it is used and we have to check that there is already the agents
-
-        data_waiting <- data_waitingOLD[, c("Agent", "Room")]
-        for (a in relevantAgents) {
-          if (a %in% data_waitingOLD$Agent) {
-            data_waiting[data_waiting$Agent == a, "Room"] <- data_waitingOLD[data_waiting$Agent == a, "Room"]
-          } else {
-            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same object"))
-          }
-        }
-
-        agent_eliminated <- data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% relevantAgents)]
-
-        if (length(agent_eliminated) != 0) {
-          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
-        }
-      }
-
-      canvasObjects$objectResources[[resources_type]]$waitingRoomsDeter <- data_waiting
-    })
-
-    isolate({
-      ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
-      data_waiting <- data.frame()
-
-      data_waitingOLD <- canvasObjects$objectResources[[resources_type]]$waitingRoomsRand
-      if (is.null(data_waitingOLD) || nrow(data_waitingOLD) == 0) {
-        if (length(relevantAgents) > 0) {
-          data_waiting <- data.frame(Agent = relevantAgents, Room = "Same object")
-        }
-      } else {
-        # If there exist already the dataset, then it is used and we have to check that there is already the agents
-
-        data_waiting <- data_waitingOLD[, c("Agent", "Room")]
-        for (a in relevantAgents) {
-          if (a %in% data_waitingOLD$Agent) {
-            data_waiting[data_waiting$Agent == a, "Room"] <- data_waitingOLD[data_waiting$Agent == a, "Room"]
-          } else {
-            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same object"))
-          }
-        }
-
-        agent_eliminated <- data_waitingOLD$Agent[!(data_waitingOLD$Agent %in% relevantAgents)]
-
-        if (length(agent_eliminated) != 0) {
-          data_waiting <- data_waiting %>% filter(!Agent %in% agent_eliminated)
-        }
-      }
-
-      canvasObjects$objectResources[[resources_type]]$waitingRoomsRand <- data_waiting
-    })
-  })
-
-  # Summary dataframe of all object selection policies (room, object, policy)
-  projectObjectPolicies <- reactive({
-    res_list <- canvasObjects$objectResources
-    if (length(res_list) == 0) {
-      return(data.frame(room = character(), object = character(), policy = character()))
-    }
-
-    do.call(rbind, lapply(names(res_list), function(r_type) {
-      data <- res_list[[r_type]]$objectResource
-      if (is.null(data) || !"Policy" %in% colnames(data)) {
-        return(NULL)
-      }
-      data.frame(room = r_type, object = data$object, policy = data$Policy)
-    }))
-  })
-
-  output$RoomAgentResTable <- DT::renderDataTable(
-    {
-      resource_data <- canvasObjects$resources[[input$selectInput_resources_type]]$roomResource
-      if (is.null(resource_data)) {
-        return()
-      }
-
-      DT::datatable(resource_data,
-        editable = list(target = "cell", disable = list(columns = c(0))),
-        rownames = FALSE,
-        options = list(
-          pageLength = 10,
-          scrollX = TRUE,
-          dom = "t",
-          columnDefs = list(list(className = "dt-center", targets = "_all"))
-        ),
-        colnames = c("Room", "Maximum Capacity", colnames(resource_data)[-c(1, 2)])
+    # Render the editable table
+    output$RoomAgentResTable <- DT::renderDataTable(
+      DT::datatable(canvasObjects$resources[[input$selectInput_resources_type]]$roomResource,
+                    options = list(
+                      dom = "t", # Display only the table, not the default elements (e.g., search bar, length menu)
+                      scrollX = TRUE
+                    ),
+                    editable = list(target = "cell", disable = list(columns = c(0))),
+                    selection = "single",
+                    rownames = F,
+                    colnames = c("Room", "Maximum", colnames(canvasObjects$resources[[input$selectInput_resources_type]]$roomResource)[-c(1, 2)])
       )
-    },
-    server = T
-  )
-
-  observe({
-    output$ObjectAgentResTable <- DT::renderDataTable(
-      {
-        resources_type <- req(selected_object_key())
-        if (resources_type == " - ") {
-          return()
-        }
-        DT::datatable(canvasObjects$objectResources[[resources_type]]$objectResource,
-          editable = list(target = "cell", disable = list(columns = c(0))),
-          rownames = FALSE,
-          options = list(
-            pageLength = 10,
-            scrollX = TRUE,
-            dom = "t",
-            columnDefs = list(list(className = "dt-center", targets = "_all"))
-          ),
-          colnames = c("Object", "Maximum", "Selection Policy", colnames(canvasObjects$objectResources[[resources_type]]$objectResource)[-c(1, 2, 3)])
-        )
-      },
-      server = T
     )
   })
 
+
+  # Observe table edit and validate input
   observeEvent(input$RoomAgentResTable_cell_edit, {
     info <- input$RoomAgentResTable_cell_edit
-    resources_type <- input$selectInput_resources_type
-    data <- canvasObjects$resources[[resources_type]]$roomResource
+    str(info)
 
-    # R uses 1-based indexing, info$col is 0-based
-    col_idx <- info$col + 1
-    row_idx <- info$row
-
-    if (col_idx == 1) {
-      # Room name (read-only)
-      return()
-    } else if (col_idx == 3) {
-      # Policy column (string)
-      newValue <- info$value
-      if (!(newValue %in% c("Closest to door", "Random"))) {
-        shinyalert("Error", "Object selection policy must be either 'Closest to door' or 'Random'.", type = "error")
-        return()
-      }
-      canvasObjects$resources[[resources_type]]$roomResource[row_idx, col_idx] <- newValue
-    } else {
-      # Capacity columns (numeric)
-      oldValue <- data[row_idx, col_idx]
-      newValue <- as.numeric(info$value)
-      if (is.na(newValue) || newValue < 0) {
-        shinyalert("Error", "You must specify a numeric value >= 0.", type = "error")
-        return()
-      }
-      canvasObjects$resources[[resources_type]]$roomResource[row_idx, col_idx] <- newValue
-    }
-  })
-
-  observeEvent(input$ObjectAgentResTable_cell_edit, {
-    info <- input$ObjectAgentResTable_cell_edit
-    resources_type <- req(selected_object_key())
-    if (resources_type == " - ") {
-      return()
-    }
-    canvasObjects$objectResources[[resources_type]]$objectResource -> data
+    newValue <- as.numeric(info$value)
+    canvasObjects$resources[[input$selectInput_resources_type]]$roomResource -> data
     oldValue <- data[info$row, info$col + 1]
-    canvasObjects$objectResources[[resources_type]]$objectResource[info$row, info$col + 1] <- newValue <- as.numeric(info$value)
+    canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- newValue
+
+
     if (is.na(newValue) || newValue < 0) {
-      shinyalert("Error", "You must specify a numeric value greater or equals than 0 (>= 0) for the number of resources.", type = "error")
-      canvasObjects$objectResources[[resources_type]]$objectResource[info$row, info$col + 1] <- oldValue
+      shinyalert("Error", "Please enter a positive numeric value.", type = "error")
+      isolate({
+        canvasObjects$resources[[input$selectInput_resources_type]]$roomResource[info$row, info$col + 1] <- oldValue
+      })
     }
   })
 
@@ -4343,6 +3979,221 @@ server <- function(input, output, session) {
       return(FALSE)
     }
   }
+
+  #### Agent-Resource Linking ####
+
+  # Update agent selector for resource linking
+  observe({
+    if (!is.null(canvasObjects$agents) && length(canvasObjects$agents) > 0) {
+      agent_names <- names(canvasObjects$agents)
+      updateSelectizeInput(session, "agent_resource_link_selector", choices = agent_names)
+    }
+  })
+
+  # Get unique rooms visited by selected agent
+  get_agent_rooms <- reactive({
+    agent_name <- req(input$agent_resource_link_selector)
+
+    if (is.null(canvasObjects$agents[[agent_name]])) {
+      return(data.frame())
+    }
+
+    deter_rooms <- canvasObjects$agents[[agent_name]]$DeterFlow$Room
+    rand_rooms <- canvasObjects$agents[[agent_name]]$RandFlow$Room
+
+    all_rooms <- unique(c(deter_rooms, rand_rooms))
+
+    # Filter out spawn and stair rooms
+    all_rooms <- all_rooms[ - c(grep( c("Spawnroom"), all_rooms),
+                                grep( c("Fillingroom"), all_rooms),
+                                grep( c("Stair"), all_rooms) ) ]
+
+    if (length(all_rooms) > 0) {
+      # Get room details from canvas
+      room_details <- canvasObjects$roomsINcanvas %>%
+        mutate(Name2 = paste0(type,"-",area)) %>%
+        filter(Name2 %in% all_rooms) %>%
+        select(Name, type, area) %>%
+        distinct()
+      return(room_details)
+    }
+    return(data.frame())
+  })
+
+  # Display rooms visited by selected agent
+  output$agent_rooms_display <- renderUI({
+    rooms_df <- get_agent_rooms()
+
+    if (nrow(rooms_df) == 0) {
+      return(p("No rooms defined for this agent.", style = "color: red;"))
+    }
+
+    room_text <- paste(
+      apply(rooms_df, 1, function(row) {
+        paste0(row["type"], " - ", row["area"], " (", row["Name"], ")")
+      }),
+      collapse = ", \n"
+    )
+
+    box(
+      title = "Rooms visited by agent",
+      width = 12,
+      p(room_text, style = "font-weight: bold;")
+    )
+  })
+
+  # Get objects in selected agent's rooms
+  get_agent_room_objects <- reactive({
+    agent_name <- req(input$agent_resource_link_selector)
+    rooms_df <- get_agent_rooms()
+
+    if (nrow(rooms_df) == 0) {
+      return(list())
+    }
+
+    room_names <- rooms_df$Name
+
+    # Filter objects in these rooms
+    if (!is.null(canvasObjects$roomObjects)) {
+      objects_list <- list()
+
+      for (room_name in room_names) {
+        # Get room info for context
+        room_info <- rooms_df %>% filter(Name == room_name)
+
+        # Filter objects for this specific room
+        room_objects <- canvasObjects$roomObjects[[room_info$Name]]
+
+        if (length(room_objects) > 0) {
+          objNames <- unique( sapply(room_objects, function(obj) if(!obj$isObstacle) obj$name else NA) )
+          objNames <- objNames[!is.na(objNames)]  # Exclude obstacles
+          if(length(objNames) > 0) {
+            objects_list[[room_name]] <- objNames
+          }
+        }
+      }
+
+      return(objects_list)
+    }
+
+    return(list())
+  })
+
+  # Render UI for object access control
+  output$agent_object_access_ui <- renderUI({
+    agent_name <- req(input$agent_resource_link_selector)
+    objects_by_room <- get_agent_room_objects()
+
+    if (length(objects_by_room) == 0) {
+      return(p("No objects defined in rooms visited by this agent.", style = "color: orange;"))
+    }
+
+    # Build UI for each room and its objects
+    room_ui_list <- lapply(names(objects_by_room), function(room_name) {
+      objects <- objects_by_room[[room_name]]
+
+      object_controls <- lapply(objects, function(obj_name) {
+        # Create unique IDs for this agent-room-object combination
+        access_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_access")
+        capacity_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_capacity")
+
+        # Get stored values if they exist
+        stored_links <- canvasObjects$agent_resource_links
+        access_value <- FALSE
+        capacity_value <- 1
+
+        if (!is.null(stored_links[[agent_name]][[room_name]][[obj_name]])) {
+          access_value <- stored_links[[agent_name]][[room_name]][[obj_name]]$access
+          capacity_value <- stored_links[[agent_name]][[room_name]][[obj_name]]$capacity
+        }
+
+        div(
+          style = "margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px;",
+          fluidRow(
+            column(4,
+                   checkboxInput(access_id,
+                                 label = HTML(paste0("<strong>", obj_name, "</strong> - Can access?")),
+                                 value = access_value)
+            ),
+            conditionalPanel(
+              condition = paste0("input['", access_id, "'] == true"),
+              column(4,
+                     numericInput(capacity_id,
+                                  label = "Concurrent usage (max):",
+                                  value = capacity_value,
+                                  min = 0,
+                                  max = 100,
+                                  step = 1)
+              )
+            )
+          )
+        )
+      })
+
+      div(
+        style = "margin: 20px 0; padding: 15px; border-left: 4px solid #5F5CA3; background: #f9f9f9;",
+        h5(paste0("Room: ", room_name), style = "margin-top: 0; color: #5F5CA3;"),
+        object_controls
+      )
+    })
+
+    tagList(room_ui_list)
+  })
+
+  # Save agent-resource links
+  observeEvent(input$save_agent_resource_links, {
+    agent_name <- req(input$agent_resource_link_selector)
+    rooms_df <- get_agent_rooms()
+
+    if (nrow(rooms_df) == 0) {
+      shinyalert("Error", "No rooms defined for this agent.", type = "error")
+      return()
+    }
+
+    # Collect all input values
+    input_names <- names(input)
+
+    # Initialize structure for this agent if it doesn't exist
+    if (is.null(canvasObjects$agent_resource_links[[agent_name]])) {
+      canvasObjects$agent_resource_links[[agent_name]] <- list()
+    }
+
+    # Parse all object access inputs
+    for (room_name in rooms_df$Name) {
+      if (is.null(canvasObjects$agent_resource_links[[agent_name]][[room_name]])) {
+        canvasObjects$agent_resource_links[[agent_name]][[room_name]] <- list()
+      }
+
+      # Get objects in this room
+      room_objects <- get_agent_room_objects()[[room_name]]
+
+      if (!is.null(room_objects)) {
+        for (obj_name in room_objects) {
+          access_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_access")
+          capacity_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_capacity")
+
+          access_value <- FALSE
+          capacity_value <- 1
+
+          if (access_id %in% input_names) {
+            access_value <- input[[access_id]]
+          }
+
+          if (capacity_id %in% input_names) {
+            capacity_value <- input[[capacity_id]]
+          }
+
+          # Store the link
+          canvasObjects$agent_resource_links[[agent_name]][[room_name]][[obj_name]] <- list(
+            access = access_value,
+            capacity = capacity_value
+          )
+        }
+      }
+    }
+
+    shinyalert("Success", paste0("Resource links for agent '", agent_name, "' have been saved successfully!"), type = "success")
+  })
 
   #######################
   #### Disease Model ####
@@ -6950,49 +6801,15 @@ server <- function(input, output, session) {
 
       # Add ribbon based on aggregate mode
       if (show_ribbon && plot_type == "line") {
-        if (aggregate_mode == "mean_sd") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, Mean - SD), ymax = Mean + SD),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
-        } else if (aggregate_mode == "mean_ci") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = pmax(0, CI_lower), ymax = CI_upper),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
-        } else if (aggregate_mode == "minmax") {
-          if (facet_room && "RoomID" %in% names(agg_stats)) {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max, group = RoomID),
-              alpha = ribbon_alpha, color = NA
-            )
-          } else {
-            p <- p + geom_ribbon(aes(ymin = Min, ymax = Max),
-              fill = metric_color, alpha = ribbon_alpha
-            )
-          }
+        if (facet_room && "RoomID" %in% names(agg_stats)) {
+          p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax, group = RoomID),
+                               alpha = ribbon_alpha, color = NA
+          )
+        } else {
+          p <- p + geom_ribbon(aes(ymin = ymin, ymax = ymax),
+                               fill = metric_color, alpha = ribbon_alpha
+          )
         }
-      }
-
-      # Calculate ymin and ymax for bar plot error bars
-      if (aggregate_mode == "mean_sd") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = pmax(0, Mean - SD), ymax = Mean + SD)
-      } else if (aggregate_mode == "mean_ci") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = pmax(0, CI_lower), ymax = CI_upper)
-      } else if (aggregate_mode == "minmax") {
-        agg_stats <- agg_stats %>%
-          mutate(ymin = Min, ymax = Max)
       }
 
       # Add line or bar plot
@@ -7786,18 +7603,18 @@ server <- function(input, output, session) {
         filter(y != 10000)
 
       ## updating slider and selectize
-# <<<<<<< HEAD
-#       step = as.numeric(postprocObjects$Model$starting$step)
-#       updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
-#       updateSliderInput("animation", session = session,
-#                         max = max(simulation_log$time)*step, min = 0,
-#                         value = 0, step = step )
-#       updateSelectInput("visualFloor_select", session = session,
-#                         choices = c("All",unique(floors$Name)))
-#                        # choices = c("All",unique(floors$CanvasID)))
-#       updateSelectInput("visualAgent_select", session = session,
-#                         choices = c("All",sort(unique(simulation_log$agent_type))))
-# =======
+      # <<<<<<< HEAD
+      #       step = as.numeric(postprocObjects$Model$starting$step)
+      #       updateNumericInput("animationStep",session = session, value = step, max = max(simulation_log$time)*step)
+      #       updateSliderInput("animation", session = session,
+      #                         max = max(simulation_log$time)*step, min = 0,
+      #                         value = 0, step = step )
+      #       updateSelectInput("visualFloor_select", session = session,
+      #                         choices = c("All",unique(floors$Name)))
+      #                        # choices = c("All",unique(floors$CanvasID)))
+      #       updateSelectInput("visualAgent_select", session = session,
+      #                         choices = c("All",sort(unique(simulation_log$agent_type))))
+      # =======
       step <- as.numeric(postprocObjects$Model$starting$step)
       updateNumericInput("animationStep", session = session, value = step, max = max(simulation_log$time) * step)
       updateSliderInput("animation",

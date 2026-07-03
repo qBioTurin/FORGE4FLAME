@@ -601,6 +601,38 @@ ui <- dashboardPage(
             title = h3("Define a new room"),
             width = 12,
             collapsible = T,
+            ## Info box about room types and areas for agent flows ####
+            fluidRow(
+              column(12,
+                     div(
+                       style = "background: linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%);
+                               border-left: 5px solid #4CAF50;
+                               padding: 15px;
+                               margin-bottom: 20px;
+                               border-radius: 6px;
+                               box-shadow: 0 2px 6px rgba(76, 175, 80, 0.1);",
+                       div(
+                         style = "display: flex; align-items: flex-start; gap: 12px;",
+                         icon("info-circle", style = "color: #2E7D32; font-size: 20px; margin-top: 2px; flex-shrink: 0;"),
+                         div(
+                           h5(tags$b("Agent Flow via Room Types", style = "color: #2E7D32; margin: 0 0 8px 0;")),
+                           p("Room ", tags$b("Types"), " and ", tags$b("Areas"), " define how agents move, NOT room names.",
+                             style = "margin: 0 0 8px 0; font-size: 14px; color: #333;"),
+                           p(tags$strong("Example:"), " Create type ",
+                             tags$span(style = "background: #FFF9C4; padding: 2px 6px; border-radius: 3px;", "bathroom"),
+                             " with areas ",
+                             tags$span(style = "background: #FFE0B2; padding: 2px 6px; border-radius: 3px;", "small_bathroom"),
+                             " and ",
+                             tags$span(style = "background: #FFE0B2; padding: 2px 6px; border-radius: 3px;", "large_bathroom"),
+                             ". Agents visit the type \"bathroom\" and may be assigned any area of that type.",
+                             style = "margin: 0 0 8px 0; font-size: 13px; color: #555; line-height: 1.5;"),
+                           p(tags$strong("Benefit:"), " Groups similar rooms together, enabling flexible agent routing and easy reconfiguration.",
+                             style = "margin: 0; font-size: 13px; color: #666;")
+                         )
+                       )
+                     )
+              )
+            ),
             fluidRow(),
             fluidRow(column(1),
                      column(
@@ -860,6 +892,18 @@ ui <- dashboardPage(
         ),
         fluidRow(
           column(12,
+                 # Reference indicator explanation
+                 div(
+                   style = "background: #FFF9E6; border-left: 4px solid #FFD700; padding: 12px 15px; margin-bottom: 15px; border-radius: 4px;",
+                   icon("lightbulb", style = "color: #FFD700;"),
+                   tags$strong(style = "color: #FF8C00;", " Room Reference Point:"),
+                   br(),
+                   "The ", tags$strong("yellow dot at the bottom-left corner"), " indicates the room reference point (0.5m from edges). Use this to understand the room orientation and coordinate system."
+                 )
+          )
+        ),
+        fluidRow(
+          column(12,
                  # Include the ObjectsCanvas files
                  includeCSS(system.file("Shiny","www/ObjectsCanvas.css", package = "FORGE4FLAME")),
                  includeHTML(system.file("Shiny","www/ObjectsCanvas.html", package = "FORGE4FLAME")),
@@ -897,110 +941,53 @@ ui <- dashboardPage(
                     column(12,
                            DT::dataTableOutput("RoomAgentResTable")
                     )
-                  )
-                ),
-                br(),
-                wellPanel(
-                  style = "background-color: #fff9db; border-radius: 10px; border-left: 5px solid #ffec99;",
-                  h4(style = "color: #826a00; font-weight: bold;", icon("random"), "Fine-grained Second Choices"),
-                  p(style = "color: #826a00; font-size: 0.9em;", "Configure specific alternative rooms for each agent type when the primary room is full."),
-                  uiOutput("dynamicSelectizeInputs_waitingRoomsDeter"),
-                  uiOutput("dynamicSelectizeInputs_waitingRoomsRand")
-                )
-              )
-            ),
-            tabPanel(
-              title = tagList(icon("couch"), "Objects"),
-              div(
-                style = "padding: 15px;",
-                wellPanel(
-                  style = "background-color: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);",
-                  h4(
-                    style = "color: #2c3e50; font-weight: bold; margin-bottom: 20px;",
-                    icon("magic"), "Inherited Configurations"
                   ),
                   fluidRow(
-                    column(
-                      4,
-                      selectInput(
-                        inputId = "selectInput_obj_policy_global",
-                        label = tagList(icon("route"), "Selection policy:"),
-                        choices = c("Closest to door", "Random")
-                      )
-                    ),
-                    column(
-                      4,
-                      uiOutput("selectInput_alternative_object_resources_global")
-                    ),
-                    column(
-                      2,
-                      actionButton("set_object_resources", "Apply Defaults",
-                        icon = icon("sync-alt"),
-                        style = "margin-top: 25px; width: 100%; background: linear-gradient(135deg, #2af598 0%, #009efd 100%); color: white; border: none; font-weight: bold; padding: 10px; border-radius: 6px; shadow: 0 4px 6px rgba(0,0,0,0.1);"
-                      )
+                    column(10,offset = 1,
+                           # conditionalPanel(
+                           #   condition = "input.WhereWaitingButton == 'Waiting room' || input.WhereWaitingButton == 'Other room'",
+                           uiOutput("dynamicSelectizeInputs_waitingRoomsDeter"),
+                           uiOutput("dynamicSelectizeInputs_waitingRoomsRand")
+                           # )
                     )
                   )
-                ),
-                hr(),
-                h4(
-                  style = "color: #2c3e50; font-weight: bold; margin-bottom: 20px;",
-                  icon("filter"), "Object-specific Overrides"
-                ),
-                fluidRow(
-                  column(
-                    4,
-                    selectInput(
-                      inputId = "selectInput_object_resources_room",
-                      label = tagList(icon("door-open"), "Select room:"),
-                      choices = ""
+                )
+              ),
+              ## Agent-Resource Linking Section ####
+              fluidRow(
+                box(
+                  title = div(class = "icon-container",
+                              h3("Agent-Resource Linking"),
+                              div(class = "icon-text", "Link agents to objects in rooms they visit. Specify which objects each agent can access and how many can be used simultaneously.")
+                  ),
+                  width = 12,
+                  collapsible = T,
+                  collapsed = T,
+                  fluidRow(
+                    column(4,
+                           selectizeInput(inputId = "agent_resource_link_selector",
+                                         label = "Select agent:",
+                                         choices = "")
+                    ),
+                    column(4,
+                           uiOutput("agent_rooms_display")
                     )
                   ),
-                  column(
-                    4,
-                    selectInput(
-                      inputId = "selectInput_object_resources_name",
-                      label = tagList(icon("fingerprint"), "Select object name:"),
-                      choices = ""
+                  br(),
+                  fluidRow(
+                    column(12,
+                           h4("Objects in rooms visited by selected agent"),
+                           uiOutput("agent_object_access_ui")
                     )
                   ),
-                  column(
-                    4,
-                    div(
-                      style = "display: flex; align-items: flex-end; gap: 10px;",
-                      selectInput(
-                        inputId = "selectInput_obj_policy_room",
-                        label = tagList(icon("route"), "Room Selection Policy:"),
-                        choices = c("Closest to door", "Random"),
-                        width = "100%"
-                      ),
-                      actionButton("save_room_policy_btn", "",
-                                   icon = icon("save"),
-                                   style = "margin-bottom: 15px; background-color: #0b7285; color: white;",
-                                   title = "Save policy for this room"
-                      )
+                  br(),
+                  fluidRow(
+                    column(2, offset = 10,
+                           actionButton("save_agent_resource_links", "Save Links", style="background-color: #5F5CA3; color: white; margin-top:10px;")
                     )
                   )
-                ),
-                fluidRow(
-                  column(
-                    12,
-                    div(
-                      style = "background-color: white; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;",
-                      DT::dataTableOutput("ObjectAgentResTable")
-                    )
-                  )
-                ),
-                br(),
-                wellPanel(
-                  style = "background-color: #e3fafc; border-radius: 10px; border-left: 5px solid #99e9f2;",
-                  h4(style = "color: #0b7285; font-weight: bold;", icon("directions"), "Object Alternative Pathways"),
-                  p(style = "color: #0b7285; font-size: 0.9em;", "Configure alternative objects for each agent type when these objects are occupied."),
-                  uiOutput("dynamicSelectizeInputs_waitingObjects")
                 )
               )
-            )
-          )
-        )
       ),
       ## Tab agents ####
       tabItem(
@@ -1035,6 +1022,24 @@ ui <- dashboardPage(
                         div(class = "icon-text", "For each determined flow the first and last components must be the Spawnroom and the time associated to the last element of each flow (the Spawnroom) doesn't matter. This is because an agent starts and ends its flow outside the environment and the next entry time will be calculated automatically from the agent's time scheduling.")
             ),
             collapsible = T,
+            ## Info about selecting room types ####
+            fluidRow(
+              column(12,
+                     div(
+                       style = "background: linear-gradient(135deg, #E3F2FD 0%, #F3E5F5 100%);
+                               border-left: 4px solid #673AB7;
+                               padding: 12px 15px;
+                               margin-bottom: 15px;
+                               border-radius: 5px;
+                               font-size: 13px;",
+                       icon("lightbulb", style = "color: #673AB7; margin-right: 8px;"),
+                       tags$b("Select Room ", tags$span(style = "color: #673AB7;", "Types"), " (not room names)"),
+                       br(),
+                       tags$span(style = "margin-left: 24px; display: inline-block;",
+                                "Select the room type (e.g., 'bathroom', 'office') instead of specific room names. The simulation will assign agents to specific room areas of that type.")
+                       )
+              )
+            ),
             fluidRow(
               column(3,offset = 1,
                      selectizeInput(inputId= "Det_select_room_flow",
@@ -1117,6 +1122,24 @@ ui <- dashboardPage(
             title = div(class = "icon-container",
                         h4("Random flow ", icon("info-circle")),
                         div(class = "icon-text", "A random event should happen rarely and last only a few minutes.")
+            ),
+            ## Info about selecting room types for random flow ####
+            fluidRow(
+              column(12,
+                     div(
+                       style = "background: linear-gradient(135deg, #E3F2FD 0%, #F3E5F5 100%);
+                               border-left: 4px solid #673AB7;
+                               padding: 12px 15px;
+                               margin-bottom: 15px;
+                               border-radius: 5px;
+                               font-size: 13px;",
+                       icon("lightbulb", style = "color: #673AB7; margin-right: 8px;"),
+                       tags$b("Select Room ", tags$span(style = "color: #673AB7;", "Types"), " (not room names)"),
+                       br(),
+                       tags$span(style = "margin-left: 24px; display: inline-block;",
+                                "Select the room type (e.g., 'bathroom', 'office') instead of specific room names. The simulation will assign agents to specific room areas of that type.")
+                       )
+              )
             ),
             fluidRow(
               column(3,offset = 1,
