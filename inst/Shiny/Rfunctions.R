@@ -1331,6 +1331,54 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
   return(FALSE)
 }
 
+
+# Helper function to check if an object overlaps with the door area
+check_door_collision <- function(canvasObjects, room_name, objects_list) {
+  # Get room information
+  room_info <- canvasObjects$rooms %>%
+    filter(Name == room_name) %>%
+    mutate(door_x = floor(w/ 2)+1, door_y = l) %>%
+    select(door_x, door_y, w, l) %>%
+    distinct()
+
+  if (nrow(room_info) == 0) {
+    return(list(collision = FALSE, message = ""))
+  }
+
+  door_x <- room_info$door_x[1]
+  door_y <- room_info$door_y[1]
+  room_width <- room_info$w[1]
+  room_length <- room_info$l[1]
+
+  # Define door area based on door position (door area is 1 meter wide)
+  door_area <- list(x_min = door_x - 0.5, x_max = door_x + 0.5, y_min = door_y - 0.3, y_max = door_y + 0.3)
+
+  # Check if any object overlaps with door area
+  for (obj in objects_list) {
+    obj_x_min <- obj$x
+    obj_x_max <- obj$x + obj$width
+    obj_y_min <- obj$y
+    obj_y_max <- obj$y + obj$length
+
+    # Check for overlap (AABB - Axis-Aligned Bounding Box collision)
+    has_overlap <- !(
+      obj_x_max <= door_area$x_min ||  # Object is completely to the left
+        obj_x_min >= door_area$x_max ||  # Object is completely to the right
+        obj_y_max <= door_area$y_min ||  # Object is completely above
+        obj_y_min >= door_area$y_max     # Object is completely below
+    )
+
+    if (has_overlap) {
+      return(list(
+        collision = TRUE,
+        message = paste0("Object '", obj$name, "' cannot be placed in front of the door. Please reposition it.")
+      ))
+    }
+  }
+
+  return(list(collision = FALSE, message = ""))
+}
+
 check <- function(canvasObjects, input, output, InfoApp){
   show_modal_spinner()
 
@@ -1346,6 +1394,25 @@ check <- function(canvasObjects, input, output, InfoApp){
     remove_modal_spinner()
     return(NULL)
   }
+
+  if(!is.null(canvasObjects$roomObjects)){
+    for(i in 1:length(canvasObjects$roomObjects)){
+      collision_check <- check_door_collision(
+        canvasObjects,
+        names(canvasObjects$roomObjects)[i],
+        canvasObjects$roomObjects[[i]]
+      )
+      if(collision_check$collision){
+        shinyalert("Error", paste0("The door of the room ", names(canvasObjects$roomObjects)[i], " is colliding with an object (Canvas page)."), type = "error")
+        remove_modal_spinner()
+        return(NULL)
+      }
+    }
+  }
+
+
+  if (collision_check$collision)
+
 
   if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
     shinyalert("Error", "No room is drew in the canvas (Canvas page).", type = "error")

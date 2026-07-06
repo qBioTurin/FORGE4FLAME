@@ -102,10 +102,11 @@ function drawObjectsGrid() {
 
 // Draw reference indicator (yellow dot at bottom of room)
 function drawReferenceIndicator() {
-    // Draw a yellow dot at the bottom-left corner as a reference point
-    const dotX = SCALE * 0.5;  // 0.5 meters from the left
-    const dotY = obj_h - SCALE * 0.5;  // 0.5 meters from the bottom
-    const dotRadius = 8;
+    // Draw a yellow dot at the center right border
+
+    const dotX = Math.floor(obj_w / 2) + 1;
+    const dotY = obj_h ;
+    const dotRadius = 5;
 
     objectsBgCtx.save();
 
@@ -119,12 +120,6 @@ function drawReferenceIndicator() {
     objectsBgCtx.strokeStyle = '#FF8C00';  // Orange border
     objectsBgCtx.lineWidth = 2;
     objectsBgCtx.stroke();
-
-    // Draw label
-    objectsBgCtx.fillStyle = '#333';
-    objectsBgCtx.font = 'bold 11px Arial';
-    objectsBgCtx.textAlign = 'left';
-    objectsBgCtx.fillText('Room Reference', dotX + 15, dotY + 5);
 
     objectsBgCtx.restore();
 }

@@ -37,6 +37,15 @@ server <- function(input, output, session) {
     agents = NULL,
     disease = NULL,
     resources = NULL,
+    agent_resource_links_df = data.frame(
+      agent_id = character(),
+      agent_name = character(),
+      room = character(),
+      object = character(),
+      has_access = logical(),
+      concurrent_usage = numeric(),
+      stringsAsFactors = FALSE
+    ),
     color = "Room",
     matricesCanvas = NULL,
     starting = data.frame(seed = NA, simulation_days = 10, day = "Monday", time = "00:00", step = 60, nrun = 100, prun = 10),
@@ -77,8 +86,92 @@ server <- function(input, output, session) {
   hideElement("outside_contagion_plot")
   hideElement("DownloadPostProc_Button")
 
-  # Initialize agent-resource links structure
-  canvasObjects$agent_resource_links <- list()
+  # Helper function to update agent-resource links dataframe
+  update_agent_resource_df <- function() {
+    if (is.null(canvasObjects$agents) || length(canvasObjects$agents) == 0) {
+      return()
+    }
+
+    new_rows <- list()
+
+    for (agent_name in names(canvasObjects$agents)) {
+      agent_obj <- canvasObjects$agents[[agent_name]]
+
+      # Get all rooms for this agent
+      deter_rooms <- agent_obj$DeterFlow$Room
+      rand_rooms <- if (!is.null(agent_obj$RandFlow)) agent_obj$RandFlow$Room else c()
+
+      all_rooms <- unique(c(deter_rooms, rand_rooms))
+      # Filter out special rooms
+      all_rooms <- all_rooms[ - c(grep( c("Spawnroom"), all_rooms),
+                                  grep( c("Fillingroom"), all_rooms),
+                                  grep( c("Stair"), all_rooms) ) ]
+
+
+      room_info <- canvasObjects$roomsINcanvas %>%
+        mutate(Name2 = paste0(type,"-",area)) %>%
+        filter(Name2 %in% all_rooms) %>%
+        select(Name, type, area) %>%
+        distinct()
+
+      for (room_name in room_info$Name) {
+
+          # Get objects in this room
+          if (!is.null(canvasObjects$roomObjects) && !is.null(canvasObjects$roomObjects[[room_name]])) {
+            room_objs <- canvasObjects$roomObjects[[room_name]]
+
+            for (obj in room_objs) {
+              # Only include non-obstacle objects
+              if (!obj$isObstacle) {
+                obj_id <- paste0(agent_name, "_", room_name, "_", obj$name)
+
+                # Check if entry already exists in dataframe
+                existing_row <- which(
+                  canvasObjects$agent_resource_links_df$agent_name == agent_name &
+                  canvasObjects$agent_resource_links_df$room == room_name &
+                  canvasObjects$agent_resource_links_df$object == obj$name
+                )
+
+                if (length(existing_row) == 0) {
+                  # New entry - add with default values (all agents have access)
+                  new_rows[[length(new_rows) + 1]] <- data.frame(
+                    agent_id = obj_id,
+                    agent_name = agent_name,
+                    room = room_name,
+                    object = obj$name,
+                    has_access = TRUE,
+                    concurrent_usage = obj$capacity,
+                    stringsAsFactors = FALSE
+                  )
+                }
+              }
+            }
+          }
+
+      }
+    }
+
+    # Append new rows to dataframe
+    if (length(new_rows) > 0) {
+      new_df <- do.call(rbind, new_rows)
+      canvasObjects$agent_resource_links_df <- rbind(
+        canvasObjects$agent_resource_links_df,
+        new_df
+      )
+      # Remove duplicates if any
+      canvasObjects$agent_resource_links_df <- canvasObjects$agent_resource_links_df %>%
+        distinct()
+    }
+
+    # Remove entries for agents/rooms/objects that no longer exist
+    if (nrow(canvasObjects$agent_resource_links_df) > 0) {
+      valid_agents <- names(canvasObjects$agents)
+      valid_rooms <- unique(canvasObjects$roomsINcanvas$Name)
+
+      canvasObjects$agent_resource_links_df <- canvasObjects$agent_resource_links_df %>%
+        filter(agent_name %in% valid_agents, room %in% valid_rooms)
+    }
+  }
 
   observeEvent(input$link_canvas_tab, {
     updateTabItems(session, "SideTabs", "canvas_tab")
@@ -2248,6 +2341,9 @@ server <- function(input, output, session) {
       }
 
       InfoApp$oldAgentType <- canvasObjects$agents[[Agent]]$entry_type
+
+      # Update agent-resource links dataframe
+      update_agent_resource_df()
     }
   })
 
@@ -2327,6 +2423,12 @@ server <- function(input, output, session) {
       }
 
       canvasObjects$agents <- canvasObjects$agents[-which(names(canvasObjects$agents) == Agent)]
+
+      # Remove agent entries from agent-resource links dataframe
+      if (nrow(canvasObjects$agent_resource_links_df) > 0) {
+        canvasObjects$agent_resource_links_df <- canvasObjects$agent_resource_links_df %>%
+          filter(agent_name != Agent)
+      }
 
       if (length(names(canvasObjects$agents)) == 0) {
         canvasObjects$agents <- NULL
@@ -4030,7 +4132,7 @@ server <- function(input, output, session) {
 
     room_text <- paste(
       apply(rooms_df, 1, function(row) {
-        paste0(row["type"], " - ", row["area"], " (", row["Name"], ")")
+        row["Name"]
       }),
       collapse = ", \n"
     )
@@ -4081,7 +4183,11 @@ server <- function(input, output, session) {
 
   # Render UI for object access control
   output$agent_object_access_ui <- renderUI({
-    agent_name <- req(input$agent_resource_link_selector)
+    a_name <- req(input$agent_resource_link_selector)
+
+    # Update agent-resource links dataframe
+    update_agent_resource_df()
+
     objects_by_room <- get_agent_room_objects()
 
     if (length(objects_by_room) == 0) {
@@ -4094,17 +4200,19 @@ server <- function(input, output, session) {
 
       object_controls <- lapply(objects, function(obj_name) {
         # Create unique IDs for this agent-room-object combination
-        access_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_access")
-        capacity_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_capacity")
+        access_id <- paste0("agent_", gsub(" ", "_", a_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_access")
+        capacity_id <- paste0("agent_", gsub(" ", "_", a_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_capacity")
 
-        # Get stored values if they exist
-        stored_links <- canvasObjects$agent_resource_links
-        access_value <- FALSE
-        capacity_value <- 1
+        # Get stored values from dataframe
+        stored_row <- canvasObjects$agent_resource_links_df %>%
+          filter(agent_name == a_name, room == room_name, object == obj_name)
 
-        if (!is.null(stored_links[[agent_name]][[room_name]][[obj_name]])) {
-          access_value <- stored_links[[agent_name]][[room_name]][[obj_name]]$access
-          capacity_value <- stored_links[[agent_name]][[room_name]][[obj_name]]$capacity
+        # access_value <- TRUE  # Default: all agents have access
+        # capacity_value <- 1   # Default: 1 agent at a time
+
+        if (nrow(stored_row) > 0) {
+          access_value <- stored_row$has_access[1]
+          capacity_value <- if (access_value) stored_row$concurrent_usage[1] else 0
         }
 
         div(
@@ -4122,7 +4230,7 @@ server <- function(input, output, session) {
                                   label = "Concurrent usage (max):",
                                   value = capacity_value,
                                   min = 0,
-                                  max = 100,
+                                  max = capacity_value,
                                   step = 1)
               )
             )
@@ -4140,7 +4248,7 @@ server <- function(input, output, session) {
     tagList(room_ui_list)
   })
 
-  # Save agent-resource links
+  # Save agent-resource links to dataframe
   observeEvent(input$save_agent_resource_links, {
     agent_name <- req(input$agent_resource_link_selector)
     rooms_df <- get_agent_rooms()
@@ -4153,17 +4261,8 @@ server <- function(input, output, session) {
     # Collect all input values
     input_names <- names(input)
 
-    # Initialize structure for this agent if it doesn't exist
-    if (is.null(canvasObjects$agent_resource_links[[agent_name]])) {
-      canvasObjects$agent_resource_links[[agent_name]] <- list()
-    }
-
-    # Parse all object access inputs
+    # Parse all object access inputs and update dataframe
     for (room_name in rooms_df$Name) {
-      if (is.null(canvasObjects$agent_resource_links[[agent_name]][[room_name]])) {
-        canvasObjects$agent_resource_links[[agent_name]][[room_name]] <- list()
-      }
-
       # Get objects in this room
       room_objects <- get_agent_room_objects()[[room_name]]
 
@@ -4172,22 +4271,47 @@ server <- function(input, output, session) {
           access_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_access")
           capacity_id <- paste0("agent_", gsub(" ", "_", agent_name), "_room_", gsub(" ", "_", room_name), "_obj_", gsub(" ", "_", obj_name), "_capacity")
 
-          access_value <- FALSE
-          capacity_value <- 1
+          # access_value <- FALSE
+          # capacity_value <- 0
 
           if (access_id %in% input_names) {
             access_value <- input[[access_id]]
           }
 
-          if (capacity_id %in% input_names) {
+          if (access_value && capacity_id %in% input_names) {
             capacity_value <- input[[capacity_id]]
+          } else if (!access_value) {
+            capacity_value <- 0
           }
 
-          # Store the link
-          canvasObjects$agent_resource_links[[agent_name]][[room_name]][[obj_name]] <- list(
-            access = access_value,
-            capacity = capacity_value
+          # Find and update or create row in dataframe
+          obj_id <- paste0(agent_name, "_", room_name, "_", obj_name)
+          row_idx <- which(
+            canvasObjects$agent_resource_links_df$agent_name == agent_name &
+            canvasObjects$agent_resource_links_df$room == room_name &
+            canvasObjects$agent_resource_links_df$object == obj_name
           )
+
+          if (length(row_idx) > 0) {
+            # Update existing row
+            canvasObjects$agent_resource_links_df[row_idx, "has_access"] <- access_value
+            canvasObjects$agent_resource_links_df[row_idx, "concurrent_usage"] <- capacity_value
+          } else {
+            # Create new row
+            new_row <- data.frame(
+              agent_id = obj_id,
+              agent_name = agent_name,
+              room = room_name,
+              object = obj_name,
+              has_access = access_value,
+              concurrent_usage = capacity_value,
+              stringsAsFactors = FALSE
+            )
+            canvasObjects$agent_resource_links_df <- rbind(
+              canvasObjects$agent_resource_links_df,
+              new_row
+            )
+          }
         }
       }
     }
@@ -9836,11 +9960,31 @@ server <- function(input, output, session) {
   # Update objects data when canvas changes
   observeEvent(input$objects_updated, {
     req(input$select_room_for_objects)
-
     if (input$select_room_for_objects != "") {
+      # Validate that no objects are in front of the door
+      collision_check <- check_door_collision(
+        canvasObjects,
+        input$select_room_for_objects,
+        input$objects_updated$objects
+      )
+
+      if (collision_check$collision) {
+        shinyalert(
+          "Door Collision Error",
+          collision_check$message,
+          type = "error"
+        )
+        # Do not update the canvas objects - keep the previous valid state
+        return()
+      }
+
       canvasObjects$roomObjects[[input$select_room_for_objects]] <- input$objects_updated$objects
+
+      # Update agent-resource links dataframe with new/modified objects
+      update_agent_resource_df()
     }
   })
+
 
   # Display objects table
   output$objects_table <- DT::renderDataTable({

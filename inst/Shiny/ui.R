@@ -492,8 +492,9 @@ ui <- dashboardPage(
                        fluidRow(
                          column(10,offset=1,
                                 h2(),
-                                selectInput(inputId = "door_new_room", label = "Door position:",
-                                            choices = c("none","right","left","top","bottom"),selected = "Right")
+                                selectInput(inputId = "door_new_room", label = "Room rotation w.r.t the door (by defulat on the bottom wall):",
+                                            choices = c("none","right","left","top","bottom"),
+                                            selected = "Right")
                          ),
                        ),
                        fluidRow(
@@ -660,7 +661,7 @@ ui <- dashboardPage(
                          inputId = "length_new_room",
                          label = div(class = "icon-container",
                                      h5(tags$b("Length (meter): "), icon("info-circle")),
-                                     div(class = "icon-text", "Length refers to the wall with the door.")
+                                     div(class = "icon-text", "Length refers to the (bottom) wall with the door.")
                          ),
                          placeholder = "Room length"
                        )
@@ -786,6 +787,26 @@ ui <- dashboardPage(
                        icon("info-circle"), " Select an existing object type or define a new one below")
               )
             ),
+            ## Door collision warning ####
+            fluidRow(
+              column(12,
+                     div(
+                       style = "background: linear-gradient(135deg, #FFF3CD 0%, #FFE69C 100%);
+                               border-left: 5px solid #FF9800;
+                               padding: 12px 15px;
+                               margin-bottom: 15px;
+                               border-radius: 5px;
+                               box-shadow: 0 2px 5px rgba(255, 152, 0, 0.15);",
+                       icon("exclamation-triangle", style = "color: #FF6F00; margin-right: 8px;"),
+                       tags$b("Important: Door Collision Rule", style = "color: #FF6F00;"),
+                       br(),
+                       tags$span(
+                         style = "margin-left: 28px; display: inline-block; color: #333; font-size: 13px;",
+                         "Objects cannot be placed directly in front of the room door. The system will reject any object positioned in the door area."
+                       )
+                     )
+              )
+            ),
             fluidRow(
               column(3, offset = 1,
                      textInput(
@@ -896,9 +917,11 @@ ui <- dashboardPage(
                  div(
                    style = "background: #FFF9E6; border-left: 4px solid #FFD700; padding: 12px 15px; margin-bottom: 15px; border-radius: 4px;",
                    icon("lightbulb", style = "color: #FFD700;"),
-                   tags$strong(style = "color: #FF8C00;", " Room Reference Point:"),
+                   tags$strong(style = "color: #FF8C00;", " Door Position Indicator:"),
                    br(),
-                   "The ", tags$strong("yellow dot at the bottom-left corner"), " indicates the room reference point (0.5m from edges). Use this to understand the room orientation and coordinate system."
+                   "The ", tags$strong("yellow dot at the top"), " with a dashed line shows the door position using the formula: ",
+                   tags$code("floor(length / 2) + 1"),
+                   ". Objects cannot be placed on or near this line."
                  )
           )
         ),
