@@ -616,7 +616,7 @@ ui <- dashboardPage(
                          style = "display: flex; align-items: flex-start; gap: 12px;",
                          icon("info-circle", style = "color: #2E7D32; font-size: 20px; margin-top: 2px; flex-shrink: 0;"),
                          div(
-                           h5(tags$b("Agent Flow via Room Types", style = "color: #2E7D32; margin: 0 0 8px 0;")),
+                           h5(tags$b("Agent Flow via Room Types (to fix, it is not correct)", style = "color: #2E7D32; margin: 0 0 8px 0;")),
                            p("Room ", tags$b("Types"), " and ", tags$b("Areas"), " define how agents move, NOT room names.",
                              style = "margin: 0 0 8px 0; font-size: 14px; color: #333;"),
                            p(tags$strong("Example:"), " Create type ",
@@ -919,7 +919,7 @@ ui <- dashboardPage(
                    icon("lightbulb", style = "color: #FFD700;"),
                    tags$strong(style = "color: #FF8C00;", " Door Position Indicator:"),
                    br(),
-                   "The ", tags$strong("yellow dot at the top"), " with a dashed line shows the door position using the formula: ",
+                   "The ", tags$strong("yellow dot at the bottom"), " with a dashed line shows the door position using the formula: ",
                    tags$code("floor(length / 2) + 1"),
                    ". Objects cannot be placed on or near this line."
                  )

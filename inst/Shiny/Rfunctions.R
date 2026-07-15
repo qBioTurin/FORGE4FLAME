@@ -218,7 +218,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
 
 CanvasRoomToMatrix = function(canvasObjects,canvas){
 
-  roomsMatrix = lapply(names(canvasObjects$roomObjects),function(n){
+  roomsMatrix = lapply(canvasObjects$roomsINcanvas$Name,function(n){
 
     objects_list = canvasObjects$roomObjects[[n]]
 
@@ -248,16 +248,19 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
     matrixCanvas[nrow(matrixCanvas),] = 0
     matrixCanvas[,ncol(matrixCanvas)] = 0
 
-    for(i in 1:nrow(objects_df) ){
-      r = objects_df[i,]
+    # Handle rooms without objects
+    if(!is.null(objects_df) && nrow(objects_df) > 0){
+      for(i in 1:nrow(objects_df) ){
+        r = objects_df[i,]
 
-      x = floor(r$X)
-      y = floor(r$Y)
+        x = floor(r$X)
+        y = floor(r$Y)
 
-      r$l <- ceiling(r$Length)
-      r$w <- ceiling(r$Width)
+        r$l <- ceiling(r$Length)
+        r$w <- ceiling(r$Width)
 
-      matrixCanvas[(y + 1:(r$l))+1,(x + 1:(r$w))+1] = - r$ID
+        matrixCanvas[(y + 1:(r$l))+1,(x + 1:(r$w))+1] = - r$ID
+      }
     }
 
     ## Door position definition as 2
@@ -266,7 +269,9 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
 
     return(matrixCanvas)
   })
-  names(roomsMatrix) = names(canvasObjects$roomObjects)
+
+  names(roomsMatrix) = canvasObjects$roomsINcanvas$Name
+  
   return(roomsMatrix)
 }
 
