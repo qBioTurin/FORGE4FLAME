@@ -296,6 +296,11 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
   for(i in messNames)
     canvasObjects[[i]] = mess[[i]]
 
+  if (!is.null(canvasObjects$nodesINcanvas)) {
+    canvasObjects$nodesINcanvas <- unique(canvasObjects$nodesINcanvas)
+    row.names(canvasObjects$nodesINcanvas) <- NULL
+  }
+
   ### UPDATING THE CANVAS ####
   # deleting everything from canvas
   runjs("shinyjs.clearCanvas()")

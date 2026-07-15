@@ -1465,20 +1465,21 @@ server <- function(input, output, session) {
       } else {
         result <- result[1, ]
       }
-      xnew <- result[2] - 1
-      ynew <- result[1] - 1
+      xnew <- as.numeric(result[2] - 1)
+      ynew <- as.numeric(result[1] - 1)
     } else {
       xnew <- runif(1, min = 1, max = canvasObjects$canvasDimension$canvasWidth / 10 - 1)
       ynew <- runif(1, min = 1, max = canvasObjects$canvasDimension$canvasHeight / 10 - 1)
     }
 
-    newpoint <- data.frame(ID = 1, x = xnew, y = ynew, CanvasID = input$canvas_selector)
+    newpoint <- data.frame(ID = 1, x = xnew, y = ynew, CanvasID = input$canvas_selector, row.names = NULL)
 
     if (is.null(canvasObjects$nodesINcanvas)) {
       canvasObjects$nodesINcanvas <- newpoint
     } else {
       newpoint$ID <- max(canvasObjects$nodesINcanvas$ID) + 1
       canvasObjects$nodesINcanvas <- rbind(canvasObjects$nodesINcanvas, newpoint)
+      row.names(canvasObjects$nodesINcanvas) <- NULL
     }
 
     runjs(paste0("// Crea un nuovo oggetto Circle con le proprietà desiderate
@@ -2081,7 +2082,6 @@ server <- function(input, output, session) {
       shinyalert("Success", textSucc, "success", 1000)
       updateTabsetPanel(session, "SideTabs", selected = "canvas_tab")
 
-      UpdatingData(input, output, canvasObjects, mess, areasColor, session)
       postprocObjects$FLAGmodelLoaded <- TRUE
       postprocObjects$DirPath <- NULL
       postprocObjects$Filter_evolutionCSV <- NULL
