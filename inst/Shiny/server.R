@@ -68,6 +68,7 @@ server <- function(input, output, session) {
     width = NULL,
     length = NULL,
     height = NULL,
+    risk_classes_enabled = FALSE,
   )
 
   InfoApp <- reactiveValues(NumTabsFlow = 0, NumTabsTimeSlot = 1, NumTabsTimeShift = list("shift_1" = 1), tabs_ids = c(), oldAgentType = "", invalidRooms = c())
@@ -2358,6 +2359,21 @@ server <- function(input, output, session) {
         )
 
         updateSelectizeInput(
+          session = session, "risk_class_quarantine",
+          choices = ""
+        )
+
+        updateSelectizeInput(
+          session = session, "agent_quarantine_comb",
+          choices = ""
+        )
+
+        updateSelectizeInput(
+          session = session, "risk_class_quarantine_comb",
+          choices = ""
+        )
+
+        updateSelectizeInput(
           session = session, "agent_external_screening",
           choices = ""
         )
@@ -2390,6 +2406,25 @@ server <- function(input, output, session) {
         updateSelectizeInput(
           session = session, "agent_quarantine",
           choices = c("", names(canvasObjects$agents))
+        )
+
+        risk_classes_available <- c()
+        if (!is.null(canvasObjects$disease)) {
+          risk_classes_available <- sapply(canvasObjects$disease, function(x) x$name)
+        }
+        updateSelectizeInput(
+          session = session, "risk_class_quarantine",
+          choices = c("", risk_classes_available)
+        )
+
+        updateSelectizeInput(
+          session = session, "agent_quarantine_comb",
+          choices = c("", names(canvasObjects$agents))
+        )
+
+        updateSelectizeInput(
+          session = session, "risk_class_quarantine_comb",
+          choices = c("", risk_classes_available)
         )
 
         updateSelectizeInput(
@@ -3566,28 +3601,70 @@ server <- function(input, output, session) {
   # Reactive expression to gather all rooms from Flow$Room
 
   allResRooms <- reactive({
-    do.call(
-      rbind,
-      lapply(names(canvasObjects$agents), function(agent) {
-        rooms <- unique(
-          canvasObjects$agents[[agent]]$DeterFlow$Room,
-          canvasObjects$agents[[agent]]$RandFlow$Room
-        )
-        if (length(rooms) > 0) {
-          df_Rand <- canvasObjects$agents[[agent]]$RandFlow
-          if (!is.null(df_Rand) && dim(df_Rand)[1] > 0) {
-            rbind(
-              data.frame(Agent = agent, Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter"),
-              data.frame(Agent = agent, Room = df_Rand$Room, Flow = "Rand")
-            )
-          } else {
-            data.frame(Agent = agent, Room = canvasObjects$agents[[agent]]$DeterFlow$Room, Flow = "Deter")
-          }
-        } else {
-          NULL
+    # 1. Main flow rooms
+    main_df <- NULL
+    if (!is.null(canvasObjects$agents) && length(canvasObjects$agents) > 0) {
+      main_df <- do.call(rbind, lapply(names(canvasObjects$agents), function(agent) {
+        deter_rooms <- canvasObjects$agents[[agent]]$DeterFlow$Room
+        rand_rooms <- canvasObjects$agents[[agent]]$RandFlow$Room
+        
+        df_deter <- NULL
+        if (length(deter_rooms) > 0) {
+          df_deter <- data.frame(Agent = agent, Room = deter_rooms, Flow = "Deter", stringsAsFactors = FALSE)
         }
-      })
-    )
+        
+        df_rand <- NULL
+        if (length(rand_rooms) > 0) {
+          df_rand <- data.frame(Agent = agent, Room = rand_rooms, Flow = "Rand", stringsAsFactors = FALSE)
+        }
+        
+        rbind(df_deter, df_rand)
+      }))
+    }
+
+    # 2. Alternative flow rooms (second choices)
+    alt_df <- NULL
+    if (!is.null(canvasObjects$resources) && length(canvasObjects$resources) > 0) {
+      alt_df <- do.call(rbind, lapply(names(canvasObjects$resources), function(res_key) {
+        res_entry <- canvasObjects$resources[[res_key]]
+        df_deter <- NULL
+        df_rand <- NULL
+        
+        if (!is.null(res_entry$waitingRoomsDeter) && nrow(res_entry$waitingRoomsDeter) > 0) {
+          valid_mask <- !res_entry$waitingRoomsDeter$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsDeter$Room)
+          valid_rows <- res_entry$waitingRoomsDeter[valid_mask, , drop = FALSE]
+          if (nrow(valid_rows) > 0) {
+            df_deter <- data.frame(
+              Agent = valid_rows$Agent,
+              Room = gsub(" - ", "-", valid_rows$Room),
+              Flow = "Deter",
+              stringsAsFactors = FALSE
+            )
+          }
+        }
+        
+        if (!is.null(res_entry$waitingRoomsRand) && nrow(res_entry$waitingRoomsRand) > 0) {
+          valid_mask <- !res_entry$waitingRoomsRand$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsRand$Room)
+          valid_rows <- res_entry$waitingRoomsRand[valid_mask, , drop = FALSE]
+          if (nrow(valid_rows) > 0) {
+            df_rand <- data.frame(
+              Agent = valid_rows$Agent,
+              Room = gsub(" - ", "-", valid_rows$Room),
+              Flow = "Rand",
+              stringsAsFactors = FALSE
+            )
+          }
+        }
+        
+        rbind(df_deter, df_rand)
+      }))
+    }
+    
+    combined_df <- rbind(main_df, alt_df)
+    if (!is.null(combined_df) && nrow(combined_df) > 0) {
+      combined_df <- unique(combined_df)
+    }
+    return(combined_df)
   })
 
   output$selectInput_alternative_resources_global <- renderUI({
@@ -3766,7 +3843,9 @@ server <- function(input, output, session) {
     }
 
     isolate({
-      waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsDeter
+      if (!identical(canvasObjects$resources[[resources_type]]$waitingRoomsDeter, waitingRooms)) {
+        waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsDeter
+      }
     })
   })
 
@@ -3791,7 +3870,9 @@ server <- function(input, output, session) {
     }
 
     isolate({
-      waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsRand
+      if (!identical(canvasObjects$resources[[resources_type]]$waitingRoomsRand, waitingRooms)) {
+        waitingRooms -> canvasObjects$resources[[resources_type]]$waitingRoomsRand
+      }
     })
   })
   observe({
@@ -3801,7 +3882,11 @@ server <- function(input, output, session) {
       # choices <- choices[!grepl(paste0("Fillingroom", collapse = "|"), choices)]
       choices <- choices[!grepl(paste0("Stair", collapse = "|"), choices)]
 
-      updateSelectizeInput(session, "selectInput_resources_type", choices = choices, selected = "", server = TRUE)
+      current_selected <- isolate(input$selectInput_resources_type)
+      updateSelectizeInput(session, "selectInput_resources_type",
+                           choices = choices,
+                           selected = if (current_selected %in% choices) current_selected else "",
+                           server = TRUE)
     }
   })
 
@@ -3846,7 +3931,9 @@ server <- function(input, output, session) {
         }
       }
 
-      canvasObjects$resources[[resources_type]]$roomResource <- data
+      if (!identical(canvasObjects$resources[[resources_type]]$roomResource, data)) {
+        canvasObjects$resources[[resources_type]]$roomResource <- data
+      }
     })
 
     isolate({
@@ -3886,7 +3973,9 @@ server <- function(input, output, session) {
         }
       }
 
-      canvasObjects$resources[[resources_type]]$waitingRoomsDeter <- data_waiting
+      if (!identical(canvasObjects$resources[[resources_type]]$waitingRoomsDeter, data_waiting)) {
+        canvasObjects$resources[[resources_type]]$waitingRoomsDeter <- data_waiting
+      }
     })
     isolate({
       ### E' da sistemare in maniera che si ricrodi cosa avevo inserito sia in rand che determi
@@ -3928,7 +4017,9 @@ server <- function(input, output, session) {
         }
       }
 
-      canvasObjects$resources[[resources_type]]$waitingRoomsRand <- data_waiting
+      if (!identical(canvasObjects$resources[[resources_type]]$waitingRoomsRand, data_waiting)) {
+        canvasObjects$resources[[resources_type]]$waitingRoomsRand <- data_waiting
+      }
     })
   })
 
@@ -4207,6 +4298,13 @@ server <- function(input, output, session) {
   # Reactive value to store risk classes data
   risk_classes_data <- reactiveVal(list())
 
+  observeEvent(canvasObjects$disease, {
+    req(canvasObjects$disease)
+    if (length(canvasObjects$disease) > 1) {
+      risk_classes_data(canvasObjects$disease)
+    }
+  })
+
   observe({
     req(input$enable_risk_classes)
 
@@ -4229,6 +4327,32 @@ server <- function(input, output, session) {
         beta_contact_val <- if (!is.null(existing_data[[i]]$beta_contact)) existing_data[[i]]$beta_contact else ifelse(i == 1, "0.024", "0.024")
         beta_aerosol_val <- if (!is.null(existing_data[[i]]$beta_aerosol)) existing_data[[i]]$beta_aerosol else ifelse(i == 1, "410", "410")
         proportion_val <- if (!is.null(existing_data[[i]]$proportion)) existing_data[[i]]$proportion else round(1 / num_classes, 2)
+
+        virus_severity_val <- if (!is.null(existing_data[[i]]$virus_severity)) as.numeric(existing_data[[i]]$virus_severity) else 0.22
+
+        gamma_dist_val <- if (!is.null(existing_data[[i]]$gamma_dist)) existing_data[[i]]$gamma_dist else "Deterministic"
+        gamma_time_raw <- if (!is.null(existing_data[[i]]$gamma_time)) existing_data[[i]]$gamma_time else "0.2"
+        gamma_params <- parse_distribution(gamma_time_raw, gamma_dist_val)
+        gamma_a <- gamma_params[[1]]
+        gamma_b <- gamma_params[[2]]
+
+        alpha_dist_val <- if (!is.null(existing_data[[i]]$alpha_dist)) existing_data[[i]]$alpha_dist else "Deterministic"
+        alpha_time_raw <- if (!is.null(existing_data[[i]]$alpha_time)) existing_data[[i]]$alpha_time else "0.2"
+        alpha_params <- parse_distribution(alpha_time_raw, alpha_dist_val)
+        alpha_a <- alpha_params[[1]]
+        alpha_b <- alpha_params[[2]]
+
+        lambda_dist_val <- if (!is.null(existing_data[[i]]$lambda_dist)) existing_data[[i]]$lambda_dist else "Deterministic"
+        lambda_time_raw <- if (!is.null(existing_data[[i]]$lambda_time)) existing_data[[i]]$lambda_time else "0.2"
+        lambda_params <- parse_distribution(lambda_time_raw, lambda_dist_val)
+        lambda_a <- lambda_params[[1]]
+        lambda_b <- lambda_params[[2]]
+
+        nu_dist_val <- if (!is.null(existing_data[[i]]$nu_dist)) existing_data[[i]]$nu_dist else "Deterministic"
+        nu_time_raw <- if (!is.null(existing_data[[i]]$nu_time)) existing_data[[i]]$nu_time else "0.2"
+        nu_params <- parse_distribution(nu_time_raw, nu_dist_val)
+        nu_a <- nu_params[[1]]
+        nu_b <- nu_params[[2]]
 
         div(
           style = paste0("border-left: 4px solid ", c("#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6")[i], "; padding: 15px; margin-bottom: 15px; background-color: #f9f9f9; border-radius: 8px;"),
@@ -4274,7 +4398,7 @@ server <- function(input, output, session) {
               numericInput(
                 inputId = paste0("virus_severity_class_", i),
                 label = NULL,
-                value = 0.22, max = 1, min = 0
+                value = virus_severity_val, max = 1, min = 0
               )
             )
           ),
@@ -4324,7 +4448,7 @@ server <- function(input, output, session) {
                 h5(icon("info-circle"), " γ (Recovery Rate):"),
                 div(class = "icon-text", "γ represents the recovery rate for this risk class.")
               ),
-              get_distribution_panel(paste0("gamma_class_", i))
+              get_distribution_panel(paste0("gamma_class_", i), a = gamma_a, b = gamma_b, selected_dist = gamma_dist_val)
             )
           ),
           if (disease_model %in% c("SEIR", "SEIRS", "SEIRD", "SEIRDS")) {
@@ -4336,7 +4460,7 @@ server <- function(input, output, session) {
                   h5(icon("info-circle"), " α (Incubation Rate):"),
                   div(class = "icon-text", "α represents the incubation rate for this risk class.")
                 ),
-                get_distribution_panel(paste0("alpha_class_", i))
+                get_distribution_panel(paste0("alpha_class_", i), a = alpha_a, b = alpha_b, selected_dist = alpha_dist_val)
               )
             )
           },
@@ -4349,7 +4473,7 @@ server <- function(input, output, session) {
                   h5(icon("info-circle"), " λ (Fatality Rate):"),
                   div(class = "icon-text", "λ represents the fatality rate for this risk class.")
                 ),
-                get_distribution_panel(paste0("lambda_class_", i))
+                get_distribution_panel(paste0("lambda_class_", i), a = lambda_a, b = lambda_b, selected_dist = lambda_dist_val)
               )
             )
           },
@@ -4362,7 +4486,7 @@ server <- function(input, output, session) {
                   h5(icon("info-circle"), " ν (End-of-Immunization Rate):"),
                   div(class = "icon-text", "ν represents the end-of-immunization rate for this risk class.")
                 ),
-                get_distribution_panel(paste0("nu_class_", i))
+                get_distribution_panel(paste0("nu_class_", i), a = nu_a, b = nu_b, selected_dist = nu_dist_val)
               )
             )
           },
@@ -4443,25 +4567,82 @@ server <- function(input, output, session) {
     req(input$enable_risk_classes)
 
     num_classes <- input$num_risk_classes
+    existing_data <- risk_classes_data()
 
     current_data <- list()
     for (i in 1:num_classes) {
+      # Read inputs. If NULL (UI not fully initialized), preserve existing loaded/default value.
+      name_val <- input[[paste0("risk_class_name_", i)]]
+      if (is.null(name_val)) {
+        name_val <- if (i <= length(existing_data) && !is.null(existing_data[[i]]$name)) existing_data[[i]]$name else paste0("Risk Class ", i)
+      }
+
+      prop_val <- input[[paste0("risk_class_proportion_", i)]]
+      if (is.null(prop_val)) {
+        prop_val <- if (i <= length(existing_data) && !is.null(existing_data[[i]]$proportion)) existing_data[[i]]$proportion else round(1 / num_classes, 2)
+      }
+
+      virus_sev_val <- input[[paste0("virus_severity_class_", i)]]
+      if (is.null(virus_sev_val)) {
+        virus_sev_val <- if (i <= length(existing_data) && !is.null(existing_data[[i]]$virus_severity)) existing_data[[i]]$virus_severity else "0.22"
+      }
+
+      beta_contact_val <- input[[paste0("beta_contact_class_", i)]]
+      if (is.null(beta_contact_val)) {
+        beta_contact_val <- if (i <= length(existing_data) && !is.null(existing_data[[i]]$beta_contact)) existing_data[[i]]$beta_contact else "0.024"
+      }
+
+      beta_aerosol_val <- input[[paste0("beta_aerosol_class_", i)]]
+      if (is.null(beta_aerosol_val)) {
+        beta_aerosol_val <- if (i <= length(existing_data) && !is.null(existing_data[[i]]$beta_aerosol)) existing_data[[i]]$beta_aerosol else "410"
+      }
+
+      gamma_params <- check_distribution_parameters(input, paste0("gamma_class_", i))
+      gamma_dist_val <- if (!is.null(gamma_params[[1]])) gamma_params[[1]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$gamma_dist)) existing_data[[i]]$gamma_dist else "Exponential")
+      gamma_time_val <- if (!is.null(gamma_params[[2]])) gamma_params[[2]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$gamma_time)) existing_data[[i]]$gamma_time else "0.2")
+
       current_data[[i]] <- list(
-        name = input[[paste0("risk_class_name_", i)]],
-        beta_contact = input[[paste0("risk_class_beta_contact_", i)]],
-        beta_aerosol = input[[paste0("risk_class_beta_aerosol_", i)]],
-        proportion = input[[paste0("risk_class_proportion_", i)]]
+        name = name_val,
+        disease_model_name = input$disease_model,
+        virus_severity = virus_sev_val,
+        beta_contact = beta_contact_val,
+        beta_aerosol = beta_aerosol_val,
+        proportion = prop_val,
+        gamma_dist = gamma_dist_val,
+        gamma_time = gamma_time_val
       )
+
+      # Optional distribution parameters
+      # Check alpha
+      alpha_params <- check_distribution_parameters(input, paste0("alpha_class_", i))
+      alpha_dist_val <- if (!is.null(alpha_params[[1]])) alpha_params[[1]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$alpha_dist)) existing_data[[i]]$alpha_dist else "Exponential")
+      alpha_time_val <- if (!is.null(alpha_params[[2]])) alpha_params[[2]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$alpha_time)) existing_data[[i]]$alpha_time else "0.2")
+      current_data[[i]]$alpha_dist <- alpha_dist_val
+      current_data[[i]]$alpha_time <- alpha_time_val
+
+      # Check lambda
+      lambda_params <- check_distribution_parameters(input, paste0("lambda_class_", i))
+      lambda_dist_val <- if (!is.null(lambda_params[[1]])) lambda_params[[1]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$lambda_dist)) existing_data[[i]]$lambda_dist else "Exponential")
+      lambda_time_val <- if (!is.null(lambda_params[[2]])) lambda_params[[2]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$lambda_time)) existing_data[[i]]$lambda_time else "0.2")
+      current_data[[i]]$lambda_dist <- lambda_dist_val
+      current_data[[i]]$lambda_time <- lambda_time_val
+
+      # Check nu
+      nu_params <- check_distribution_parameters(input, paste0("nu_class_", i))
+      nu_dist_val <- if (!is.null(nu_params[[1]])) nu_params[[1]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$nu_dist)) existing_data[[i]]$nu_dist else "Exponential")
+      nu_time_val <- if (!is.null(nu_params[[2]])) nu_params[[2]] else (if (i <= length(existing_data) && !is.null(existing_data[[i]]$nu_time)) existing_data[[i]]$nu_time else "0.2")
+      current_data[[i]]$nu_dist <- nu_dist_val
+      current_data[[i]]$nu_time <- nu_time_val
     }
     risk_classes_data(current_data)
   })
 
 
-  # Reset risk classes when checkbox is unchecked
+  # Update enabled flag and reset risk classes when checkbox is unchecked
   observeEvent(input$enable_risk_classes, {
+    canvasObjects$risk_classes_enabled <- input$enable_risk_classes
     if (!input$enable_risk_classes) {
       canvasObjects$risk_classes <- NULL
-      canvasObjects$risk_classes_enabled <- FALSE
       risk_classes_data(list())
     }
   })
@@ -4701,7 +4882,32 @@ server <- function(input, output, session) {
 
     req(input$quarantine_type != "No quarantine")
 
-    if (!(input$quarantine_type == "Different for each agent" && input$quarantine_type_agent == "No quarantine")) {
+    if (input$quarantine_type == "Different for each agent" && (is.null(input$agent_quarantine) || input$agent_quarantine == "")) {
+      shinyalert("Error", "Please select an agent type.", "error")
+      return()
+    }
+    if (input$quarantine_type == "Different for each risk class" && (is.null(input$risk_class_quarantine) || input$risk_class_quarantine == "")) {
+      shinyalert("Error", "Please select a risk class.", "error")
+      return()
+    }
+    if (input$quarantine_type == "Different for each agent and risk class") {
+      if (is.null(input$agent_quarantine_comb) || input$agent_quarantine_comb == "" ||
+          is.null(input$risk_class_quarantine_comb) || input$risk_class_quarantine_comb == "") {
+        shinyalert("Error", "Please select both an agent type and a risk class.", "error")
+        return()
+      }
+    }
+
+    is_active_quarantine <- TRUE
+    if (input$quarantine_type == "Different for each agent" && input$quarantine_type_agent == "No quarantine") {
+      is_active_quarantine <- FALSE
+    } else if (input$quarantine_type == "Different for each risk class" && input$quarantine_type_risk_class == "No quarantine") {
+      is_active_quarantine <- FALSE
+    } else if (input$quarantine_type == "Different for each agent and risk class" && input$quarantine_type_agent_risk_class == "No quarantine") {
+      is_active_quarantine <- FALSE
+    }
+
+    if (is_active_quarantine) {
       if (as.integer(input$quarantine_time_to) < as.integer(input$quarantine_time_from) ||
         as.integer(input$quarantine_time_to) > as.numeric(canvasObjects$starting$simulation_days) ||
         as.integer(input$quarantine_time_from) <= 0) {
@@ -4770,10 +4976,19 @@ server <- function(input, output, session) {
       paramstext <- "No quarantine, 0, 0"
     }
 
+    q_type <- "Global"
+    if (input$quarantine_type == "Different for each agent") {
+      q_type <- input$agent_quarantine
+    } else if (input$quarantine_type == "Different for each risk class") {
+      q_type <- input$risk_class_quarantine
+    } else if (input$quarantine_type == "Different for each agent and risk class") {
+      q_type <- paste0(input$agent_quarantine_comb, "-", input$risk_class_quarantine_comb)
+    }
+
     new_data <- add_data(
       measure = "Quarantine",
       parameters = paramstext,
-      type = ifelse(input$quarantine_type != "Global", input$agent_quarantine, "Global"),
+      type = q_type,
       from = input$quarantine_time_from,
       to = input$quarantine_time_to,
       data = agents_whatif
@@ -4934,6 +5149,25 @@ server <- function(input, output, session) {
     updateSelectizeInput(
       session = session, "agent_quarantine",
       choices = c("", names(canvasObjects$agents))
+    )
+
+    risk_classes_available <- c()
+    if (!is.null(canvasObjects$disease)) {
+      risk_classes_available <- sapply(canvasObjects$disease, function(x) x$name)
+    }
+    updateSelectizeInput(
+      session = session, "risk_class_quarantine",
+      choices = c("", risk_classes_available)
+    )
+
+    updateSelectizeInput(
+      session = session, "agent_quarantine_comb",
+      choices = c("", names(canvasObjects$agents))
+    )
+
+    updateSelectizeInput(
+      session = session, "risk_class_quarantine_comb",
+      choices = c("", risk_classes_available)
     )
 
     updateSelectizeInput(

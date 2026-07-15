@@ -613,15 +613,57 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
 
   # Resources
   if(!is.null(canvasObjects$agents)){
-    allResRooms <- do.call(rbind,
-                           lapply(names(canvasObjects$agents), function(agent) {
-                             rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
-                                              canvasObjects$agents[[agent]]$RandFlow$Room))
-                             if(length(rooms)>0)
-                               data.frame(Agent = agent , Room =  rooms)
-                             else NULL
-                           })
+    main_df <- do.call(rbind,
+                       lapply(names(canvasObjects$agents), function(agent) {
+                         rooms = unique(c(canvasObjects$agents[[agent]]$DeterFlow$Room,
+                                          canvasObjects$agents[[agent]]$RandFlow$Room))
+                         if(length(rooms)>0)
+                           data.frame(Agent = agent , Room =  rooms, Flow = "Deter", stringsAsFactors = FALSE)
+                         else NULL
+                       })
     )
+
+    alt_df <- NULL
+    if (!is.null(canvasObjects$resources) && length(canvasObjects$resources) > 0) {
+      alt_df <- do.call(rbind, lapply(names(canvasObjects$resources), function(res_key) {
+        res_entry <- canvasObjects$resources[[res_key]]
+        df_deter <- NULL
+        df_rand <- NULL
+        
+        if (!is.null(res_entry$waitingRoomsDeter) && nrow(res_entry$waitingRoomsDeter) > 0) {
+          valid_mask <- !res_entry$waitingRoomsDeter$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsDeter$Room)
+          valid_rows <- res_entry$waitingRoomsDeter[valid_mask, , drop = FALSE]
+          if (nrow(valid_rows) > 0) {
+            df_deter <- data.frame(
+              Agent = valid_rows$Agent,
+              Room = gsub(" - ", "-", valid_rows$Room),
+              Flow = "Deter",
+              stringsAsFactors = FALSE
+            )
+          }
+        }
+        
+        if (!is.null(res_entry$waitingRoomsRand) && nrow(res_entry$waitingRoomsRand) > 0) {
+          valid_mask <- !res_entry$waitingRoomsRand$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsRand$Room)
+          valid_rows <- res_entry$waitingRoomsRand[valid_mask, , drop = FALSE]
+          if (nrow(valid_rows) > 0) {
+            df_rand <- data.frame(
+              Agent = valid_rows$Agent,
+              Room = gsub(" - ", "-", valid_rows$Room),
+              Flow = "Rand",
+              stringsAsFactors = FALSE
+            )
+          }
+        }
+        
+        rbind(df_deter, df_rand)
+      }))
+    }
+
+    allResRooms <- rbind(main_df, alt_df)
+    if (!is.null(allResRooms) && nrow(allResRooms) > 0) {
+      allResRooms <- unique(allResRooms)
+    }
 
     updateSelectizeInput(session = session, "selectInput_alternative_resources_global", choices = if(!is.null(allResRooms)) allResRooms$Room else "")
 
@@ -859,6 +901,7 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
   dist_panel <-  tagList(
     div(style = "height:20px"),
     tabsetPanel(id = paste0("DistTime_tabs_", id),
+                selected = if(selected_dist == "Deterministic" || selected_dist == "") "DetTime_tab" else "StocTime_tab",
                 tabPanel("Deterministic",
                          value = "DetTime_tab",
                          textInput(inputId = paste0("DetTime_", id), label = HTML("<i>Fixed deterministic value:</i>"),placeholder = "Value", value = a)
@@ -909,52 +952,66 @@ get_distribution_panel = function(id, a = "", b = "", selected_dist = ""){
 }
 
 check_distribution_parameters <- function(input, suffix){
-  if(grepl("DetTime_tab",input[[paste0("DistTime_tabs_", suffix)]])) {
-    if(input[[paste0("DetTime_", suffix)]] == "")
+  tab_val <- input[[paste0("DistTime_tabs_", suffix)]]
+  if (is.null(tab_val) || length(tab_val) == 0) {
+    return(list(NULL, NULL))
+  }
+
+  if(grepl("DetTime_tab", tab_val)) {
+    val <- input[[paste0("DetTime_", suffix)]]
+    if(is.null(val) || val == "")
       return(list(NULL, NULL))
 
-    if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])) <= 0){
-      print(as.numeric(gsub(",", "\\.", input[[paste0("DetTime_", suffix)]])))
+    if(is.na(as.numeric(gsub(",", "\\.", val))) || as.numeric(gsub(",", "\\.", val)) <= 0){
+      print(as.numeric(gsub(",", "\\.", val)))
       shinyalert("Error", "You must specify a time greater than 0 (in minutes).", type = "error")
       return(list(NULL, NULL))
     }
-    new_time = input[[paste0("DetTime_", suffix)]]
+    new_time = val
     new_dist = "Deterministic"
-  }else if(grepl("StocTime_tab", input[[paste0("DistTime_tabs_", suffix)]])){
+  }else if(grepl("StocTime_tab", tab_val)){
     new_dist = input[[paste0("DistStoc_id_", suffix)]]
+    if (is.null(new_dist) || length(new_dist) == 0) {
+      return(list(NULL, NULL))
+    }
 
-    if(input[[paste0("DistStoc_id_", suffix)]] == 'Exponential'){
-      if(input[[paste0("DistStoc_ExpRate_", suffix)]] == "")
+    if(new_dist == 'Exponential'){
+      val <- input[[paste0("DistStoc_ExpRate_", suffix)]]
+      if(is.null(val) || val == "")
         return(list(NULL, NULL))
 
-      if(is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]]))) || as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_ExpRate_", suffix)]])) <= 0 ){
+      if(is.na(as.numeric(gsub(",", "\\.", val))) || as.numeric(gsub(",", "\\.", val)) <= 0 ){
         shinyalert("Error", "You must specify a time greater than (in minutes).", type = "error")
         return(list(NULL, NULL))
       }
-      new_time = input[[paste0("DistStoc_ExpRate_", suffix)]]
-    }else if(input[[paste0("DistStoc_id_", suffix)]]== 'Uniform'){
-      if(input[[paste0("DistStoc_UnifRate_a_", suffix)]] == "" || input[[paste0("DistStoc_UnifRate_b_", suffix)]] == "")
+      new_time = val
+    }else if(new_dist == 'Uniform'){
+      val_a <- input[[paste0("DistStoc_UnifRate_a_", suffix)]]
+      val_b <- input[[paste0("DistStoc_UnifRate_b_", suffix)]]
+      if(is.null(val_a) || val_a == "" || is.null(val_b) || val_b == "")
         return(list(NULL, NULL))
 
-      if( is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]]))) ||
-          is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]]))) ||
-          as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_a_", suffix)]])) >= as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_UnifRate_b_", suffix)]])) ||
-          as.numeric(input[[paste0("DistStoc_UnifRate_a_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_UnifRate_b_", suffix)]]) <= 0){
+      if( is.na(as.numeric(gsub(",", "\\.", val_a))) ||
+          is.na(as.numeric(gsub(",", "\\.", val_b))) ||
+          as.numeric(gsub(",", "\\.", val_a)) >= as.numeric(gsub(",", "\\.", val_b)) ||
+          as.numeric(val_a) <= 0 || as.numeric(val_b) <= 0){
         shinyalert("Error", "You must specify a and b as numeric (in minutes and both greater than), with a < b.", type = "error")
         return(list(NULL, NULL))
       }
-      new_time = paste0("a = ",input[[paste0("DistStoc_UnifRate_a_", suffix)]] ,"; b = ",input[[paste0("DistStoc_UnifRate_b_", suffix)]])
-    }else if(input[[paste0("DistStoc_id_", suffix)]] == 'Truncated Positive Normal'){
-      if(input[[paste0("DistStoc_NormRate_m_", suffix)]] == "" || input[[paste0("DistStoc_NormRate_sd_", suffix)]] == "")
+      new_time = paste0("a = ", val_a ,"; b = ", val_b)
+    }else if(new_dist == 'Truncated Positive Normal'){
+      val_m <- input[[paste0("DistStoc_NormRate_m_", suffix)]]
+      val_sd <- input[[paste0("DistStoc_NormRate_sd_", suffix)]]
+      if(is.null(val_m) || val_m == "" || is.null(val_sd) || val_sd == "")
         return(list(NULL, NULL))
 
-      if( is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
-          is.na(as.numeric(gsub(",", "\\.", input[[paste0("DistStoc_NormRate_m_", suffix)]]))) ||
-          as.numeric(input[[paste0("DistStoc_NormRate_m_", suffix)]]) <= 0 || as.numeric(input[[paste0("DistStoc_NormRate_sd_", suffix)]]) < 0){
+      if( is.na(as.numeric(gsub(",", "\\.", val_m))) ||
+          is.na(as.numeric(gsub(",", "\\.", val_sd))) ||
+          as.numeric(val_m) <= 0 || as.numeric(val_sd) < 0){
         shinyalert("Error", "You must specify the mean and standard deviation as numeric (in minutes, with mean > 0 and std >= 0).", type = "error")
         return(list(NULL, NULL))
       }
-      new_time = paste0("Mean = ",input[[paste0("DistStoc_NormRate_m_", suffix)]] ,"; Sd = ",input[[paste0("DistStoc_NormRate_sd_", suffix)]])
+      new_time = paste0("Mean = ", val_m ,"; Sd = ", val_sd)
     }
   }
 
@@ -1094,6 +1151,32 @@ FromToMatrices.generation = function(WHOLEmodel){
     AgentMeasuresFromTo = lapply( unique(WHOLEmodel$agents_whatif$Measure),function(m,fromto){
       agents_whatif = WHOLEmodel$agents_whatif %>% filter(Measure == m) %>% rename(Name = Type)
 
+      risk_classes = c()
+      if (!is.null(WHOLEmodel$disease)) {
+        risk_classes = sapply(WHOLEmodel$disease, function(x) x$name)
+      }
+
+      combinations = c()
+      if (!is.null(WHOLEmodel$agents) && length(risk_classes) > 0) {
+        for (a in names(WHOLEmodel$agents)) {
+          for (rc in risk_classes) {
+            combinations = c(combinations, paste0(a, "-", rc))
+          }
+        }
+      }
+
+      is_combined_measure = FALSE
+      if (m == "Quarantine" && length(combinations) > 0) {
+        is_combined_measure = TRUE
+      }
+
+      if (is_combined_measure) {
+        agents = combinations
+        fromto = matrix(0, ncol = maxN, nrow = length(agents), dimnames = list(agents = agents, days = 1:maxN))
+      } else {
+        agents = names(WHOLEmodel$agents)
+      }
+
       # parsing the parameters
       params = str_split(agents_whatif[,"Parameters"],pattern = "; ")%>%
         as.data.frame() %>%
@@ -1126,7 +1209,22 @@ FromToMatrices.generation = function(WHOLEmodel){
         if(dim(agent_specific)[1] >0){
           for(ii in seq_along(agent_specific[,1])){
             specific = agent_specific[ii,]
-            fromto_p[specific$Name,specific$From:specific$To] = specific[,i]
+            
+            rows_to_update = which(rownames(fromto_p) == specific$Name)
+            if (length(rows_to_update) == 0) {
+              rows_to_update = which(grepl(paste0("^", specific$Name, "-"), rownames(fromto_p)))
+            }
+            if (length(rows_to_update) == 0) {
+              rows_to_update = which(grepl(paste0("-", specific$Name, "$"), rownames(fromto_p)))
+            }
+            
+            if (length(rows_to_update) > 0) {
+              for (r_idx in rows_to_update) {
+                fromto_p[r_idx, specific$From:specific$To] = specific[,i]
+              }
+            } else {
+              fromto_p[specific$Name, specific$From:specific$To] = specific[,i]
+            }
           }
         }
         fromto_p = cbind(agents,fromto_p) # put agents name as first column

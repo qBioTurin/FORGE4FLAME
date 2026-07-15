@@ -2069,7 +2069,7 @@ ui <- dashboardPage(
                           width = 2,
                           radioButtons(inputId = "quarantine_type",
                                        label = "Quarantine:",
-                                       choices = c("Global", "Different for each agent"),
+                                       choices = c("Global", "Different for each agent", "Different for each risk class", "Different for each agent and risk class"),
                                        selected = "Global"
                           )
                         ),
@@ -2093,7 +2093,54 @@ ui <- dashboardPage(
                           )
                         ),
                         conditionalPanel(
-                          condition = 'input.quarantine_type == "Global" || (input.quarantine_type == "Different for each agent" && input.quarantine_type_agent != "No quarantine")',
+                          condition = 'input.quarantine_type == "Different for each risk class"',
+                          column(
+                            width = 2,
+                            selectizeInput(
+                              inputId = "risk_class_quarantine",
+                              label = "Risk Class:",
+                              options = list(),
+                              choices = c()
+                            )
+                          ),
+                          column(width = 2,
+                                 radioButtons(inputId = "quarantine_type_risk_class",
+                                              label = "Quarantine:",
+                                              choices = c("No quarantine", "Quarantine"),
+                                              selected = "No quarantine"
+                                 )
+                          )
+                        ),
+                        conditionalPanel(
+                          condition = 'input.quarantine_type == "Different for each agent and risk class"',
+                          column(
+                            width = 2,
+                            selectizeInput(
+                              inputId = "agent_quarantine_comb",
+                              label = "Agent:",
+                              options = list(),
+                              choices = c()
+                            )
+                          ),
+                          column(
+                            width = 2,
+                            selectizeInput(
+                              inputId = "risk_class_quarantine_comb",
+                              label = "Risk Class:",
+                              options = list(),
+                              choices = c()
+                            )
+                          ),
+                          column(width = 2,
+                                 radioButtons(inputId = "quarantine_type_agent_risk_class",
+                                              label = "Quarantine:",
+                                              choices = c("No quarantine", "Quarantine"),
+                                              selected = "No quarantine"
+                                 )
+                          )
+                        ),
+                        conditionalPanel(
+                          condition = 'input.quarantine_type == "Global" || (input.quarantine_type == "Different for each agent" && input.quarantine_type_agent != "No quarantine") || (input.quarantine_type == "Different for each risk class" && input.quarantine_type_risk_class != "No quarantine") || (input.quarantine_type == "Different for each agent and risk class" && input.quarantine_type_agent_risk_class != "No quarantine")',
                           conditionalPanel(
                             condition = 'input.quarantine_type == "Global"',
                             column( width = 3,
@@ -2103,6 +2150,20 @@ ui <- dashboardPage(
                           ),
                           conditionalPanel(
                             condition = 'input.quarantine_type == "Different for each agent"',
+                            column(offset = 3, width = 3,
+                                   div(h5(tags$b("Quarantine days:"))),
+                                   get_distribution_panel("quarantine_global")
+                            )
+                          ),
+                          conditionalPanel(
+                            condition = 'input.quarantine_type == "Different for each risk class"',
+                            column(offset = 3, width = 3,
+                                   div(h5(tags$b("Quarantine days:"))),
+                                   get_distribution_panel("quarantine_global")
+                            )
+                          ),
+                          conditionalPanel(
+                            condition = 'input.quarantine_type == "Different for each agent and risk class"',
                             column(offset = 3, width = 3,
                                    div(h5(tags$b("Quarantine days:"))),
                                    get_distribution_panel("quarantine_global")
@@ -2124,7 +2185,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       conditionalPanel(
-                        condition = 'input.quarantine_type != "Different for each agent" || input.quarantine_type_agent != "No quarantine"',
+                        condition = 'input.quarantine_type == "Global" || (input.quarantine_type == "Different for each agent" && input.quarantine_type_agent != "No quarantine") || (input.quarantine_type == "Different for each risk class" && input.quarantine_type_risk_class != "No quarantine") || (input.quarantine_type == "Different for each agent and risk class" && input.quarantine_type_agent_risk_class != "No quarantine")',
                         fluidRow(
                           column( width = 2, offset = 3,
                                   radioButtons(inputId = "quarantine_swab_type_global",
