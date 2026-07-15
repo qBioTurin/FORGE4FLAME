@@ -130,8 +130,8 @@ Shiny.addCustomMessageHandler("setRoomForObjects", function (data) {
     objectsArray = data.objects || [];
 
     // Get room dimensions in meters
-    const roomWidth = data.width || 10;   // width in meters
-    const roomLength = data.length || 10; // length in meters
+    const roomWidth = data.length || 10;   // width in meters
+    const roomLength = data.width  || 10; // length in meters
 
     // Calculate canvas size: each meter = 40 pixels (2 cells of 20px each)
     // So for 4 meters, we get 4 * 40 = 160 pixels (8 cells of 20px)
