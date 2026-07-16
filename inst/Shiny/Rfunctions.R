@@ -216,6 +216,45 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   return(matrixCanvas)
 }
 
+# Get rotation angle in degrees based on door position
+# Door values: "bottom", "up", "right", "left"
+# Bottom: 0 degrees (no rotation)
+# Left: 90 degrees clockwise
+# up: 180 degrees
+# Right: 270 degrees (or -90, counter-clockwise)
+get_rotation_angle <- function(door_position) {
+  door_position <- tolower(door_position)
+  switch(door_position,
+    "bottom" = 0,
+    "up" = 180,
+    "left" = 90,
+    "right" = 270,
+    0)
+}
+
+# Rotate a matrix 90 degrees clockwise
+rotate_matrix_90 <- function(mat) {
+  # Transpose and reverse rows
+  t(apply(mat, 2, rev))
+}
+
+# Rotate a matrix by specified angle (90, 180, or 270 degrees)
+rotate_matrix <- function(mat, angle) {
+  angle <- angle %% 360
+
+  if (angle == 0) {
+    return(mat)
+  } else if (angle == 90) {
+    return(rotate_matrix_90(mat))
+  } else if (angle == 180) {
+    return(rotate_matrix_90(rotate_matrix_90(mat)))
+  } else if (angle == 270) {
+    return(rotate_matrix_90(rotate_matrix_90(rotate_matrix_90(mat))))
+  } else {
+    return(mat)
+  }
+}
+
 CanvasRoomToMatrix = function(canvasObjects,canvas){
 
   roomsMatrix = lapply(canvasObjects$roomsINcanvas$Name,function(n){
@@ -237,18 +276,30 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
       )
     }))
 
+    browser()
+
     room= canvasObjects$roomsINcanvas %>%
       filter(Name == n, CanvasID == canvas)
 
+    if(room$door == "bottom" || room$door == "top"){
+      roomLength = room$l
+      roomWidth = room$w
+    }
+    else{
+      roomLength = room$w
+      roomWidth = room$l
+    }
+
     matrixCanvas = matrix(1,
-                          nrow = room$w+2,
-                          ncol = room$l+2)
+                            nrow = roomWidth+2,
+                            ncol = roomLength+2)
+
     matrixCanvas[1,] = 0
     matrixCanvas[,1] = 0
     matrixCanvas[nrow(matrixCanvas),] = 0
     matrixCanvas[,ncol(matrixCanvas)] = 0
 
-    # Handle rooms without objects
+    # Handle rooms without objects (door is assumed at bottom, no rotation needed for objects)
     if(!is.null(objects_df) && nrow(objects_df) > 0){
       for(i in 1:nrow(objects_df) ){
         r = objects_df[i,]
@@ -256,22 +307,31 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
         x = floor(r$X)
         y = floor(r$Y)
 
-        r$l <- ceiling(r$Length)
-        r$w <- ceiling(r$Width)
+        obj_width <- ceiling(r$Width)
+        obj_length <- ceiling(r$Length)
 
-        matrixCanvas[(y + 1:(r$l))+1,(x + 1:(r$w))+1] = - r$ID
+        matrixCanvas[(y + 1:(obj_width))+1,(x + 1:(obj_length))+1] = - r$ID
       }
     }
 
     ## Door position definition as 2
     if(room$door != "none")
-      matrixCanvas[abs(room$y - room$door_y)+1, abs(room$x - room$door_x)+1] =  2
+      if(roomLength %% 2 == 0)
+        matrixCanvas[roomWidth+2, ceiling(roomLength/2)+2] =  2
+      else
+        matrixCanvas[roomWidth+2, ceiling(roomLength/2)+1] =  2
+
+    # Rotate the entire matrix based on door position
+    if (!is.null(room$door) && room$door != "none" && room$door != "bottom") {
+      rotation_angle <- get_rotation_angle(room$door)
+      matrixCanvas <- rotate_matrix(matrixCanvas, rotation_angle)
+    }
 
     return(matrixCanvas)
   })
 
   names(roomsMatrix) = canvasObjects$roomsINcanvas$Name
-  
+
   return(roomsMatrix)
 }
 
