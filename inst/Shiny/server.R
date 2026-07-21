@@ -586,7 +586,7 @@ server <- function(input, output, session) {
         if (is.null(canvasObjects$areas)) {
           canvasObjects$areas <- data.frame(Name = Name, ID = 1, Color = paste0("rgba(", round(255 * samp[1]), ", ", round(255 * samp[2]), ", ", round(255 * samp[3]), ", 1)"))
         } else {
-          newID <- max(canvasObjects$areas$ID) + 1
+          newID <- max(as.numeric(canvasObjects$areas$ID)) + 1
           newarea <- data.frame(Name = Name, ID = newID, Color = paste0("rgba(", round(255 * samp[1]), ", ", round(255 * samp[2]), ", ", round(255 * samp[3]), ", 1)"))
           canvasObjects$areas <- rbind(canvasObjects$areas, newarea)
         }
@@ -3607,17 +3607,17 @@ server <- function(input, output, session) {
       main_df <- do.call(rbind, lapply(names(canvasObjects$agents), function(agent) {
         deter_rooms <- canvasObjects$agents[[agent]]$DeterFlow$Room
         rand_rooms <- canvasObjects$agents[[agent]]$RandFlow$Room
-        
+
         df_deter <- NULL
         if (length(deter_rooms) > 0) {
           df_deter <- data.frame(Agent = agent, Room = deter_rooms, Flow = "Deter", stringsAsFactors = FALSE)
         }
-        
+
         df_rand <- NULL
         if (length(rand_rooms) > 0) {
           df_rand <- data.frame(Agent = agent, Room = rand_rooms, Flow = "Rand", stringsAsFactors = FALSE)
         }
-        
+
         rbind(df_deter, df_rand)
       }))
     }
@@ -3629,7 +3629,7 @@ server <- function(input, output, session) {
         res_entry <- canvasObjects$resources[[res_key]]
         df_deter <- NULL
         df_rand <- NULL
-        
+
         if (!is.null(res_entry$waitingRoomsDeter) && nrow(res_entry$waitingRoomsDeter) > 0) {
           valid_mask <- !res_entry$waitingRoomsDeter$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsDeter$Room)
           valid_rows <- res_entry$waitingRoomsDeter[valid_mask, , drop = FALSE]
@@ -3642,7 +3642,7 @@ server <- function(input, output, session) {
             )
           }
         }
-        
+
         if (!is.null(res_entry$waitingRoomsRand) && nrow(res_entry$waitingRoomsRand) > 0) {
           valid_mask <- !res_entry$waitingRoomsRand$Room %in% c("Same room", "Skip room", "") & !is.na(res_entry$waitingRoomsRand$Room)
           valid_rows <- res_entry$waitingRoomsRand[valid_mask, , drop = FALSE]
@@ -3655,11 +3655,11 @@ server <- function(input, output, session) {
             )
           }
         }
-        
+
         rbind(df_deter, df_rand)
       }))
     }
-    
+
     combined_df <- rbind(main_df, alt_df)
     if (!is.null(combined_df) && nrow(combined_df) > 0) {
       combined_df <- unique(combined_df)
