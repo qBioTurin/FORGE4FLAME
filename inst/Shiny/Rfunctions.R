@@ -276,8 +276,6 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
       )
     }))
 
-    browser()
-
     room= canvasObjects$roomsINcanvas %>%
       filter(Name == n, CanvasID == canvas)
 
