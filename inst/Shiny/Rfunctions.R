@@ -226,7 +226,7 @@ get_rotation_angle <- function(door_position) {
   door_position <- tolower(door_position)
   switch(door_position,
     "bottom" = 0,
-    "up" = 180,
+    "top" = 180,
     "left" = 90,
     "right" = 270,
     0)
