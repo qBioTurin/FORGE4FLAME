@@ -217,7 +217,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
 }
 
 # Get rotation angle in degrees based on door position
-# Door values: "bottom", "up", "right", "left"
+# Door values: "bottom", "top", "right", "left"
 # Bottom: 0 degrees (no rotation)
 # Left: 90 degrees clockwise
 # up: 180 degrees
@@ -509,7 +509,9 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
                                   "6.1111" = "Hard"
           )
 
-          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
+          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel, " - ", canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i], " (", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedType[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedTimeout[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedBehave[i], ")")
+          if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None")
+            label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
         }
 
         canvasObjects$agents[[a]]$DeterFlow$Label[i] <- label
