@@ -1924,6 +1924,9 @@ server <- function(input, output, session) {
     disable("rds_generation")
     disable("flamegpu_connection")
 
+    # To remove!
+    enable("rds_generation")
+
     output <- check(canvasObjects, input, output, InfoApp)
 
     is_docker <- file.exists("/.dockerenv")
@@ -1963,6 +1966,7 @@ server <- function(input, output, session) {
       paste0("model", Sys.Date(), ".zip")
     },
     content = function(file) {
+      browser()
       postprocObjects$simulation_log_folder <- NULL
       postprocObjects$simulation_log <- NULL
       postprocObjects$plot_2D <- NULL
