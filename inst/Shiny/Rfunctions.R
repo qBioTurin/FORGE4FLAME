@@ -335,7 +335,7 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
     return(matrixCanvas)
   })
 
-  names(roomsMatrix) = canvasObjects$roomsINcanvas$Name
+  names(roomsMatrix) = paste0(canvasObjects$roomsINcanvas$Name, "_", canvasObjects$roomsINcanvas$ID)
 
   return(roomsMatrix)
 }
@@ -508,18 +508,16 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
         canvasObjects$agents[[a]]$DeterFlow = data.frame(canvasObjects$agents[[a]]$DeterFlow, AgentLinkedTimeoutBehave = "None")
 
       for(i in 1:nrow(canvasObjects$agents[[a]]$DeterFlow)){
-        if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None"){
-          activityLabel <- switch(paste(canvasObjects$agents[[a]]$DeterFlow$Activity[i]),
-                                  "1" = "Very Light",
-                                  "1.7777" = "Light",
-                                  "2.5556" ="Quite Hard",
-                                  "6.1111" = "Hard"
-          )
+        activityLabel <- switch(paste(canvasObjects$agents[[a]]$DeterFlow$Activity[i]),
+                                "1" = "Very Light",
+                                "1.7777" = "Light",
+                                "2.5556" ="Quite Hard",
+                                "6.1111" = "Hard"
+        )
 
-          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel, " - ", canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i], " (", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedType[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedTimeout[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedBehave[i], ")")
-          if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None")
-            label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
-        }
+        label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel, " - ", canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i], " (", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedType[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedTimeout[i], ", ", canvasObjects$agents[[a]]$DeterFlow$AgentLinkedTimeoutBehave[i], ")")
+        if(canvasObjects$agents[[a]]$DeterFlow$AgentLinked[i] == "None")
+          label <- paste0(canvasObjects$agents[[a]]$DeterFlow$Room[i], " - ", canvasObjects$agents[[a]]$DeterFlow$Dist[i], " ", canvasObjects$agents[[a]]$DeterFlow$Time[i], " min - ", activityLabel)
 
         canvasObjects$agents[[a]]$DeterFlow$Label[i] <- label
       }

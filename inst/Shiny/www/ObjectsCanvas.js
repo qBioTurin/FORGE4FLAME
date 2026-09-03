@@ -159,8 +159,8 @@ function redrawObjectsCanvas() {
 function drawObject(obj, isSelected) {
     const x = obj.x * SCALE;
     const y = obj.y * SCALE;
-    const width = obj.width * SCALE;
-    const length = obj.length * SCALE;
+    const width = obj.length * SCALE;  // length is width on canvas (parallel to wall)
+    const length = obj.width * SCALE;  // width is length on canvas (perpendicular to wall)
 
     // Draw object rectangle with different style for obstacles vs. usable objects
     if (obj.isObstacle) {
@@ -206,11 +206,11 @@ function drawObject(obj, isSelected) {
 
 // Check if two objects overlap
 function checkOverlap(obj1, obj2) {
-    // Check if rectangles overlap
-    return !(obj1.x + obj1.width <= obj2.x ||  // obj1 is to the left of obj2
-        obj2.x + obj2.width <= obj1.x ||  // obj2 is to the left of obj1
-        obj1.y + obj1.length <= obj2.y || // obj1 is above obj2
-        obj2.y + obj2.length <= obj1.y);  // obj2 is above obj1
+    // Check if rectangles overlap (using length as horizontal, width as vertical)
+    return !(obj1.x + obj1.length <= obj2.x ||  // obj1 is to the left of obj2
+        obj2.x + obj2.length <= obj1.x ||  // obj2 is to the left of obj1
+        obj1.y + obj1.width <= obj2.y || // obj1 is above obj2
+        obj2.y + obj2.width <= obj1.y);  // obj2 is above obj1
 }
 
 // Check if an object overlaps with any existing objects
@@ -233,8 +233,8 @@ function findNonOverlappingPosition(obj) {
 
     // Try positions in a grid pattern
     const step = 1; // Move in 1 meter increments
-    const maxX = (objectsCanvas.width / SCALE) - obj.width;
-    const maxY = (objectsCanvas.height / SCALE) - obj.length;
+    const maxX = (objectsCanvas.width / SCALE) - obj.length;   // length is horizontal
+    const maxY = (objectsCanvas.height / SCALE) - obj.width;   // width is vertical
 
     for (let y = 1; y <= maxY; y += step) {
         for (let x = 1; x <= maxX; x += step) {
@@ -322,8 +322,8 @@ objectsCanvas.addEventListener('mousedown', function (e) {
     selectedObjectIndex = -1;
     for (let i = objectsArray.length - 1; i >= 0; i--) {
         const obj = objectsArray[i];
-        if (mouseX >= obj.x && mouseX <= obj.x + obj.width &&
-            mouseY >= obj.y && mouseY <= obj.y + obj.length) {
+        if (mouseX >= obj.x && mouseX <= obj.x + obj.length &&
+            mouseY >= obj.y && mouseY <= obj.y + obj.width) {
             selectedObjectIndex = i;
             isDragging = true;
             dragStartX = mouseX - obj.x;
@@ -351,8 +351,8 @@ objectsCanvas.addEventListener('mousemove', function (e) {
         const oldY = obj.y;
 
         // Calculate new position
-        const newX = Math.max(0, Math.min(mouseX - dragStartX, objectsCanvas.width / SCALE - obj.width));
-        const newY = Math.max(0, Math.min(mouseY - dragStartY, objectsCanvas.height / SCALE - obj.length));
+        const newX = Math.max(0, Math.min(mouseX - dragStartX, objectsCanvas.width / SCALE - obj.length));
+        const newY = Math.max(0, Math.min(mouseY - dragStartY, objectsCanvas.height / SCALE - obj.width));
 
         // Temporarily update position
         obj.x = newX;

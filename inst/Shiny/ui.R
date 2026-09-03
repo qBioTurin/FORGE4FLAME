@@ -817,8 +817,8 @@ ui <- dashboardPage(
               ),
               column(2,
                      numericInput(
-                       inputId = "object_width",
-                       label = "Width (meters):",
+                       inputId = "object_length",
+                       label = "Length (meters):",
                        value = 1,
                        min = 0.5,
                        step = 0.5
@@ -826,8 +826,8 @@ ui <- dashboardPage(
               ),
               column(2,
                      numericInput(
-                       inputId = "object_length",
-                       label = "Length (meters):",
+                       inputId = "object_width",
+                       label = "Width (meters):",
                        value = 1,
                        min = 0.5,
                        step = 0.5

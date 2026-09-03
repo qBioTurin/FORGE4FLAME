@@ -1966,7 +1966,6 @@ server <- function(input, output, session) {
       paste0("model", Sys.Date(), ".zip")
     },
     content = function(file) {
-      browser()
       postprocObjects$simulation_log_folder <- NULL
       postprocObjects$simulation_log <- NULL
       postprocObjects$plot_2D <- NULL
@@ -9889,7 +9888,7 @@ server <- function(input, output, session) {
     }
 
     if (input$object_width <= 0 || input$object_length <= 0) {
-      shinyalert("Object width and length must be greater than 0.", type = "error")
+      shinyalert("Object length and width must be greater than 0.", type = "error")
       return()
     }
 
@@ -10001,8 +10000,8 @@ server <- function(input, output, session) {
         Name = character(),
         X = numeric(),
         Y = numeric(),
-        Width = numeric(),
         Length = numeric(),
+        Width = numeric(),
         Color = character(),
         Obstacle = logical(),
         Capacity = integer(),
