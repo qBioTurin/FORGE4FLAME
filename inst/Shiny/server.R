@@ -828,7 +828,7 @@ server <- function(input, output, session) {
       updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom", "none"), selected = "none")
       disable("door_new_room")
     } else {
-      updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom", "none"), selected = "right")
+      updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom"), selected = "right")
       enable("door_new_room")
     }
   })
@@ -842,7 +842,7 @@ server <- function(input, output, session) {
         updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom", "none"), selected = "none")
         disable("door_new_room")
       } else {
-        updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom", "none"), selected = "right")
+        updateSelectizeInput(inputId = "door_new_room", choices = c("right", "left", "top", "bottom"), selected = "right")
         enable("door_new_room")
       }
     }

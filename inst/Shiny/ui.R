@@ -329,7 +329,7 @@ ui <- dashboardPage(
               div(style = "text-align:center;",
                   img(src = "F4Ficon.png", height = 100, width = 100),
                   h1(strong("Forge4Flame (F4F)")),
-                  h2("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM environments.")
+                  h2("A user-friendly R Shiny dashboard for defining FLAME GPU 2 ABM models")
               )
             )
           ),
@@ -337,7 +337,7 @@ ui <- dashboardPage(
           fluidRow(
             column(
               width = 12,
-              h3("F4F allows you to define various elements of an agent-based model simulation: environments, agents, disease dynamics, and more. Below are the core components of the platform, showcased with screenshots:")
+              h3("F4F enables users to define the key components of an agent-based model simulation, including environments, agents, disease dynamics, what-if scenarios, and other simulation elements. The core components of the platform are illustrated below through representative images:")
             )
           ),
           br(),
@@ -351,9 +351,10 @@ ui <- dashboardPage(
             lapply(
               list(
                 list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "images/Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
-                list(title = "Rooms", desc = "Define new room types.", img = "images/Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
+                list(title = "Rooms", desc = "Define new room specifying length, width, and height.", img = "images/Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
+                list(title = "Objects in Rooms", desc = "Define objects and obstaces inside each room.", img = "images/Rooms.png", tab = "objects_in_rooms", icon = "cube", color = "#6a8bf9"),
                 list(title = "Agents", desc = "Define agent types and their movement logic.", img = "images/Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
-                list(title = "Resources", desc = "Specify room capacity per agent type.", img = "images/Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
+                list(title = "Resources", desc = "Specify room and object capacity per agent type.", img = "images/Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
                 list(title = "Infection", desc = "Define the disease model used in simulation.", img = "images/Infection.png", tab = "infection", icon = "viruses", color = "#9b59b6"),
                 list(title = "What-If", desc = "Perform what-if analysis with countermeasures.", img = "images/Countermeasures.png", tab = "whatif", icon = "question", color = "#1abc9c"),
                 list(title = "Configuration", desc = "Set up the initial configuration for simulation.", img = "images/Configuration.png", tab = "configuration", icon = "flag-checkered", color = "#34495e"),
@@ -492,24 +493,21 @@ ui <- dashboardPage(
                        fluidRow(
                          column(10,offset=1,
                                 h2(),
-                                selectInput(inputId = "door_new_room", label = "Room rotation w.r.t the door (by defulat on the bottom wall):",
-                                            choices = c("none","right","left","top","bottom"),
+                                selectInput(inputId = "door_new_room", label = "Room rotation w.r.t the door (by default on the bottom wall):",
+                                            choices = c("right","left","top","bottom"),
                                             selected = "Right")
                          ),
                        ),
                        fluidRow(
                          column(10,offset=1,
                                 h2(),
-                                selectizeInput(inputId="select_area",label = "Area:",options = list(create = TRUE),
-                                               choices = c("None")#,
-                                               #             "Senology",
-                                               #             "Ophthalmology",
-                                               #             "Surgery",
-                                               #             "Urology",
-                                               #             "Orthopaedics",
-                                               #             "Analgesic Therapy",
-                                               #             "Dermosurgery",
-                                               #             "Radiology")
+                                selectizeInput(inputId="select_area",
+                                               label = div(class = "icon-container",
+                                                           h5(tags$b("Area:"), icon("info-circle")),
+                                                           div(class = "icon-text", "Room's area refer to a particular section of the environment, like wards in a hospital.")
+                                               ),
+                                               options = list(create = TRUE),
+                                               choices = c("None")
                                 )
                          )
                        ),
@@ -522,7 +520,10 @@ ui <- dashboardPage(
                        ),
                        fluidRow(
                          column(5,offset =0,
-                                actionButton("add_room", "Add room")
+                                actionButton("add_room",
+                                             "Add room",
+                                             icon = icon("plus-circle"),
+                                             style = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                          )
                        ),
                        fluidRow(
@@ -561,7 +562,10 @@ ui <- dashboardPage(
                          collapsible = T,
                          fluidRow(
                            column(4, offset = 1,
-                                  actionButton("add_point", "Add graph point", width = 150)
+                                  actionButton("add_point","Add graph point",
+                                               icon = icon("plus-circle"),
+                                               style = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
+                                               width = 150)
                            ),
                            column(4,
                                   actionButton("remove_point", "Remove last graph point")
@@ -616,16 +620,15 @@ ui <- dashboardPage(
                          style = "display: flex; align-items: flex-start; gap: 12px;",
                          icon("info-circle", style = "color: #2E7D32; font-size: 20px; margin-top: 2px; flex-shrink: 0;"),
                          div(
-                           h5(tags$b("Agent Flow via Room Types (to fix, it is not correct)", style = "color: #2E7D32; margin: 0 0 8px 0;")),
-                           p("Room ", tags$b("Types"), " and ", tags$b("Areas"), " define how agents move, NOT room names.",
+                           p("Room ", tags$b("Types"), " and ", tags$b("Areas"), " (see the Canvas page) define how agents move, NOT room names.",
                              style = "margin: 0 0 8px 0; font-size: 14px; color: #333;"),
                            p(tags$strong("Example:"), " Create type ",
                              tags$span(style = "background: #FFF9C4; padding: 2px 6px; border-radius: 3px;", "bathroom"),
-                             " with areas ",
+                             " with names ",
                              tags$span(style = "background: #FFE0B2; padding: 2px 6px; border-radius: 3px;", "small_bathroom"),
                              " and ",
                              tags$span(style = "background: #FFE0B2; padding: 2px 6px; border-radius: 3px;", "large_bathroom"),
-                             ". Agents visit the type \"bathroom\" and may be assigned any area of that type.",
+                             ". Agents visit the type \"bathroom\" and may be assigned any area (like wards in a hospital).",
                              style = "margin: 0 0 8px 0; font-size: 13px; color: #555; line-height: 1.5;"),
                            p(tags$strong("Benefit:"), " Groups similar rooms together, enabling flexible agent routing and easy reconfiguration.",
                              style = "margin: 0; font-size: 13px; color: #666;")
@@ -661,7 +664,7 @@ ui <- dashboardPage(
                          inputId = "length_new_room",
                          label = div(class = "icon-container",
                                      h5(tags$b("Length (meter): "), icon("info-circle")),
-                                     div(class = "icon-text", "Length refers to the (bottom) wall with the door.")
+                                     div(class = "icon-text", "Length refers to the (bottom) wall with the door; in the Canvas page, the user can choose the rotation of the room.")
                          ),
                          placeholder = "Room length"
                        )
@@ -687,7 +690,10 @@ ui <- dashboardPage(
             fluidRow(column(1),
                      column(
                        10,
-                       actionButton("save_room", "Save room")
+                       actionButton("save_room",
+                                    "Save room",
+                                    icon = icon("save"),
+                                    style = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                      ))
           )
         ),
@@ -737,14 +743,14 @@ ui <- dashboardPage(
         tabName = "objects_in_rooms",
         fluidRow(
           box(
-            title = h3("Select Room and Add Objects"),
+            title = h3("Add objects in rooms"),
             width = 12,
             collapsible = TRUE,
             fluidRow(
               column(3, offset = 1,
                      selectInput(
                        inputId = "select_room_for_objects",
-                       label = "Select Room:",
+                       label = "Select room:",
                        choices = c(""),
                        selected = ""
                      )
@@ -752,7 +758,7 @@ ui <- dashboardPage(
               column(3,
                      selectInput(
                        inputId = "copy_objects_from_room",
-                       label = div(icon("copy"), " Copy Objects From:"),
+                       label = div(icon("copy"), " Copy objects from:"),
                        choices = c(""),
                        selected = ""
                      )
@@ -760,9 +766,9 @@ ui <- dashboardPage(
               column(2,
                      actionButton(
                        inputId = "copy_objects_btn",
-                       label = "Copy All Objects",
+                       label = "Copy all objects",
                        icon = icon("clone"),
-                       style = "margin-top: 25px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                       style = "margin-top: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
                      )
               ),
               column(2,
@@ -777,9 +783,9 @@ ui <- dashboardPage(
               column(4, offset = 1,
                      selectizeInput(
                        inputId = "select_object_type",
-                       label = div(icon("list"), " Select Existing Object Type:"),
+                       label = div(icon("list"), " Select existing object type:"),
                        choices = c(""),
-                       options = list(placeholder = "Choose a predefined object or enter new")
+                       options = list(placeholder = "Choose a predefined object")
                      )
               ),
               column(7,
@@ -798,7 +804,7 @@ ui <- dashboardPage(
                                border-radius: 5px;
                                box-shadow: 0 2px 5px rgba(255, 152, 0, 0.15);",
                        icon("exclamation-triangle", style = "color: #FF6F00; margin-right: 8px;"),
-                       tags$b("Important: Door Collision Rule", style = "color: #FF6F00;"),
+                       tags$b("Important: door collision rule", style = "color: #FF6F00;"),
                        br(),
                        tags$span(
                          style = "margin-left: 28px; display: inline-block; color: #333; font-size: 13px;",
@@ -811,7 +817,7 @@ ui <- dashboardPage(
               column(3, offset = 1,
                      textInput(
                        inputId = "object_name",
-                       label = "Object Name:",
+                       label = "Object name:",
                        placeholder = "e.g., Desk, Table"
                      )
               ),
@@ -845,7 +851,7 @@ ui <- dashboardPage(
               column(2, offset = 1,
                      checkboxInput(
                        inputId = "object_is_obstacle",
-                       label = div(icon("ban"), " Is Obstacle?"),
+                       label = div(icon("ban"), " Is obstacle?"),
                        value = TRUE
                      )
               ),
@@ -854,14 +860,14 @@ ui <- dashboardPage(
                        condition = "!input.object_is_obstacle",
                        numericInput(
                          inputId = "object_capacity",
-                         label = div(icon("users"), " Agent Capacity:"),
+                         label = div(icon("users"), " Agent capacity:"),
                          value = 1,
                          min = 1,
                          step = 1
                        )
                      )
               ),
-              column(4,
+              column(3,
                      conditionalPanel(
                        condition = "!input.object_is_obstacle",
                        p(style = "margin-top: 30px; color: #667eea; font-style: italic; font-size: 12px;",
@@ -873,14 +879,14 @@ ui <- dashboardPage(
                        inputId = "add_object_to_room",
                        label = "Add",
                        icon = icon("plus-circle"),
-                       style = "margin-top: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                       style = "margin-top: 25px; margin-left: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
                      )
               )
             ),
             p(),
             fluidRow(
               box(
-                title = h3("Objects in Selected Room"),
+                title = h3("Objects inside the selected room"),
                 width = 10,offset = 1,
                 collapsible = TRUE,
                 collapsed = TRUE,
@@ -893,7 +899,7 @@ ui <- dashboardPage(
                   column(3, offset = 1,
                          actionButton(
                            inputId = "remove_selected_object",
-                           label = "Remove Selected",
+                           label = "Remove selected",
                            icon = icon("trash-alt"),
                            style = "margin-top: 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
                          )
@@ -901,7 +907,7 @@ ui <- dashboardPage(
                   column(3,
                          actionButton(
                            inputId = "clear_all_objects",
-                           label = "Clear All Objects",
+                           label = "Clear all objects",
                            icon = icon("broom"),
                            style = "margin-top: 10px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
                          )
@@ -1006,7 +1012,10 @@ ui <- dashboardPage(
                   br(),
                   fluidRow(
                     column(2, offset = 10,
-                           actionButton("save_agent_resource_links", "Save Links", style="background-color: #5F5CA3; color: white; margin-top:10px;")
+                           actionButton("save_agent_resource_links",
+                                        "Save links",
+                                        icon = icon("save"),
+                                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                     )
                   )
                 )
@@ -1073,7 +1082,10 @@ ui <- dashboardPage(
               column(3,offset=2, selectizeInput(inputId = "DetActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
               column(1,
-                     actionButton("add_room_to_det_flow", "Add room", style = 'margin-top:25px')
+                     actionButton("add_room_to_det_flow",
+                                  "Add room",
+                                  icon = icon("plus-circle"),
+                                  style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
               ),
               column(1,offset=9,
                     actionButton("remove_room_to_det_flow", "Remove last room")
@@ -1174,7 +1186,10 @@ ui <- dashboardPage(
               column(3, offset=2, selectizeInput(inputId = "RandActivity", label = "Activity:", choices = c("", "Very Light - e.g. resting", "Light - e.g. speak while resting", "Quite Hard - e.g. speak/walk while standing", "Hard - e.g. loudly speaking"))
               ),
               column(width = 2,
-                     actionButton("add_room_to_rand_flow", "Add room", style = 'margin-top:25px')
+                     actionButton("add_room_to_rand_flow",
+                                  "Add room",
+                                  icon = icon("plus-circle"),
+                                  style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
               )
             ),
             fluidRow(
@@ -1261,7 +1276,10 @@ ui <- dashboardPage(
                                            inline = TRUE,
                                            selected = "Time window"
                               ),
-                              actionButton("set_timeslot", "Save time")
+                              actionButton("set_timeslot",
+                                           "Save time",
+                                           icon = icon("save"),
+                                           style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                        )
                      )
               ),
@@ -1289,7 +1307,10 @@ ui <- dashboardPage(
                          )
                        ),
                        fluidRow(
-                         actionButton("add_slot_rate", "Add slot"),
+                         actionButton("add_slot_rate",
+                                      "Add slot",
+                                      icon = icon("plus-circle"),
+                                      style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
                          actionButton("rm_slot_rate", "Remove slot")
                        )
                      ),
@@ -1333,12 +1354,18 @@ ui <- dashboardPage(
                        ),
                        fluidRow(
                          column(11,offset=1,
-                           actionButton("add_slot", "Add slot"),
+                           actionButton("add_slot",
+                                        "Add slot",
+                                        icon = icon("plus-circle"),
+                                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
                            actionButton("rm_slot", "Remove slot")
                          )
                        ),
                        fluidRow(
-                         actionButton("add_shift", "Add shift", style="margin-top:20px;"),
+                         actionButton("add_shift",
+                                      "Add shift",
+                                      icon = icon("plus-circle"),
+                                      style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
                          actionButton("rm_shift", "Remove shift", style="margin-top:20px;")
                        )
                      )
@@ -1588,7 +1615,7 @@ ui <- dashboardPage(
                            inputId = "save_values_disease_model",
                            label = "Save Parameters",
                            icon = icon("save"),
-                           style = "color: white;",
+                           style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                            class = "btn-primary"
                          )
                        )
@@ -1806,7 +1833,7 @@ ui <- dashboardPage(
                          inputId = "save_values_virus_parameters",
                          label = "Save Parameters",
                          icon = icon("save"),
-                         style = "color: white;",
+                         style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                          class = "btn-primary"
                        )
                      )

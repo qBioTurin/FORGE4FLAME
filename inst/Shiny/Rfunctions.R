@@ -258,7 +258,6 @@ rotate_matrix <- function(mat, angle) {
 CanvasRoomToMatrix = function(canvasObjects,canvas){
 
   roomsMatrix = lapply(canvasObjects$roomsINcanvas$ID,function(id){
-    browser()
     n = canvasObjects$roomsINcanvas[which(canvasObjects$roomsINcanvas$ID == id),]$Name
 
     objects_list = canvasObjects$roomObjects[[n]]
