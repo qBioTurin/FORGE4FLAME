@@ -351,7 +351,7 @@ ui <- dashboardPage(
             lapply(
               list(
                 list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "images/Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
-                list(title = "Rooms", desc = "Define new room specifying length, width, and height.", img = "images/Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
+                list(title = "Rooms", desc = "Define new room specifying length, width, and height.", img = "images/Objects.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
                 list(title = "Objects in Rooms", desc = "Define objects and obstaces inside each room.", img = "images/Rooms.png", tab = "objects_in_rooms", icon = "cube", color = "#6a8bf9"),
                 list(title = "Agents", desc = "Define agent types and their movement logic.", img = "images/Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
                 list(title = "Resources", desc = "Specify room and object capacity per agent type.", img = "images/Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
@@ -423,7 +423,9 @@ ui <- dashboardPage(
                      )
               ),
               column(1,
-                     actionButton("delete_floor", "Delete floor", style="margin-top:25px;")),
+                     actionButton("delete_floor", "Delete floor",
+                                  icon = icon("trash"),
+                                  style = "margin-top: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);")),
               column(5,
                      uiOutput("FloorRank")
               )
@@ -460,6 +462,7 @@ ui <- dashboardPage(
                     actionButton(
                       label = "Load",
                       icon = shiny::icon("upload"),
+                      style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                       inputId = "LoadBG_image"
                     )
                   ),
@@ -543,13 +546,13 @@ ui <- dashboardPage(
                            column(8, offset = 1,
                                   selectizeInput(inputId= "select_RemoveRoom",label="Select the room to remove:", choices = "")
                            ),
-                           column(1,
-                                  actionButton("remove_room", "Remove room", style = 'margin-top:25px', width = 100)
+                           column(2,
+                                  actionButton("remove_room", "Remove room", icon = icon("trash"), style = "margin-top: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);", width = 150)
                            )
                          ),
                          fluidRow(
-                           column(1, offset=9,
-                                  actionButton("clear_all", "Clear floor", width = 100),
+                           column(2, offset=9,
+                                  actionButton("clear_all", "Clear floor", icon = icon("trash"), style = "margin-top: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);", width = 150),
                            )
                          )
                        )
@@ -568,12 +571,13 @@ ui <- dashboardPage(
                                                width = 150)
                            ),
                            column(4,
-                                  actionButton("remove_point", "Remove last graph point")
+                                  actionButton("remove_point", "Remove last graph point", icon = icon("trash"), style = "background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);")
                            )
                          ),
                          fluidRow(
                            column(4, offset = 1,
-                                  actionButton("path_generation", "Visualise graph", width = 150)
+                                  actionButton("path_generation", "Visualise graph", icon = icon("eye"),
+                                               style = "margin-top: 5px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);", width = 150)
                            )
                          )
                        )
@@ -768,7 +772,7 @@ ui <- dashboardPage(
                        inputId = "copy_objects_btn",
                        label = "Copy all objects",
                        icon = icon("clone"),
-                       style = "margin-top: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                       style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
                      )
               ),
               column(2,
@@ -901,7 +905,7 @@ ui <- dashboardPage(
                            inputId = "remove_selected_object",
                            label = "Remove selected",
                            icon = icon("trash-alt"),
-                           style = "margin-top: 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
+                           style = "margin-top: 10px; margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
                          )
                   ),
                   column(3,
@@ -909,7 +913,7 @@ ui <- dashboardPage(
                            inputId = "clear_all_objects",
                            label = "Clear all objects",
                            icon = icon("broom"),
-                           style = "margin-top: 10px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);"
+                           style = "margin-top: 10px; margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
                          )
                   )
                 )
@@ -956,7 +960,7 @@ ui <- dashboardPage(
                            uiOutput("selectInput_alternative_resources_global")
                     ),
                     column(1,
-                           actionButton("set_resources", "Set", style="margin-top:25px;")
+                           actionButton("set_resources", "Set", icon = icon("save"), style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-top:25px;")
                     )
                   ),
                   fluidRow(
@@ -1036,14 +1040,14 @@ ui <- dashboardPage(
                                     choices=c(""))
               ),
               column(2,
-                     actionButton("button_rm_agent",label = "Remove agent", style = 'margin-top:25px')
+                     actionButton("button_rm_agent",label = "Remove agent", icon = icon("trash"), style = 'margin-top: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);')
               ),
               column(3,
                      selectizeInput(inputId = "id_agents_to_copy", label = "Copy information from:",
                                     choices=c(""))
               ),
               column(3,
-                     actionButton("button_copy_agent",label = "Copy", style = 'margin-top:25px')
+                     actionButton("button_copy_agent",label = "Copy", style = 'margin-top:25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);', icon = icon("clone"))
               )
             )
           ),
@@ -1088,7 +1092,7 @@ ui <- dashboardPage(
                                   style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
               ),
               column(1,offset=9,
-                    actionButton("remove_room_to_det_flow", "Remove last room")
+                    actionButton("remove_room_to_det_flow", "Remove last room", style = 'margin-top:25px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);', icon = icon("trash"))
              )
             ),
             fluidRow(
@@ -1136,10 +1140,10 @@ ui <- dashboardPage(
               condition="input.ckbox_entranceFlow != 'Daily Rate'",
               fluidRow(
                 column(1, offset = 1,
-                       actionButton("add_det_flow", "Add flow", style="margin-top:20px;"),
+                       actionButton("add_det_flow", "Add flow", style = 'margin-top:25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);', icon = icon("plus-circle")),
                 ),
                 column(1,
-                       actionButton("rm_det_flow", "Remove flow", style="margin-top:20px;")
+                       actionButton("rm_det_flow", "Remove flow", style = 'margin-top:25px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);', icon = icon("trash"))
                 ),
               )
             ),
@@ -1195,9 +1199,9 @@ ui <- dashboardPage(
             fluidRow(
               column(3,offset=1,
                      textInput(inputId = "RandTimes", label = div(class = "icon-container",
-                                                                  h4("Number of times", icon("info-circle")),
+                                                                  h5(tags$b("Number of times"), icon("info-circle")),
                                                                   div(class = "icon-text", "This is the expected value of a binomial random variable X, E[X] = np, where n is the number of steps simulated in a minute, hour, day, or week based on the user choice (see the Configuration page to define the step duration in seconds) and mapped on the selected time interval and p is the per-step probability (computed as p = E[X] / n).")
-                     ),placeholder = "")
+                     ), placeholder = "")
               ),
               column(2,
                      selectizeInput(inputId = "UnitMeasureTimes", label = "Number of times per:", choices = c("minute", "hour", "day", "week"), selected="minute")
@@ -1311,7 +1315,7 @@ ui <- dashboardPage(
                                       "Add slot",
                                       icon = icon("plus-circle"),
                                       style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
-                         actionButton("rm_slot_rate", "Remove slot")
+                         actionButton("rm_slot_rate", "Remove slot", icon = icon("trash"), style = "background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);")
                        )
                      ),
                      conditionalPanel(
@@ -1358,15 +1362,15 @@ ui <- dashboardPage(
                                         "Add slot",
                                         icon = icon("plus-circle"),
                                         style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
-                           actionButton("rm_slot", "Remove slot")
+                           actionButton("rm_slot", "Remove slot", icon = icon("trash"), style = "background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);")
                          )
                        ),
                        fluidRow(
                          actionButton("add_shift",
                                       "Add shift",
                                       icon = icon("plus-circle"),
-                                      style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
-                         actionButton("rm_shift", "Remove shift", style="margin-top:20px;")
+                                      style = "margin-top:10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"),
+                         actionButton("rm_shift", "Remove shift", icon = icon("trash"), style = "margin-top:10px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);")
                        )
                      )
               )
@@ -1863,7 +1867,7 @@ ui <- dashboardPage(
                           "Width (meter)",
                           placeholder = "Floor width dimension (default 100m)"
                         ),
-                        actionButton("set_canvas", "Set dimension", icon = icon("pen-ruler"))
+                        actionButton("set_canvas", "Set dimension", icon = icon("pen-ruler"), style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                       )
                     ))
               ),
@@ -1890,6 +1894,7 @@ ui <- dashboardPage(
                       style = "margin-top: 20px;",
                       actionButton(
                         label = "Load",
+                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                         icon = shiny::icon("upload"),
                         inputId = "LoadRDs_Button"
                       )
@@ -1910,6 +1915,7 @@ ui <- dashboardPage(
                       actionButton(
                         inputId = "check",
                         label = "Check model",
+                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                         icon = icon("check"))
                     ),
                     column(
@@ -1918,7 +1924,9 @@ ui <- dashboardPage(
                       downloadButton(
                         outputId = "rds_generation",
                         label = "Save the model",
-                        icon = icon("download"))
+                        icon = icon("download"),
+                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"
+                      )
                     ),
                     column(
                       2,
@@ -1926,6 +1934,7 @@ ui <- dashboardPage(
                       actionButton(
                         inputId = "flamegpu_connection",
                         label = "Link the model to FLAME GPU 2",
+                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                         icon = icon("link"))
                     )
                   ),
@@ -2058,7 +2067,10 @@ ui <- dashboardPage(
                       ),
                       column(1, numericInput(inputId = "ventilation_time_from", label = "From (day):", value = 1, min = 1)),
                       column(1, numericInput(inputId = "ventilation_time_to", label = "To (day):", value = 10, min = 1)),
-                      column(1,offset=11, actionButton("save_ventilation", "Save"))
+                      column(1,offset=11, actionButton("save_ventilation",
+                                                       "Save",
+                                                       icon = icon("save"),
+                                                       style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     )
                   )
               ),
@@ -2097,7 +2109,10 @@ ui <- dashboardPage(
                       ),
                       column(1, numericInput(inputId = "mask_time_from", label = "From (day):", value = 1, min = 1)),
                       column(1, numericInput(inputId = "mask_time_to", label = "To (day):", value = 10, min = 1)),
-                      column(1,offset=11, actionButton("save_masks", "Save"))
+                      column(1,offset=11, actionButton("save_masks",
+                                                       "Save",
+                                                       icon = icon("save"),
+                                                       style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     ))
               ),
               fluidRow(
@@ -2152,7 +2167,10 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(1, offset=3, numericInput(inputId = "vaccination_time_from", label = "At (day):", value = 1, min = 1)),
-                      column(1,offset=11, actionButton("save_vaccination", "Save"))
+                      column(1,offset=11, actionButton("save_vaccination",
+                                                       "Save",
+                                                       icon = icon("save"),
+                                                       style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     )
                 )
               ),
@@ -2220,7 +2238,10 @@ ui <- dashboardPage(
                     fluidRow(
                       column(1, offset=3, numericInput(inputId = "swab_time_from", label = "From (day):", value = 1, min = 1)),
                       column(1, numericInput(inputId = "swab_time_to", label = "To (day):", value = 10, min = 1)),
-                      column(1,offset=11, actionButton("save_swab", "Save"))
+                      column(1,offset=11, actionButton("save_swab",
+                                                       "Save",
+                                                       icon = icon("save"),
+                                                       style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     )
                 )
               ),
@@ -2332,7 +2353,10 @@ ui <- dashboardPage(
                         fluidRow(
                           column(1,offset = 3, numericInput(inputId = "quarantine_time_from", label = "From (day):", value = 1, min = 1)),
                           column(1, numericInput(inputId = "quarantine_time_to", label = "To (day):", value = 10, min = 1)),
-                          column(1,offset=11, actionButton("save_quarantine", "Save"))
+                          column(1,offset=11, actionButton("save_quarantine",
+                                                           "Save",
+                                                           icon = icon("save"),
+                                                           style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                         )
                       )
                     )
@@ -2390,7 +2414,10 @@ ui <- dashboardPage(
                       fluidRow(
                         column(1, offset = 3, numericInput(inputId = "external_screening_time_from", label = "From (day):", value = 1, min = 1)),
                         column(1, numericInput(inputId = "external_screening_time_to", label = "To (day):", value = 10, min = 1)),
-                        column(1, offset=11, actionButton("save_external_screening", "Save"))
+                        column(1, offset=11, actionButton("save_external_screening",
+                                                          "Save",
+                                                          icon = icon("save"),
+                                                          style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                       )
                     )
                 )
@@ -2441,7 +2468,10 @@ ui <- dashboardPage(
                       #     value = 0.22, max = 1, min = 0
                       #   )
                       # ),
-                      column(1, offset=11, actionButton("save_virus", "Save"))
+                      column(1, offset=11, actionButton("save_virus",
+                                                        "Save",
+                                                        icon = icon("save"),
+                                                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     ))
               ),
               fluidRow(
@@ -2483,7 +2513,10 @@ ui <- dashboardPage(
                           value = 1, min = 0
                         )
                       ),
-                      column(1, offset=11, actionButton("save_initial_infected", "Save"))
+                      column(1, offset=11, actionButton("save_initial_infected",
+                                                        "Save",
+                                                        icon = icon("save"),
+                                                        style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"))
                     )
                 )
               ),
@@ -2511,6 +2544,7 @@ ui <- dashboardPage(
                         actionButton(
                           label = "Load",
                           icon = shiny::icon("upload"),
+                          style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                           inputId = "LoadCSV_Button_OutsideContagion"
                         )
                       )
@@ -2613,10 +2647,11 @@ ui <- dashboardPage(
                                actionButton(
                                  inputId = "check_run",
                                  label = "Check model",
-                                 icon = icon("check"))
+                                 icon = icon("check"),
+                                 style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                         ),
                         column(1,
-                               actionButton("run", "Run", disabled = TRUE, icon = icon("play"))
+                               actionButton("run", "Run", disabled = TRUE, icon = icon("play"), style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                         )
                       )
                     ),
@@ -2632,7 +2667,7 @@ ui <- dashboardPage(
                     ),
                     fluidRow(
                       column(1,
-                             actionButton("stop_run", "Stop")
+                             actionButton("stop_run", "Stop", style = " background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                       )
                     )
                 )
@@ -2649,7 +2684,7 @@ ui <- dashboardPage(
                       column(
                         width = 2,
                         offset = 1,
-                        shinyDirButton("dir", "Select Folder", "Upload")
+                        shinyDirButton("dir", "Select Folder", "Upload", style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                         # fileInput(
                         #   inputId = "CSVsimulImport",
                         #   label = "",
@@ -2664,6 +2699,7 @@ ui <- dashboardPage(
                         actionButton(
                           label = "Load",
                           icon = shiny::icon("upload"),
+                          style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                           inputId = "LoadFolderPostProc_Button"
                         )
                       ),
@@ -2677,8 +2713,7 @@ ui <- dashboardPage(
                       column(
                         offset = 4,
                         width = 4,
-                        style = "margin-top: 20px;",
-                        downloadButton("DownloadPostProc_Button", label = "Download filtered data (from Disease Evolution filters)")
+                        downloadButton("DownloadPostProc_Button", label = "Download filtered data (from Disease Evolution filters)", style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",)
                       )
                     ),
                     fluidRow(
@@ -2764,7 +2799,7 @@ ui <- dashboardPage(
                             ),
                             column(1,
                                    div(style = "padding-top: 25px;",
-                                       actionButton("diseaseEvol_reset", "Reset", icon = icon("refresh"),
+                                       actionButton("diseaseEvol_reset", "Reset", icon = icon("refresh"), style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                                                     class = "btn-warning btn-sm")
                                    )
                             )
@@ -3034,7 +3069,7 @@ ui <- dashboardPage(
                       column(2,
                              style = "padding-top: 25px;",
                              actionButton("next_step_visual", label = HTML("<i class='fa fa-forward'></i> Next Step"),
-                                          class = "btn-primary", style = "width: 100%;")
+                                          class = "btn-primary", style = "width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                       )
                     ),
                     fluidRow(
@@ -3095,6 +3130,7 @@ ui <- dashboardPage(
                                           inputId = "animation_clear_bg",
                                           label = "Clear",
                                           icon = icon("trash"),
+                                          style = " background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",
                                           style = "margin-top: 25px;"
                                         )
                                  )
@@ -3130,7 +3166,7 @@ ui <- dashboardPage(
                                  ),
                                  column(3,
                                         style="padding-top:25px;",
-                                        downloadButton("download_animation_mp4", "Download MP4", class = "btn-success", style = "width: 100%;")
+                                        downloadButton("download_animation_mp4", "Download MP4", class = "btn-success", style = "width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                                  )
                                ),
                                fluidRow(

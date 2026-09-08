@@ -9489,7 +9489,7 @@ server <- function(input, output, session) {
         modalDialog(
           title = "Insert a directory name to identify uniquely this model",
           textInput("popup_text", "Directory name:", ""),
-          shinyDirButton("dir_results", "Select Folder", "Upload"),
+          shinyDirButton("dir_results", "Select folder", "Upload"),
           verbatimTextOutput("dirResultsPath"),
           footer = tagList(
             modalButton("Cancel"),
