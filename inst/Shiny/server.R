@@ -3696,7 +3696,7 @@ server <- function(input, output, session) {
 
   output$selectInput_alternative_resources_global <- renderUI({
     # Generate selectizeInput for each relevant agent
-    choicesRoom <- c("Same room", "Skip room")
+    choicesRoom <- c("Same room type", "Skip room")
 
     if (!is.null(canvasObjects$roomsINcanvas)) {
       rooms <- canvasObjects$roomsINcanvas %>%
@@ -3706,14 +3706,14 @@ server <- function(input, output, session) {
         distinct()
 
       # Generate selectizeInput for each relevant agent
-      choicesRoom <- c("Same room", "Skip room", unique(rooms$NameTypeArea))
+      choicesRoom <- c("Same room type", "Skip room", unique(rooms$NameTypeArea))
     }
 
     selectizeInput(
       inputId = "selectInput_alternative_resources_global",
       label = "Select second choice for each agent:",
       choices = choicesRoom,
-      selected = "Same room"
+      selected = "Same room type"
     )
   })
 
@@ -3782,7 +3782,7 @@ server <- function(input, output, session) {
           waitingRooms <- waitingRooms %>% filter(Agent == agent)
         }
 
-        choicesRoom <- c("Same room", "Skip room", unique(rooms$NameTypeArea))
+        choicesRoom <- c("Same room type", "Skip room", unique(rooms$NameTypeArea))
 
         if (!is.null(waitingRooms) && dim(waitingRooms)[1] > 0) {
           roomSelected <- waitingRooms$Room
@@ -3827,7 +3827,7 @@ server <- function(input, output, session) {
           waitingRooms <- waitingRooms %>% filter(Agent == agent)
         }
 
-        choicesRoom <- c("Same room", "Skip room", unique(rooms$NameTypeArea))
+        choicesRoom <- c("Same room type", "Skip room", unique(rooms$NameTypeArea))
 
         if (!is.null(waitingRooms) && dim(waitingRooms)[1] > 0) {
           roomSelected <- waitingRooms$Room
@@ -3966,7 +3966,7 @@ server <- function(input, output, session) {
             lapply(agents, function(W) {
               data.frame(
                 Agent = W,
-                Room = "Same room"
+                Room = "Same room type"
               )
             })
           )
@@ -3979,7 +3979,7 @@ server <- function(input, output, session) {
           if (a %in% data_waitingOLD$Agent) {
             data_waiting[data_waiting$Agent == a, "Room"] <- data_waitingOLD[data_waiting$Agent == a, "Room"]
           } else {
-            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room type"))
           }
         }
 
@@ -4005,7 +4005,7 @@ server <- function(input, output, session) {
             lapply(agents, function(W) {
               data.frame(
                 Agent = W,
-                Room = "Same room"
+                Room = "Same room type"
               )
             })
           )
@@ -4021,7 +4021,7 @@ server <- function(input, output, session) {
           if (a %in% data_waitingOLD$Agent) {
             data_waiting[data_waiting$Agent == a, "Room"] <- data_waitingOLD[data_waiting$Agent == a, "Room"]
           } else {
-            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room"))
+            data_waiting <- rbind(data_waiting, data.frame(Agent = a, Room = "Same room type"))
           }
         }
 
@@ -4537,7 +4537,7 @@ server <- function(input, output, session) {
         if (!is.null(disease_risk_class$nu_time)) {
           text <- paste0(text, ", Nu: ", disease_risk_class$nu_time, " (", disease_risk_class$nu_dist, ")")
         }
-        text <- paste0(text, "\n")
+        text <- paste0(text, ", Virus severity: ", disease_risk_class$virus_severity, "\n")
       }
       text
     }

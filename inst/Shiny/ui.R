@@ -351,8 +351,8 @@ ui <- dashboardPage(
             lapply(
               list(
                 list(title = "Canvas", desc = "Define the model's environment using a drag-and-drop interface.", img = "images/Canvas.png", tab = "canvas_tab", icon = "ruler-combined", color = "#3498db"),
-                list(title = "Rooms", desc = "Define new room specifying length, width, and height.", img = "images/Objects.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
-                list(title = "Objects in Rooms", desc = "Define objects and obstaces inside each room.", img = "images/Rooms.png", tab = "objects_in_rooms", icon = "cube", color = "#6a8bf9"),
+                list(title = "Rooms", desc = "Define new room specifying length, width, and height.", img = "images/Rooms.png", tab = "rooms", icon = "bed", color = "#e74c3c"),
+                list(title = "Objects in Rooms", desc = "Define objects and obstaces inside each room.", img = "images/Objects.png", tab = "objects_in_rooms", icon = "cube", color = "#6a8bf9"),
                 list(title = "Agents", desc = "Define agent types and their movement logic.", img = "images/Agents.png", tab = "agents", icon = "user", color = "#2ecc71"),
                 list(title = "Resources", desc = "Specify room and object capacity per agent type.", img = "images/Resources.png", tab = "resources", icon = "chart-simple", color = "#f39c12"),
                 list(title = "Infection", desc = "Define the disease model used in simulation.", img = "images/Infection.png", tab = "infection", icon = "viruses", color = "#9b59b6"),
@@ -417,7 +417,7 @@ ui <- dashboardPage(
                      selectizeInput(
                        inputId = "canvas_selector",
                        label = "Define/Select floor",
-                       options = list(create = TRUE, placeholder ="Define or select floor"),
+                       options = list(create = TRUE, placeholder ="Define or select a floor"),
                        choices = c(""),  # Add more choices as needed
                        selected = ""
                      )
@@ -762,7 +762,7 @@ ui <- dashboardPage(
               column(3,
                      selectInput(
                        inputId = "copy_objects_from_room",
-                       label = div(icon("copy"), " Copy objects from:"),
+                       label = "Copy objects from:",
                        choices = c(""),
                        selected = ""
                      )
@@ -787,7 +787,7 @@ ui <- dashboardPage(
               column(4, offset = 1,
                      selectizeInput(
                        inputId = "select_object_type",
-                       label = div(icon("list"), " Select existing object type:"),
+                       label = "Select existing object type:",
                        choices = c(""),
                        options = list(placeholder = "Choose a predefined object")
                      )
@@ -864,7 +864,7 @@ ui <- dashboardPage(
                        condition = "!input.object_is_obstacle",
                        numericInput(
                          inputId = "object_capacity",
-                         label = div(icon("users"), " Agent capacity:"),
+                         label = "Agent capacity:",
                          value = 1,
                          min = 1,
                          step = 1
