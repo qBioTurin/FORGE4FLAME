@@ -1716,6 +1716,7 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas, doorsI
 # Helper function to check if an object overlaps with the door area
 check_door_collision <- function(canvasObjects, room_name, objects_list) {
   # Get room information
+  browser()
   room_info <- canvasObjects$rooms %>%
     filter(Name == room_name) %>%
     mutate(door_x = floor(w/ 2)+1, door_y = l) %>%
@@ -1776,8 +1777,9 @@ check <- function(canvasObjects, input, output, InfoApp){
     return(NULL)
   }
 
-  if(!is.null(canvasObjects$roomObjects)){
-    for(i in seq_along(canvasObjects$roomObjects)){
+  if(!is.null(canvasObjects$roomObjects) && length(canvasObjects$roomObjects) > 0){
+    for(i in 1:length(canvasObjects$roomObjects)){
+      browser()
       collision_check <- check_door_collision(
         canvasObjects,
         names(canvasObjects$roomObjects)[i],
@@ -1790,7 +1792,6 @@ check <- function(canvasObjects, input, output, InfoApp){
       }
     }
   }
-
 
   if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
     shinyalert("Error", "No room is drew in the canvas (Canvas page).", type = "error")
