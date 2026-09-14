@@ -456,7 +456,7 @@ server <- function(input, output, session) {
     disable("rds_generation")
     disable("flamegpu_connection")
     if (input$canvas_selector != "" && !input$canvas_selector %in% canvasObjects$floors$Name) {
-      Name <- gsub(" ", "", input$canvas_selector)
+      Name <- input$canvas_selector
       if (Name != "") {
         if (!grepl("^[a-zA-Z0-9_]+$", Name)) {
           shinyalert("Error", "Floor name cannot contain special charachters.", type = "error")
@@ -2205,6 +2205,11 @@ server <- function(input, output, session) {
     Agent <- input$id_new_agent
 
     if (Agent != "") {
+      if(is.null(canvasObjects$roomsINcanvas) || nrow(canvasObjects$roomsINcanvas) == 0){
+        shinyalert("Error", "You must create and add rooms to the canvas first.", type = "error")
+        return()
+      }
+
       if (tolower(Agent) %in% tolower(names(canvasObjects$agents))) {
         Agent <- names(canvasObjects$agents)[which(tolower(Agent) == tolower(names(canvasObjects$agents)))]
         updateSelectizeInput(

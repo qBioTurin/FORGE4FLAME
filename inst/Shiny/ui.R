@@ -515,13 +515,6 @@ ui <- dashboardPage(
                          )
                        ),
                        fluidRow(
-                         column(10, offset=1,
-                                sliderInput(inputId = "room_fill_alpha",
-                                           label = "Room fill transparency:",
-                                           min = 0, max = 1, value = 0.5, step = 0.1)
-                         )
-                       ),
-                       fluidRow(
                          column(5,offset =0,
                                 actionButton("add_room",
                                              "Add room",
@@ -552,11 +545,13 @@ ui <- dashboardPage(
                          ),
                          fluidRow(
                            column(2, offset=9,
-                                  actionButton("clear_all", "Clear floor", icon = icon("trash"), style = "margin-top: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);", width = 150),
+                                  actionButton("clear_all", "Clear floor", icon = icon("trash"), style = "background: linear-gradient(135deg, #ff6b6b 0%, #c0392b 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.25);", width = 150),
                            )
                          )
                        )
-                     ),
+                     )
+              ),
+              column(5,
                      fluidRow(
                        box(
                          #actionbutton che invia il segnale add_point
@@ -583,10 +578,26 @@ ui <- dashboardPage(
                        )
                      ),
                      fluidRow(
-                       selectizeInput(
-                         inputId = "select_fillColor",
-                         label = "Colour fill by:",
-                         choices = c("Room", "Type", "Area")
+                       box(
+                         title = "Room's colour management",
+                         width = 12,
+                         collapsible = T,
+                         fluidRow(
+                           selectizeInput(
+                             inputId = "select_fillColor",
+                             label = "Colour fill by:",
+                             choices = c("Room", "Type", "Area")
+                           )
+                         ),
+                         fluidRow(
+                           fluidRow(
+                             column(12,
+                                    sliderInput(inputId = "room_fill_alpha",
+                                                label = "Room fill transparency:",
+                                                min = 0, max = 1, value = 0.5, step = 0.1)
+                             )
+                           )
+                         )
                        )
                      )
               )
