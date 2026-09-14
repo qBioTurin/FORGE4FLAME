@@ -6,6 +6,7 @@ server <- function(input, output, session) {
   canvasObjects <- reactiveValues(
     rooms = NULL,
     roomsINcanvas = NULL,
+    doorsINcanvas = empty_canvas_doors(),
     nodesINcanvas = NULL,
     pathINcanvas = NULL,
     types = data.frame(
@@ -82,6 +83,123 @@ server <- function(input, output, session) {
   InfoApp <- reactiveValues(NumTabsFlow = 0, NumTabsTimeSlot = 1, NumTabsTimeShift = list("shift_1" = 1), tabs_ids = c(), oldAgentType = "", invalidRooms = c())
 
   canvasObjectsSTART <- canvasObjects
+
+  pending_room_move <- reactiveVal(NULL)
+
+  observeEvent(list(canvasObjects$roomsINcanvas, input$canvas_selector), {
+    rooms <- canvasObjects$roomsINcanvas
+    if (is.null(rooms)) rooms <- data.frame(ID = integer(), Name = character(), CanvasID = character())
+    rooms <- rooms[rooms$CanvasID == input$canvas_selector, , drop = FALSE]
+    current <- isolate(input$canvas_layer_room)
+    if (is.null(current) || !current %in% as.character(rooms$ID)) current <- ""
+    labels <- if (nrow(rooms)) paste0(rooms$Name, " #", rooms$ID) else character()
+    updateSelectizeInput(session, "canvas_layer_room",
+      choices = setNames(c("", as.character(rooms$ID)), c("", labels)),
+      selected = current)
+  })
+
+  observeEvent(input$canvas_room_selected, {
+    event <- input$canvas_room_selected
+    req(event$CanvasID == input$canvas_selector,
+        event$roomID %in% canvasObjects$roomsINcanvas$ID)
+    updateSelectizeInput(session, "canvas_layer_room", selected = as.character(event$roomID))
+  })
+
+  observeEvent(input$canvas_layer_room, {
+    req(input$canvas_selector)
+    session$sendCustomMessage("canvasRoomSelected", list(
+      CanvasID = input$canvas_selector, roomID = as.numeric(input$canvas_layer_room)))
+  }, ignoreNULL = FALSE)
+
+  change_room_layer <- function(direction) {
+    req(input$canvas_selector, input$canvas_layer_room, is.null(pending_room_move()))
+    rooms <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
+    indices <- which(rooms$CanvasID == input$canvas_selector)
+    indices <- indices[order(rooms$z_index[indices], rooms$ID[indices])]
+    selected <- which(rooms$ID[indices] == as.numeric(input$canvas_layer_room))
+    if (length(selected) != 1) return()
+    next_index <- selected + direction
+    if (next_index < 1 || next_index > length(indices)) return()
+    indices[c(selected, next_index)] <- indices[c(next_index, selected)]
+    rooms$z_index[indices] <- seq_along(indices)
+    canvasObjects$roomsINcanvas <- rooms
+    session$sendCustomMessage("roomLayersChanged", list(CanvasID = input$canvas_selector,
+      rooms = lapply(indices, function(i) list(id = rooms$ID[i], z_index = rooms$z_index[i]))))
+  }
+  observeEvent(input$room_forward, change_room_layer(1))
+  observeEvent(input$room_backward, change_room_layer(-1))
+
+  send_room_doors <- function(room_ids) {
+    for (id in unique(room_ids)) {
+      room <- canvasObjects$roomsINcanvas %>% filter(ID == id)
+      if (nrow(room) != 1) next
+      doors <- room_doors_for_canvas(canvasObjects$doorsINcanvas, id)
+      session$sendCustomMessage("roomDoorsChanged", list(
+        CanvasID = room$CanvasID, roomID = id,
+        center_x = room$center_x * 10, center_y = room$center_y * 10,
+        doors = lapply(seq_len(nrow(doors)), function(i) as.list(doors[i, ]))))
+    }
+  }
+
+  invalidate_canvas_paths <- function(canvas) {
+    if (!is.null(canvasObjects$pathINcanvas)) {
+      canvasObjects$pathINcanvas <- canvasObjects$pathINcanvas %>% filter(CanvasID != canvas)
+    }
+    canvasObjects$matricesCanvas <- NULL
+    session$sendCustomMessage("invalidateCanvasPaths", list(CanvasID = canvas))
+  }
+
+  observeEvent(input$canvas_door_click, {
+    event <- input$canvas_door_click
+    req(event$CanvasID == input$canvas_selector,
+        event$action %in% c("add_door", "remove_door"),
+        event$action == input$canvas_tool, is.null(pending_room_move()))
+    req(canvasObjects$roomsINcanvas)
+    room <- canvasObjects$roomsINcanvas %>% filter(ID == event$roomID, CanvasID == event$CanvasID)
+    if (nrow(room) != 1 || room$type == "Fillingroom") return()
+    if (length(event$side) != 1 ||
+        !event$side %in% c("top", "bottom", "left", "right", "interior")) return()
+    if (event$action == "add_door" && (event$side == "interior" || length(event$offset) != 1 ||
+        !is.numeric(event$offset) || !is.finite(event$offset))) return()
+    if (event$side == "interior" && event$action != "remove_door") return()
+    if (event$side != "interior" && (length(event$offset) != 1 || !is.numeric(event$offset) ||
+        !is.finite(event$offset))) return()
+    if (event$side == "interior") limit <- NA_real_ else
+    limit <- if (event$side %in% c("top", "bottom")) ceiling(room$l) else ceiling(room$w)
+    if (event$side != "interior" &&
+        (event$offset < 1 || event$offset > limit || event$offset != floor(event$offset))) return()
+    doors <- canvasObjects$doorsINcanvas
+    if (event$side == "interior") {
+      if (length(event$doorID) != 1 || !is.numeric(event$doorID)) return()
+      existing <- which(doors$ID == event$doorID & doors$ownerRoomID == room$ID)
+    } else {
+      existing <- which(doors$roomID == room$ID & doors$side == event$side & doors$offset == event$offset)
+    }
+    if (event$action != "remove_door") {
+      doors <- tryCatch(add_canvas_door(doors, canvasObjects$roomsINcanvas, room$ID,
+                        event$side, event$offset),
+                        error = function(e) {
+                          shinyalert("Cannot add door", conditionMessage(e), type = "warning")
+                          NULL
+                        })
+      if (is.null(doors)) return()
+      conflicts <- room_door_clearance_conflicts(canvasObjects$roomsINcanvas, doors, room$ID)
+      conflicts <- conflicts[!conflicts$doorID %in% canvasObjects$doorsINcanvas$ID, , drop = FALSE]
+      if (nrow(conflicts)) {
+        shinyalert("Cannot add door", room_door_clearance_message(conflicts), type = "warning")
+        return()
+      }
+    } else {
+      if (!length(existing)) return()
+      doors <- doors[!doors$ID %in% doors$ID[existing], , drop = FALSE]
+    }
+    canvasObjects$doorsINcanvas <- doors
+    disable("rds_generation")
+    disable("flamegpu_connection")
+    invalidate_canvas_paths(room$CanvasID)
+    send_room_doors(canvasObjects$roomsINcanvas$ID[canvasObjects$roomsINcanvas$CanvasID == room$CanvasID])
+  })
+
 
   hideElement("outside_contagion_plot")
   hideElement("DownloadPostProc_Button")
@@ -378,13 +496,8 @@ server <- function(input, output, session) {
     roomOutsideCanvas <- FALSE
     if (!is.null(canvasObjects$roomsINcanvas)) {
       for (i in 1:nrow(canvasObjects$roomsINcanvas)) {
-        if (canvasObjects$roomsINcanvas$door[i] == "bottom" || canvasObjects$roomsINcanvas$door[i] == "top") {
-          length <- canvasObjects$roomsINcanvas$w[i]
-          width <- canvasObjects$roomsINcanvas$l[i]
-        } else {
-          length <- canvasObjects$roomsINcanvas$l[i]
-          width <- canvasObjects$roomsINcanvas$w[i]
-        }
+        length <- ceiling(canvasObjects$roomsINcanvas$l[i])
+        width <- ceiling(canvasObjects$roomsINcanvas$w[i])
 
         if ((canvasObjects$roomsINcanvas$x[i] + length + 1) * 10 >= newCanvasWidth || (canvasObjects$roomsINcanvas$y[i] + width + 1) * 10 >= newCanvasHeight) {
           shinyalert("The new canvas dimension is too small. There will be at least one room outside the canvas.")
@@ -414,6 +527,9 @@ server <- function(input, output, session) {
   observeEvent(input$delete_floor, {
     disable("rds_generation")
     disable("flamegpu_connection")
+    canvasObjects$doorsINcanvas <- canvasObjects$doorsINcanvas %>%
+      filter(CanvasID != input$canvas_selector)
+    invalidate_canvas_paths(input$canvas_selector)
     if (input$canvas_selector != "") {
       canvasObjects$floors <- canvasObjects$floors %>%
         filter(Name != input$canvas_selector)
@@ -881,12 +997,21 @@ server <- function(input, output, session) {
     if (input$select_room != "") {
       roomSelected <- canvasObjects$rooms %>% filter(Name == input$select_room)
 
+      if(roomSelected$type == "Spawnroom" && !is.null(canvasObjects$roomsINcanvas)){
+        exist = canvasObjects$roomsINcanvas %>% filter(type == "Spawnroom")
+
+        if(nrow(exist) > 0){
+          shinyalert(paste0("There already exists a Spawnroom. It is possible to have only one room of this type."))
+          return()
+        }
+      }
+
       width <- roomSelected$w
       length <- roomSelected$l
       height <- roomSelected$h
-      if (input$door_new_room == "left" || input$door_new_room == "right") {
-        width <- roomSelected$l
-        length <- roomSelected$w
+      if(isTRUE(input$rotate_new_room)){
+        width = roomSelected$l
+        length = roomSelected$w
       }
 
       # FullRoom is a flag to set TRUE if inside the matrix representing
@@ -894,6 +1019,8 @@ server <- function(input, output, session) {
       matrix <- CanvasToMatrix(canvasObjects, FullRoom = T, canvas = input$canvas_selector)
       # Check if there is still space for the new room
       result <- find_ones_submatrix_coordinates(matrix, target_rows = ceiling(width), target_cols = ceiling(length))
+      if (is.null(result) && ceiling(length) + 1 <= canvasObjects$canvasDimension$canvasWidth / 10 - 2 &&
+          ceiling(width) + 1 <= canvasObjects$canvasDimension$canvasHeight / 10 - 2) result <- c(1, 1)
       xnew <- result[2]
       ynew <- result[1]
 
@@ -931,13 +1058,14 @@ server <- function(input, output, session) {
         newroom <- data.frame(
           ID = 1,
           typeID = roomSelected$ID,
-          type = roomSelected$type,
+          type=roomSelected$type,
           x = xnew, y = ynew,
-          center_x = 0, center_y = 0,
-          door_x = 0, door_y = 0,
+          center_x = xnew + floor((ceiling(length) + 1) / 2),
+          center_y = ynew + floor((ceiling(width) + 1) / 2),
           w = width, l = length, h = height,
+          object_rotation = if (isTRUE(input$rotate_new_room)) 90 else 0,
+          z_index = max(c(0, canvasObjects$roomsINcanvas$z_index)) + 1,
           Name = roomSelected$Name,
-          door = input$door_new_room,
           colorFill = room_color_display,
           colorFillBase = room_color_base,
           colorBorder = "rgba(0, 0, 0, 1)",
@@ -945,41 +1073,30 @@ server <- function(input, output, session) {
           CanvasID = input$canvas_selector
         )
 
-        length <- ceiling(length)
-        width <- ceiling(width)
-
-        if (input$door_new_room == "top") {
-          newroom$door_x <- newroom$x + floor(length / 2) + 1
-          newroom$door_y <- newroom$y
-          newroom$center_y <- newroom$y + ceiling((width + 1) / 2)
-          newroom$center_x <- newroom$x + floor(length / 2) + 1
-        } else if (input$door_new_room == "bottom") {
-          newroom$door_x <- newroom$x + floor(length / 2) + 1
-          newroom$door_y <- newroom$y + width + 1
-          newroom$center_y <- newroom$y + floor((width + 1) / 2)
-          newroom$center_x <- newroom$x + floor(length / 2) + 1
-        } else if (input$door_new_room == "left") {
-          newroom$door_x <- newroom$x
-          newroom$door_y <- newroom$y + round(width / 2) + 1
-          newroom$center_y <- newroom$y + round(width / 2) + 1
-          newroom$center_x <- newroom$x + ceiling((length + 1) / 2)
-        } else if (input$door_new_room == "right") {
-          newroom$door_x <- newroom$x + length + 1
-          newroom$door_y <- newroom$y + floor(width / 2) + 1
-          newroom$center_y <- newroom$y + floor(width / 2) + 1
-          newroom$center_x <- newroom$x + floor((length + 1) / 2)
+        newroom$ID <- max(c(0, canvasObjects$roomsINcanvas$ID)) + 1L
+        proposed_rooms <- rbind(canvasObjects$roomsINcanvas, newroom)
+        proposed_doors <- canvasObjects$doorsINcanvas
+        if (roomSelected$type != "Fillingroom" && input$door_new_room %in% c("top", "bottom", "left", "right")) {
+          wall_length <- if (input$door_new_room %in% c("top", "bottom")) newroom$l else newroom$w
+          proposed_doors <- rbind(proposed_doors,
+            new_room_door(newroom, input$door_new_room, floor(ceiling(wall_length) / 2) + 1,
+                          max(c(0, proposed_doors$ID)) + 1L))
         }
-
-        if (is.null(canvasObjects$roomsINcanvas)) {
-          canvasObjects$roomsINcanvas <- newroom
-        } else {
-          newroom$ID <- max(canvasObjects$roomsINcanvas$ID, 1) + 1
-          canvasObjects$roomsINcanvas <- rbind(canvasObjects$roomsINcanvas, newroom)
+        conflicts <- room_door_clearance_conflicts(proposed_rooms, proposed_doors, newroom$ID)
+        if (nrow(conflicts)) {
+          shinyalert("Cannot add room", room_door_clearance_message(conflicts), type = "warning")
+          return()
         }
+        canvasObjects$roomsINcanvas <- proposed_rooms
+        canvasObjects$doorsINcanvas <- proposed_doors
+        canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
+        canvasObjects$doorsINcanvas <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
+        newroom <- canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == newroom$ID, , drop = FALSE]
+        invalidate_canvas_paths(newroom$CanvasID)
+        send_room_doors(canvasObjects$roomsINcanvas$ID)
+        canvasObjects$selectedId = newroom$ID
 
-        canvasObjects$selectedId <- newroom$ID
-
-        runjs(command_addRoomObject(newroom))
+        runjs(command_addRoomObject(newroom, canvasObjects$doorsINcanvas))
 
         rooms <- canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
         roomsAvailable <- c("", unique(paste0(rooms$type, "-", rooms$area)))
@@ -1020,10 +1137,31 @@ server <- function(input, output, session) {
                     # Add the room
                     newroom$ID <- max(canvasObjects$roomsINcanvas$ID, 1) + 1
                     newroom$CanvasID <- floor
+                    newroom$center_x <- newroom$center_x + xnew - newroom$x
+                    newroom$center_y <- newroom$center_y + ynew - newroom$y
+                    newroom$x <- xnew
+                    newroom$y <- ynew
+                    newroom$z_index <- max(c(0, canvasObjects$roomsINcanvas$z_index)) + 1
 
-                    canvasObjects$roomsINcanvas <- rbind(canvasObjects$roomsINcanvas, newroom)
+                    proposed_rooms <- rbind(canvasObjects$roomsINcanvas, newroom)
+                    proposed_doors <- canvasObjects$doorsINcanvas
+                    if (input$door_new_room %in% c("top", "bottom", "left", "right")) {
+                      wall_length <- if (input$door_new_room %in% c("top", "bottom")) newroom$l else newroom$w
+                      proposed_doors <- add_canvas_door(proposed_doors,
+                        proposed_rooms, newroom$ID, input$door_new_room, floor(ceiling(wall_length) / 2) + 1)
+                    }
+                    conflicts <- room_door_clearance_conflicts(proposed_rooms, proposed_doors, newroom$ID)
+                    if (nrow(conflicts)) {
+                      showNotification(room_door_clearance_message(conflicts), type = "warning", duration = 8)
+                      next
+                    }
+                    canvasObjects$roomsINcanvas <- normalize_canvas_rooms(proposed_rooms)
+                    canvasObjects$doorsINcanvas <- sync_room_doors(proposed_doors, canvasObjects$roomsINcanvas)
+                    newroom <- canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == newroom$ID, , drop = FALSE]
 
-                    runjs(command_addRoomObject(newroom))
+                    runjs(command_addRoomObject(newroom, canvasObjects$doorsINcanvas))
+                    send_room_doors(canvasObjects$roomsINcanvas$ID[canvasObjects$roomsINcanvas$CanvasID == floor])
+                    invalidate_canvas_paths(floor)
 
                     rooms <- canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
                     roomsAvailable <- c("", unique(paste0(rooms$type, "-", rooms$area)))
@@ -1092,7 +1230,7 @@ server <- function(input, output, session) {
         "))
 
                      # Then add it back with the new color
-                     runjs(command_addRoomObject(canvasObjects$roomsINcanvas[i, ]))
+                     runjs(command_addRoomObject(canvasObjects$roomsINcanvas[i, ], canvasObjects$doorsINcanvas))
                    }
                  }
                },
@@ -1120,29 +1258,36 @@ server <- function(input, output, session) {
       canvasObjects$rooms_whatif <- canvasObjects$rooms_whatif %>% filter(Type != paste0(objectDelete$type, "-", objectDelete$area))
     }
 
-    if (!is.null(canvasObjects$pathINcanvas)) {
-      pathsINcanvasFloor <- canvasObjects$pathINcanvas %>%
-        filter(CanvasID == input$canvas_selector)
+    #if (!is.null(canvasObjects$pathINcanvas)) {
+    #  pathsINcanvasFloor <- canvasObjects$pathINcanvas %>%
+    #    filter(CanvasID == input$canvas_selector)
 
-      if (!is.null(pathsINcanvasFloor)) {
-        pIc <- pathsINcanvasFloor
-        objectDelete$door_x <- objectDelete$door_x * 10
-        objectDelete$door_y <- objectDelete$door_y * 10
-        pIc <- pIc %>% filter((fromX == objectDelete$door_x + pIc$offset_x_n1 * 10 & fromY == objectDelete$door_y + pIc$offset_y_n1 * 10) |
-                                (toX == objectDelete$door_x + pIc$offset_x_n2 * 10 & toY == objectDelete$door_y + pIc$offset_y_n2 * 10))
+     # if (!is.null(pathsINcanvasFloor)) {
+      #  pIc <- pathsINcanvasFloor
+      #  objectDelete$door_x <- objectDelete$door_x * 10
+      #  objectDelete$door_y <- objectDelete$door_y * 10
+      #  pIc <- pIc %>% filter((fromX == objectDelete$door_x + pIc$offset_x_n1 * 10 & fromY == objectDelete$door_y + pIc$offset_y_n1 * 10) |
+      #                          (toX == objectDelete$door_x + pIc$offset_x_n2 * 10 & toY == objectDelete$door_y + pIc$offset_y_n2 * 10))
 
-        for (i in pIc$id) {
-          runjs(
-            paste0("
-            const indexToRemove = FloorArray[\"", objectDelete$CanvasID, "\"].arrayObject.findIndex(obj => obj.type === \'segment\' &&  obj.id === ", i, ");
-            if (indexToRemove !== -1) {
-              FloorArray[\"", objectDelete$CanvasID, "\"].arrayObject.splice(indexToRemove, 1);
-            }
-            ")
-          )
-        }
-      }
-    }
+       # for (i in pIc$id) {
+       #   runjs(
+       #     paste0("
+       #     const indexToRemove = FloorArray[\"", objectDelete$CanvasID, "\"].arrayObject.findIndex(obj => obj.type === \'segment\' &&  obj.id === ", i, ");
+       #     if (indexToRemove !== -1) {
+       #       FloorArray[\"", objectDelete$CanvasID, "\"].arrayObject.splice(indexToRemove, 1);
+       #     }
+       #     ")
+       #   )
+      #  }
+     # }
+   # }
+
+    anchors <- canvas_door_anchors(canvasObjects$doorsINcanvas)
+    anchors <- anchors[anchors$ownerRoomID != objectDelete$ID, , drop = FALSE]
+    canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
+    canvasObjects$doorsINcanvas <- sync_room_doors(anchors, canvasObjects$roomsINcanvas)
+    send_room_doors(canvasObjects$roomsINcanvas$ID)
+    invalidate_canvas_paths(objectDelete$CanvasID)
 
     rooms <- canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair")
     roomsAvailable <- c("", unique(paste0(rooms$type, "-", rooms$area)))
@@ -1267,7 +1412,7 @@ server <- function(input, output, session) {
 
           # Second all the removed rooms are added with the new colors
           canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == id, "colorFill"] <- colors[colors$ID == id, "Color"]
-          runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == id, ]))
+          runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == id, ], canvasObjects$doorsINcanvas))
         }
       }
     }
@@ -1350,7 +1495,7 @@ server <- function(input, output, session) {
             # Second all the removed rooms are added with the new colors
             for (i in objectDelete$ID) {
               canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i, "colorFill"] <- ColDFmergedFiltered[ColDFmergedFiltered$Name == canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i, "Name"], "ColNew"]
-              runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i, ]))
+              runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i, ], canvasObjects$doorsINcanvas))
             }
           }
         }
@@ -1440,7 +1585,7 @@ server <- function(input, output, session) {
             for (i in ColDFmergedFiltered$Name) {
               canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$area == i, "colorFill"] <- ColDFmergedFiltered[ColDFmergedFiltered$Name == i, "ColNew"]
               for (j in canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$area == i, "ID"]) {
-                runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == j, ]))
+                runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == j, ], canvasObjects$doorsINcanvas))
               }
             }
           }
@@ -1530,7 +1675,7 @@ server <- function(input, output, session) {
           for (i in ColDFmergedFiltered$Name) {
             canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$type == i, "colorFill"] <- ColDFmergedFiltered[ColDFmergedFiltered$Name == i, "ColNew"]
             for (j in canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$type == i, "ID"]) {
-              runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == j, ]))
+              runjs(command_addRoomObject(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == j, ], canvasObjects$doorsINcanvas))
             }
           }
         }
@@ -1546,26 +1691,21 @@ server <- function(input, output, session) {
   observeEvent(input$add_point, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    if (!is.null(canvasObjects$roomsINcanvas)) {
-      roomsINcanvasFloor <- canvasObjects$roomsINcanvas %>%
-        filter(CanvasID == input$canvas_selector)
-
-      matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
-      # check if there is still space for the new room
-      result <- which(matrix == 0, arr.ind = TRUE)
-      result <- result[which(!result[, 1] %in% c(1, nrow(matrix))), ]
-      result <- result[which(!result[, 2] %in% c(1, nrow(matrix))), ]
-      if (dim(result)[1] == 0) {
-        result <- NULL
-      } else {
-        result <- result[1, ]
-      }
-      xnew <- result[2] - 1
-      ynew <- result[1] - 1
-    } else {
-      xnew <- runif(1, min = 1, max = canvasObjects$canvasDimension$canvasWidth / 10 - 1)
-      ynew <- runif(1, min = 1, max = canvasObjects$canvasDimension$canvasHeight / 10 - 1)
+    req(input$canvas_selector)
+    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
+    candidates <- which(matrix == 0, arr.ind = TRUE)
+    rooms <- canvasObjects$roomsINcanvas
+    if (!is.null(rooms)) rooms <- rooms[rooms$CanvasID == input$canvas_selector, , drop = FALSE]
+    valid <- candidates[, 1] > 1 & candidates[, 1] < nrow(matrix) &
+      candidates[, 2] > 1 & candidates[, 2] < ncol(matrix) &
+      canvas_points_outside_rooms(candidates[, 2], candidates[, 1], rooms)
+    candidates <- candidates[valid, , drop = FALSE]
+    if (!nrow(candidates)) {
+      showNotification("No free space outside room walls for a graph point.", type = "warning")
+      return()
     }
+    xnew <- candidates[1, 2] - 1
+    ynew <- candidates[1, 1] - 1
 
     newpoint <- data.frame(ID = 1, x = xnew, y = ynew, CanvasID = input$canvas_selector)
 
@@ -1634,6 +1774,9 @@ server <- function(input, output, session) {
   observeEvent(input$clear_all, {
     disable("rds_generation")
     disable("flamegpu_connection")
+    canvasObjects$doorsINcanvas <- canvasObjects$doorsINcanvas %>%
+      filter(CanvasID != input$canvas_selector)
+    invalidate_canvas_paths(input$canvas_selector)
     if (!is.null(canvasObjects$roomsINcanvas)) {
       canvasObjects$roomsINcanvas <- canvasObjects$roomsINcanvas %>%
         filter(CanvasID != input$canvas_selector)
@@ -1673,66 +1816,7 @@ server <- function(input, output, session) {
   observeEvent(input$path_generation, {
     disable("rds_generation")
     disable("flamegpu_connection")
-    nodes <- NULL
-
-    if (!is.null(canvasObjects$nodesINcanvas)) {
-      nodesINcanvasFloor <- canvasObjects$nodesINcanvas %>%
-        filter(CanvasID == input$canvas_selector) %>%
-        mutate(offset_x = 0, offset_y = 0, door = "none")
-
-      nodesINcanvasFloor <- unique(nodesINcanvasFloor)
-
-      if (nrow(nodesINcanvasFloor) >= 1) {
-        nodes <- nodesINcanvasFloor
-      }
-    }
-
-    # CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
-
-
-    if (!is.null(canvasObjects$roomsINcanvas)) {
-      if (is.null(nodes)) {
-        maxID <- 0
-      } else {
-        maxID <- max(nodes$ID)
-      }
-
-      roomsINcanvasFloor <- canvasObjects$roomsINcanvas %>%
-        filter(CanvasID == input$canvas_selector, door != "none") %>%
-        mutate(ID = ID + maxID, x = door_x, y = door_y, CanvasID = CanvasID) %>%
-        select(ID, x, y, CanvasID, door)
-
-      offsets_x <- c()
-      offsets_y <- c()
-      for (i in 1:nrow(roomsINcanvasFloor)) {
-        if (roomsINcanvasFloor$door[i] == "bottom") {
-          roomsINcanvasFloor$y[i] <- roomsINcanvasFloor$y[i] + 1
-          offsets_x <- c(offsets_x, 0)
-          offsets_y <- c(offsets_y, 1)
-        } else if (roomsINcanvasFloor$door[i] == "left") {
-          roomsINcanvasFloor$x[i] <- roomsINcanvasFloor$x[i] - 1
-          offsets_x <- c(offsets_x, 0)
-          offsets_y <- c(offsets_y, 0)
-        } else if (roomsINcanvasFloor$door[i] == "top") {
-          roomsINcanvasFloor$y[i] <- roomsINcanvasFloor$y[i] - 1
-          offsets_x <- c(offsets_x, 0)
-          offsets_y <- c(offsets_y, 0)
-        } else {
-          roomsINcanvasFloor$x[i] <- roomsINcanvasFloor$x[i] + 1
-          offsets_x <- c(offsets_x, 1)
-          offsets_y <- c(offsets_y, 0)
-        }
-      }
-
-      roomsINcanvasFloor <- roomsINcanvasFloor %>%
-        mutate(offset_x = offsets_x, offset_y = offsets_y)
-
-      if (!is.null(nodes)) {
-        nodes <- rbind(nodes, roomsINcanvasFloor)
-      } else {
-        nodes <- roomsINcanvasFloor
-      }
-    }
+    nodes <- canvas_graph_nodes(canvasObjects, input$canvas_selector)
 
     ######
     # Let's generate the dataframe in which we save all the possible paths
@@ -1742,7 +1826,8 @@ server <- function(input, output, session) {
       n1 <- nodes %>% filter(ID == id)
       for (id2 in nodes$ID[nodes$ID > id]) {
         n2 <- nodes %>% filter(ID == id2)
-        if ((n1$door == "none" || n2$door == "none") ||
+        if ((!is.na(n1$doorID) && !is.na(n2$doorID) && n1$doorID == n2$doorID) ||
+            (n1$door == "none" || n2$door == "none") ||
             (n1$door == "right" && ((n2$door == "right" && n2$x == n1$x) || (n2$door == "left" && n2$x > n1$x) || (n2$door == "top" && n2$x > n1$x && n2$y > n1$y) || (n2$door == "bottom" && n2$x > n1$x && n2$y < n1$y))) ||
             (n1$door == "left" && ((n2$door == "left" && n2$x == n1$x) || (n2$door == "right" && n2$x < n1$x) || (n2$door == "top" && n2$x < n1$x && n2$y > n1$y) || (n2$door == "bottom" && n2$x < n1$x && n2$y < n1$y))) ||
             (n1$door == "top" && ((n2$door == "top" && n2$y == n1$y) || (n2$door == "bottom" && n2$y < n1$y) || (n2$door == "left" && n2$y < n1$y && n2$x > n1$x) || (n2$door == "right" && n2$y < n1$y && n2$x < n1$x))) ||
@@ -1814,110 +1899,124 @@ server <- function(input, output, session) {
 
   ####
 
-  observeEvent(input$selected, {
-    disable("rds_generation")
-    disable("flamegpu_connection")
-    if (!is.null(input$id)) {
-      if (input$type == "circle") {
-        x <- floor(input$x / 10)
-        y <- floor(input$y / 10)
+  resolve_room_move <- function(event, accept = TRUE, remove_ids = integer()) {
+    rooms <- canvasObjects$roomsINcanvas
+    index <- which(rooms$ID == event$id & rooms$CanvasID == event$CanvasID)
+    if (length(index) == 1) {
+      room <- rooms[index, , drop = FALSE]
+      if (accept) {
+        x <- round(event$x / 10)
+        y <- round(event$y / 10)
+        rooms[index, c("x", "y", "center_x", "center_y")] <-
+          list(x, y, room$center_x + x - room$x, room$center_y + y - room$y)
+        rooms <- normalize_canvas_rooms(rooms)
+        doors <- canvasObjects$doorsINcanvas
+        doors <- sync_room_doors(doors[!doors$ID %in% remove_ids, , drop = FALSE], rooms)
+        conflicts <- room_door_clearance_conflicts(rooms, doors, event$id)
+        if (nrow(conflicts)) {
+          showNotification(room_door_clearance_message(conflicts), type = "warning", duration = 8)
+          resolve_room_move(event, accept = FALSE)
+          return(invisible(NULL))
+        }
+        canvasObjects$roomsINcanvas <- rooms
+        canvasObjects$doorsINcanvas <- doors
+        disable("rds_generation")
+        disable("flamegpu_connection")
+        invalidate_canvas_paths(event$CanvasID)
+        send_room_doors(rooms$ID[rooms$CanvasID == event$CanvasID])
+        canvasObjects$selectedId <- event$id
       }
-      # else{
-      #   x = input$x/10
-      #   y = input$y/10
-      # }
+      room <- canvasObjects$roomsINcanvas[index, , drop = FALSE]
+      event$x <- room$x * 10
+      event$y <- room$y * 10
+      event$center_x <- room$center_x * 10
+      event$center_y <- room$center_y * 10
+    }
+    session$sendCustomMessage("roomMoveResolved", event)
+  }
 
-      # length = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "l"])
-      # width = ceiling(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "w"])
-
-      if (input$type == "circle") {
-        canvasObjects$nodesINcanvas[canvasObjects$nodesINcanvas$ID == input$id, c("x", "y")] <- c(x, y)
+  observeEvent(input$canvas_object_moved, {
+    event <- input$canvas_object_moved
+    req(event$type %in% c("rectangle", "circle"))
+    if (!identical(event$CanvasID, input$canvas_selector)) {
+      if (event$type == "rectangle") resolve_room_move(event, accept = FALSE)
+      return()
+    }
+    if (length(event$x) != 1 || length(event$y) != 1 ||
+        !is.finite(event$x) || !is.finite(event$y)) return()
+    if (event$type == "rectangle") {
+      index <- which(canvasObjects$roomsINcanvas$ID == event$id &
+                       canvasObjects$roomsINcanvas$CanvasID == event$CanvasID)
+      if (length(index) != 1) {
+        resolve_room_move(event, accept = FALSE)
+        return()
       }
-      # else{
-      #   canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,c("x","y")] = c(x, y)
-      #
-      #   if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "top"){
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + ceiling((width + 1) / 2)
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
-      #   }
-      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "bottom"){
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + floor(length/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + width + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor((width + 1) / 2)
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor(length/2) + 1
-      #   }
-      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "left"){
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + round(width/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + round(width/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + ceiling((length + 1) / 2)
-      #   }
-      #   else if(canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id, "door"] == "right"){
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_x"] = x + length + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"door_y"] = y + floor(width/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_y"] = y + floor(width/2) + 1
-      #     canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == input$id,"center_x"] = x + floor((length + 1) / 2)
-      #   }
-      # }
-
-      canvasObjects$selectedId <- input$id
+      if (!is.null(pending_room_move())) {
+        resolve_room_move(event, accept = FALSE)
+        return()
+      }
+      room <- canvasObjects$roomsINcanvas[index, , drop = FALSE]
+      x <- round(event$x / 10)
+      y <- round(event$y / 10)
+      if (x < 1 || y < 1 || x + ceiling(room$l) + 1 > canvasObjects$canvasDimension$canvasWidth / 10 - 1 ||
+          y + ceiling(room$w) + 1 > canvasObjects$canvasDimension$canvasHeight / 10 - 1) {
+        resolve_room_move(event, accept = FALSE)
+        return()
+      }
+      proposed <- canvasObjects$roomsINcanvas
+      proposed[index, c("x", "y")] <- list(x, y)
+      broken <- invalid_shared_door_ids(canvasObjects$doorsINcanvas, proposed)
+      remaining_doors <- canvasObjects$doorsINcanvas[
+        !canvasObjects$doorsINcanvas$ID %in% broken, , drop = FALSE]
+      conflicts <- room_door_clearance_conflicts(proposed, remaining_doors, event$id)
+      if (nrow(conflicts)) {
+        showNotification(room_door_clearance_message(conflicts), type = "warning", duration = 8)
+        resolve_room_move(event, accept = FALSE)
+        return()
+      }
+      if (length(broken)) {
+        pending_room_move(list(event = event, rooms = canvasObjects$roomsINcanvas,
+                               doors = canvasObjects$doorsINcanvas, broken = broken))
+        showModal(modalDialog(
+          title = "Remove disconnected doors?",
+          paste0("Moving this room disconnects ", length(broken),
+                 " door connection(s). Remove these doors and move the room, or cancel to keep its original position?"),
+          easyClose = FALSE,
+          footer = tagList(actionButton("cancel_shared_door_move", "Cancel move"),
+                           actionButton("confirm_shared_door_move", "Remove doors and move", class = "btn-warning"))))
+        return()
+      }
+      resolve_room_move(event)
+    } else {
+      index <- which(canvasObjects$nodesINcanvas$ID == event$id &
+                       canvasObjects$nodesINcanvas$CanvasID == event$CanvasID)
+      if (length(index) != 1) return()
+      disable("rds_generation")
+      disable("flamegpu_connection")
+      canvasObjects$nodesINcanvas[index, c("x", "y")] <- list(floor(event$x / 10), floor(event$y / 10))
+      invalidate_canvas_paths(event$CanvasID)
+      canvasObjects$selectedId <- event$id
     }
   })
 
-  observeEvent(input$movement_completed, {
-    room <- input$movement_completed
+  observeEvent(input$cancel_shared_door_move, {
+    pending <- pending_room_move()
+    req(pending)
+    pending_room_move(NULL)
+    removeModal()
+    resolve_room_move(pending$event, accept = FALSE)
+  })
 
-    room$x <- room$x / 10
-    room$y <- room$y / 10
-    room$length <- ceiling(room$length / 10)
-    room$width <- ceiling(room$width / 10)
-
-    if (room$side == "top") {
-      room$door_x <- room$x + floor(room$length / 2) + 1
-      room$door_y <- room$y
-      room$center_y <- room$y + ceiling((room$width + 1) / 2)
-      room$center_x <- room$x + floor(room$length / 2) + 1
-    } else if (room$side == "bottom") {
-      room$door_x <- room$x + floor(room$length / 2) + 1
-      room$door_y <- room$y + room$width + 1
-      room$center_y <- room$y + floor((room$width + 1) / 2)
-      room$center_x <- room$x + floor(room$length / 2) + 1
-    } else if (room$side == "left") {
-      room$door_x <- room$x
-      room$door_y <- room$y + round(room$width / 2) + 1
-      room$center_y <- room$y + round(room$width / 2) + 1
-      room$center_x <- room$x + ceiling((room$length + 1) / 2)
-    } else if (room$side == "right") {
-      room$door_x <- room$x + room$length + 1
-      room$door_y <- room$y + floor(room$width / 2) + 1
-      room$center_y <- room$y + floor(room$width / 2) + 1
-      room$center_x <- room$x + floor((room$length + 1) / 2)
-    }
-
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, c("x", "y")] <- c(room$x, room$y)
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, "door_x"] <- room$door_x
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, "door_y"] <- room$door_y
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, "center_y"] <- room$center_y
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == room$id, "center_x"] <- room$center_x
-
-    matrix <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
-
-    if (!room$movement_completed || nrow(canvasObjects$roomsINcanvas) <= 1 || room$type == "circle" || (room$center_x == 0 && room$center_y == 0)) {
-      return()
-    }
-
-    valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas %>% filter(CanvasID == input$canvas_selector), if (!is.null(canvasObjects$nodesINcanvas)) canvasObjects$nodesINcanvas %>% filter(CanvasID == input$canvas_selector) else NULL)
-
-    if (!valid_rooms) {
-      showNotification("The room you just placed is not connected to any other room or graph point on the canvas. Please, move it in a different position.", duration = 5, type = "warning")
-      if (length(InfoApp$invalidRooms[InfoApp$invalidRooms == room$id]) == 0) {
-        InfoApp$invalidRooms <- c(InfoApp$invalidRooms, room$id)
-      }
-    } else {
-      InfoApp$invalidRooms <- InfoApp$invalidRooms[InfoApp$invalidRooms != room$id]
-    }
+  observeEvent(input$confirm_shared_door_move, {
+    pending <- pending_room_move()
+    req(pending)
+    pending_room_move(NULL)
+    removeModal()
+    # Do not apply a stale confirmation after importing or editing the plan.
+    unchanged <- identical(pending$rooms, canvasObjects$roomsINcanvas) &&
+      identical(pending$doors, canvasObjects$doorsINcanvas)
+    resolve_room_move(pending$event, accept = unchanged, remove_ids = pending$broken)
+    if (!unchanged) showNotification("The floor plan changed. Please move the room again.", type = "warning")
   })
 
   observeEvent(input$check, {
@@ -2096,7 +2195,7 @@ server <- function(input, output, session) {
         }
 
         mess <- tryCatch(
-          readRDS(input$RDsImport$datapath),
+          normalize_room_doors(readRDS(input$RDsImport$datapath)),
           error = function(e) {
             return(NULL)
           }
@@ -2154,7 +2253,7 @@ server <- function(input, output, session) {
       }
 
       mess <- tryCatch(
-        readRDS(input$RDsImport$datapath),
+        normalize_room_doors(readRDS(input$RDsImport$datapath)),
         error = function(e) {
           return(NULL)
         }

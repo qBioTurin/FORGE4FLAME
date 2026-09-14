@@ -493,9 +493,9 @@ ui <- dashboardPage(
                        fluidRow(
                          column(10,offset=1,
                                 h2(),
-                                selectInput(inputId = "door_new_room", label = "Room rotation w.r.t the door (by default on the bottom wall):",
-                                            choices = c("right","left","top","bottom"),
-                                            selected = "Right")
+                                checkboxInput("rotate_new_room", "Rotate room 90 degrees", FALSE),
+                                selectInput(inputId = "door_new_room", label = "Initial door (optional):",
+                                            choices = c("none","right","left","top","bottom"), selected = "none")
                          ),
                        ),
                        fluidRow(
@@ -591,6 +591,23 @@ ui <- dashboardPage(
         ),
         fluidRow(
           column(12,
+          box(title = "Drawing tools", width = 12,
+              collapsible = TRUE, collapsed = TRUE,
+                 radioButtons("canvas_tool", "Canvas tool:",
+                              choices = c("Move rooms / points" = "move",
+                                          "Add doors" = "add_door",
+                                          "Remove doors" = "remove_door"),
+                              selected = "move", inline = TRUE),
+                 helpText("Room width and length exclude walls. Borders align with one-cell walls in the matrix; wall thickness is not drawn. Select Add doors and click a room border. A door automatically connects to the smallest room containing the whole wall segment on its other side, including a surrounding room. All doors are yellow. Rooms may overlap or be placed inside one another, provided each door stays at least 2 m from the other room's borders. This clearance does not apply to rooms that only share a wall. Invalid placements are cancelled; dragging moves only the room in front. A move that disconnects a door asks for confirmation. Filling rooms cannot have doors."),
+                 selectizeInput("canvas_layer_room", "Room drawing order:", choices = c("")),
+                 actionButton("room_forward", "Bring forward", icon = icon("arrow-up")),
+                 actionButton("room_backward", "Send backward", icon = icon("arrow-down")),
+                 helpText("Click a room or select it above, including hidden rooms, then change its drawing order. Each click moves it one layer. Drawing order is saved with the plan and does not change room geometry.")
+                 )
+      )
+    ),
+        fluidRow(
+          column(12,
                  # Include the Canvas.js script here
                  includeCSS(system.file("Shiny","www/dragANDdrop.css", package = "FORGE4FLAME")),
                  includeHTML(system.file("Shiny","www/dragANDdrop.html", package = "FORGE4FLAME")),
@@ -663,8 +680,8 @@ ui <- dashboardPage(
                        textInput(
                          inputId = "length_new_room",
                          label = div(class = "icon-container",
-                                     h5(tags$b("Length (meter): "), icon("info-circle")),
-                                     div(class = "icon-text", "Length refers to the (bottom) wall with the door; in the Canvas page, the user can choose the rotation of the room.")
+                                     h5(tags$b("Interior length (meter): "), icon("info-circle")),
+                                     div(class = "icon-text", "Interior dimension, excluding walls. The matrix adds a one-cell wall ring; adjacent rooms can share the same wall. Rotate the room on the Canvas page.")
                          ),
                          placeholder = "Room length"
                        )
@@ -674,7 +691,7 @@ ui <- dashboardPage(
                        textInput(
                          inputId = "width_new_room",
                          label = div(class = "icon-container",
-                                     h5(tags$b("Width (meter): "))),
+                                     h5(tags$b("Interior width (meter): "))),
                          placeholder = "Room width"
                        )
                      )),

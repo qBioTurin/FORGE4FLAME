@@ -155,16 +155,19 @@ let drawCoords = (ctx, x, y, color = "green") => {
 let FloorArray = {};
 
 class Room {
-    constructor(id, x, y, center_x, center_y, door_x, door_y, length, width, height, color, colorStroke, text, side) {
+    constructor(id, x, y, center_x, center_y, length, width, height, color, colorStroke, text, doors = [], roomType = 'Normal', zIndex = 0) {
         this.id = id
         this.x = x
         this.y = y
         this.center_x = center_x
         this.center_y = center_y
-        this.door_x = door_x
-        this.door_y = door_y
-        this.side = side
+        this.doors = doors
+        this.roomType = roomType
+        this.zIndex = zIndex
+        this.focused = false
         this.type = 'rectangle';
+        // Pixel span between wall-cell centres: (interior dimension + 1) * 10.
+        // The wall band itself is not painted on the canvas.
         this.length = length;
         this.width = width;
         this.height = height;
@@ -210,7 +213,7 @@ class Room {
         //Disegna il rettangolo con il bordo colorato
         context.strokeRect(this.x, this.y, this.length, this.width);
 
-        if (this.selected) {
+        if (this.selected || this.focused) {
             context.lineWidth = 2;
             context.strokeStyle = this.activeColor2;
             context.strokeRect(this.x, this.y, this.length, this.width);
@@ -224,24 +227,50 @@ class Room {
         context.fillText(this.text + "\n #" + this.id, this.x + this.length / 2, this.y + this.width / 2);
 
 
-        if (this.side !== '') {
-          context.fillStyle = 'yellow';
-          context.strokeStyle = 'yellow';
+    }
 
-          const centerX = this.x + this.length / 2;
-          const centerY = this.y + this.width / 2;
+    drawDoors(context, visible = () => true) {
+        this.doors.filter(visible).forEach(door => {
+            const position = this.doorPosition(door);
+            context.fillStyle = 'yellow';
+            context.fillRect(position.x - 5, position.y - 5, 10, 10);
+            context.strokeStyle = '#333';
+            context.lineWidth = 1;
+            context.strokeRect(position.x - 5, position.y - 5, 10, 10);
+        });
+    }
 
-          if (this.side === 'top') {
-            context.fillRect(centerX - 5, this.y - 5, 10, 10);
-          } else if (this.side === 'bottom') {
-            context.fillRect(centerX - 5, this.y + this.width - 5,10, 10);
-          } else if (this.side === 'left') {
-            context.fillRect(this.x - 5, centerY - 5, 10, 10);
-          } else if (this.side === 'right') {
-            context.fillRect(this.x + this.length - 5, centerY - 2.5, 10, 10);
-          }
+    doorPosition(door) {
+        if (door.side === 'interior') {
+            return {x: this.x + door.local_x * 10, y: this.y + door.local_y * 10};
         }
+        const horizontal = door.side === 'top' || door.side === 'bottom';
+        return {
+            x: this.x + (horizontal ? door.offset * 10 : (door.side === 'right' ? this.length : 0)),
+            y: this.y + (!horizontal ? door.offset * 10 : (door.side === 'bottom' ? this.width : 0))
+        };
+    }
 
+    doorAt(mouse, remove = false) {
+        if (this.roomType === 'Fillingroom') return null;
+        if (remove) {
+            return this.doors.find(door => {
+                const p = this.doorPosition(door);
+                return Math.abs(mouse.x - p.x) <= 5 && Math.abs(mouse.y - p.y) <= 5;
+            }) || null;
+        }
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const walls = [
+            {side: 'top', distance: Math.abs(dy), along: dx, length: this.length},
+            {side: 'bottom', distance: Math.abs(dy - this.width), along: dx, length: this.length},
+            {side: 'left', distance: Math.abs(dx), along: dy, length: this.width},
+            {side: 'right', distance: Math.abs(dx - this.length), along: dy, length: this.width}
+        ].filter(wall => wall.distance <= 5 && Math.round(wall.along / 10) >= 1 &&
+            Math.round(wall.along / 10) <= wall.length / 10 - 1)
+         .sort((a, b) => a.distance - b.distance);
+        if (!walls.length) return null;
+        return {side: walls[0].side, offset: Math.round(walls[0].along / 10)};
     }
 
     update() {
@@ -342,166 +371,148 @@ class FloorManager {
         this.w = w_base;
         this.h = h_base;
         this.arrayObject = [];
+        this.pendingMovement = false;
+        this.animating = false;
 
         this.init();
     }
 
+    isCurrent() {
+        return this.id === selectedCanvas && FloorArray[this.id] === this;
+    }
+
+    tool() {
+        const selected = document.querySelector('input[name="canvas_tool"]:checked');
+        return selected ? selected.value : 'move';
+    }
+
+    orderedRooms() {
+        return this.arrayObject.filter(obj => obj.type === 'rectangle')
+            .sort((a, b) => a.zIndex - b.zIndex || a.id - b.id);
+    }
+
+    orderedObjects() {
+        return [...this.orderedRooms(), ...this.arrayObject.filter(obj => obj.type !== 'rectangle')];
+    }
+
+    hitObject(mouse) {
+        return [...this.orderedObjects()].reverse().find(obj =>
+            obj.type === 'rectangle'
+                ? this.cursorInRect(mouse.x, mouse.y, obj.x, obj.y, obj.length, obj.width)
+                : obj.type === 'circle' && this.cursorInCircle(mouse.x, mouse.y, obj.x, obj.y, obj.radius));
+    }
+
+    doorVisible(room, door) {
+        const p = room.doorPosition(door);
+        const rooms = this.orderedRooms();
+        return !rooms.slice(rooms.indexOf(room) + 1).some(other =>
+            this.cursorInRect(p.x, p.y, other.x, other.y, other.length, other.width));
+    }
+
+    doorTarget(mouse) {
+        if (this.tool() === 'remove_door') {
+            for (const room of this.orderedRooms().reverse()) {
+                const door = room.doorAt(mouse, true);
+                if (door && this.doorVisible(room, door)) return {room, door};
+            }
+            return null;
+        }
+        for (const room of this.orderedRooms().reverse()) {
+            const door = room.doorAt(mouse);
+            if (door && this.doorVisible(room, door)) return {room, door};
+            if (this.cursorInRect(mouse.x, mouse.y, room.x, room.y, room.length, room.width)) return null;
+        }
+        return null;
+    }
+
     init() {
-        mainCanvas.addEventListener('click', e => {
-          if(this.id === selectedCanvas){
-            let mouse = this.getMouseCoords(e);
-          }
-            // Handle click on this canvas
+        mainCanvas.addEventListener('click', event => {
+            if (!this.isCurrent() || this.pendingMovement || this.tool() === 'move') return;
+            const target = this.doorTarget(this.getMouseCoords(event));
+            if (!target) return;
+            Shiny.setInputValue('canvas_door_click', {
+                CanvasID: this.id, roomID: target.room.id,
+                doorID: target.door.ID, side: target.door.side,
+                offset: target.door.offset, action: this.tool()
+            }, {priority: 'event'});
         });
-        mainCanvas.addEventListener('mousemove', e => {
-            if(this.id === selectedCanvas){
-                  let mouse = this.getMouseCoords(e);
-                  let arr = this.arrayObject.map(e => {
-                      if (e.type === 'rectangle') {
-                          return this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width);
-                      } else if (e.type === 'circle') {
-                          return this.cursorInCircle(mouse.x, mouse.y, e.x, e.y, e.radius);
-                      }
-                      return false;
-                  });
-
-                  if (!arr.every(e => e === false)) {
-                      this.canvas.classList.add('pointer');
-                  } else {
-                      this.canvas.classList.remove('pointer');
-                  }
-                  this.arrayObject.forEach(e => {
-                      if(e.selected && e.type === 'rectangle'){
-                        if(this.isOut(e))
-                          return;
-                      }
-
-                      if (e.selected) {
-                          Shiny.onInputChange("type", e.type);
-                          Shiny.onInputChange("id", e.id);
-                          e.x = mouse.x - e.offset.x;
-                          e.y = mouse.y - e.offset.y;
-                          Shiny.onInputChange("x", e.x);
-                          Shiny.onInputChange("y", e.y);
-                      }
-
-                      Shiny.onInputChange("selected", e.selected);
-
-                      if (e.type === 'rectangle') {
-                          if (this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width)) {
-                              e.active != true ? e.activate() : false;
-                          } else {
-                              e.active = false;
-                          }
-                      } else if (e.type === 'circle') {
-                          if (this.cursorInCircle(mouse.x, mouse.y, e.x, e.y, e.radius)) {
-                              e.active != true ? e.activate() : false;
-                          } else {
-                              e.active = false;
-                          }
-                      }
-                  });
+        mainCanvas.addEventListener('mousemove', event => {
+            if (!this.isCurrent() || this.pendingMovement) return;
+            const mouse = this.getMouseCoords(event);
+            if (this.tool() !== 'move') {
+                this.canvas.classList.toggle('pointer', !!this.doorTarget(mouse));
+                return;
             }
-  });
-        mainCanvas.addEventListener('mousedown', e => {
-          if(this.id === selectedCanvas){
-            let mouse = this.getMouseCoords(e);
-
-            if (this.type === 'rectangle'){
-              this.movement_completed = false
-              Shiny.onInputChange("movement_completed", this);
-            }
-
-            this.arrayObject.forEach(e => {
-                if (e.type === 'rectangle' && this.cursorInRect(mouse.x, mouse.y, e.x, e.y, e.length, e.width)) {
-                    e.selected = true;
-                    e.offset = this.getOffsetCoords(mouse, e);
-                    e.oldx = e.x
-                    e.oldy = e.y
-                } else if (e.type === 'circle' && this.cursorInCircle(mouse.x, mouse.y, e.x, e.y, e.radius)) {
-                    e.selected = true;
-                    e.offset = this.getOffsetCoords(mouse, e);
-                    e.oldx = e.x
-                    e.oldy = e.y
-                } else {
-                    e.selected = false;
-                }
-            })
-          }
-      });
-        mainCanvas.addEventListener('mouseup', e => {
-          let overlap = false;
-
-          if (this.id === selectedCanvas) {
-            // Loop through each object in the array
+            const hovered = this.hitObject(mouse);
             this.arrayObject.forEach(obj => {
-              // Snap to grid for all objects
-              if(obj.selected){
-                if(obj.type === 'circle'){
-                  obj.x = Math.floor(obj.x / 10) * 10;
-                  obj.y = Math.floor(obj.y / 10) * 10;
+                if (obj.selected) {
+                    obj.x = mouse.x - obj.offset.x;
+                    obj.y = mouse.y - obj.offset.y;
+                    this.isOut(obj);
                 }
-                else{
-                  obj.x = Math.round(obj.x / 10) * 10;
-                  obj.y = Math.round(obj.y / 10) * 10;
-                }
-              }
-
-              // If the object is a circle, apply the 5 offset after rounding
-                if (obj.selected && obj.type === 'circle' && obj.x % 10 == 0 && obj.y % 10 == 0) {
-                  obj.x += 5;
-                  obj.y += 5;
-                }
-
-              // Draw object
-              obj.draw(this.ctx);
-
-              if (obj.selected && (obj.type === 'rectangle' || obj.type === 'circle')) {
-                // Check for overlap
-                if (this.isOverlap(obj)) {
-                  if (!overlap) {
-                    alert("Two objects overlap!");
-                    overlap = true;
-                  }
-                }
-
-                // Revert if overlap found
-                if (obj.selected && overlap) {
-                  obj.x = obj.oldx;
-                  obj.y = obj.oldy;
-                  Shiny.onInputChange("x", obj.x);
-                  Shiny.onInputChange("y", obj.y);
-                  Shiny.onInputChange("selected", obj.selected);
-                }
-
-                // Check if object is out of bounds
-                if (this.isOut(obj)) return;
-              }
-
-              // Deselect after processing
-              if (obj.selected && obj.type === 'rectangle'){
-                obj.movement_completed = true;
-                Shiny.onInputChange("movement_completed", obj);
-              }
-              obj.selected = false;
+                obj.active = obj === hovered;
             });
-
-            // If no overlap, filter out 'segment' objects
-            if (!overlap) {
-              this.arrayObject = this.arrayObject.filter(obj => obj.type !== 'segment');
-            }
-          }
+            this.canvas.classList.toggle('pointer', !!hovered);
         });
-
-        // Add other event listeners and initialization logic as needed
-        this.animate();
+        mainCanvas.addEventListener('mousedown', event => {
+            if (!this.isCurrent() || this.pendingMovement || this.tool() !== 'move' || event.button !== 0) return;
+            const mouse = this.getMouseCoords(event);
+            const target = this.hitObject(mouse);
+            this.arrayObject.forEach(obj => {
+                obj.selected = obj === target;
+                obj.focused = obj === target;
+                if (obj.selected) {
+                    obj.offset = this.getOffsetCoords(mouse, obj);
+                    obj.oldx = obj.x;
+                    obj.oldy = obj.y;
+                }
+            });
+            if (target && target.type === 'rectangle') {
+                Shiny.setInputValue('canvas_room_selected', {
+                    CanvasID: this.id, roomID: target.id
+                }, {priority: 'event'});
+            }
+        });
+        // Complete a drag even when the pointer is released outside the canvas.
+        window.addEventListener('mouseup', () => {
+            if (!this.isCurrent()) return;
+            this.arrayObject.forEach(obj => {
+                if (!obj.selected) return;
+                if (obj.type === 'circle') {
+                    obj.x = Math.floor(obj.x / 10) * 10 + 5;
+                    obj.y = Math.floor(obj.y / 10) * 10 + 5;
+                } else {
+                    obj.x = Math.round(obj.x / 10) * 10;
+                    obj.y = Math.round(obj.y / 10) * 10;
+                }
+                this.isOut(obj);
+                if (this.isOverlap(obj)) {
+                    obj.x = obj.oldx;
+                    obj.y = obj.oldy;
+                    alert('Two objects overlap!');
+                }
+                obj.selected = false;
+                if (obj.x !== obj.oldx || obj.y !== obj.oldy) {
+                    if (obj.type === 'rectangle') this.pendingMovement = true;
+                    Shiny.setInputValue('canvas_object_moved', {
+                        CanvasID: this.id, type: obj.type, id: obj.id, x: obj.x, y: obj.y
+                    }, {priority: 'event'});
+                    if (obj.type === 'circle') {
+                        this.arrayObject = this.arrayObject.filter(item => item.type !== 'segment');
+                    }
+                }
+            });
+        });
     }
 
     getMouseCoords(event) {
-        let canvasCoords = this.canvas.getBoundingClientRect();
+        // Account for CSS scaling, scrolling and the canvas border.
+        const bounds = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.offsetWidth / bounds.width;
+        const scaleY = this.canvas.offsetHeight / bounds.height;
         return {
-            x: event.clientX - canvasCoords.left,
-            y: event.clientY - canvasCoords.top
+            x: ((event.clientX - bounds.left) * scaleX - this.canvas.clientLeft) * this.canvas.width / this.canvas.clientWidth,
+            y: ((event.clientY - bounds.top) * scaleY - this.canvas.clientTop) * this.canvas.height / this.canvas.clientHeight
         };
     }
 
@@ -531,17 +542,8 @@ class FloorManager {
         let overlap = false;
         for (let i = 0; i < this.arrayObject.length; i++) {
           if(event.type === 'rectangle'){
-            if(this.arrayObject[i].type === 'rectangle')
-            {
-              const rect = this.arrayObject[i];
-              if ((event.id != rect.id)){
-                if (event.x + event.length > rect.x && event.x < rect.x + rect.length &&
-                    event.y + event.width > rect.y && event.y < rect.y + rect.width){
-                  overlap = true;  // C'è sovrapposizione
-                }
-              }
-            }
-
+            // Rooms may contain or overlap other rooms. Point collisions retain
+            // their existing behaviour.
             if(this.arrayObject[i].type === 'circle')
             {
               const circle = this.arrayObject[i];
@@ -597,11 +599,27 @@ class FloorManager {
         return out;
     }
 
-    animate() {
+    draw() {
         this.ctx.clearRect(0, 0, w, h);
-        this.arrayObject.forEach(obj => obj.draw(this.ctx));
-        window.requestAnimationFrame(() => this.animate());
+        this.orderedObjects().forEach(obj => obj.draw(this.ctx));
+        this.orderedRooms().forEach(room =>
+            room.drawDoors(this.ctx, door => this.doorVisible(room, door)));
     }
+
+    animate() {
+        if (this.animating) return;
+        this.animating = true;
+        const frame = () => {
+            if (!this.isCurrent()) {
+                this.animating = false;
+                return;
+            }
+            this.draw();
+            window.requestAnimationFrame(frame);
+        };
+        frame();
+    }
+
 }
 
 // =============================================================
@@ -652,3 +670,50 @@ $('#canvas_selector').on('change', function () {
 
 // Initial canvas selection
 $('#canvas_selector').trigger('change');
+
+Shiny.addCustomMessageHandler('roomDoorsChanged', message => {
+    const floor = FloorArray[message.CanvasID];
+    if (!floor) return;
+    const room = floor.arrayObject.find(obj => obj.type === 'rectangle' && obj.id === message.roomID);
+    if (room) {
+        room.doors = message.doors || [];
+        if (Number.isFinite(message.center_x)) room.center_x = message.center_x;
+        if (Number.isFinite(message.center_y)) room.center_y = message.center_y;
+    }
+});
+
+Shiny.addCustomMessageHandler('roomMoveResolved', message => {
+    const floor = FloorArray[message.CanvasID];
+    if (!floor) return;
+    floor.pendingMovement = false;
+    const room = floor.arrayObject.find(obj => obj.type === 'rectangle' && obj.id === message.id);
+    if (room) {
+        room.x = message.x;
+        room.y = message.y;
+        room.center_x = message.center_x;
+        room.center_y = message.center_y;
+        room.selected = false;
+    }
+});
+
+Shiny.addCustomMessageHandler('invalidateCanvasPaths', message => {
+    const floor = FloorArray[message.CanvasID];
+    if (floor) floor.arrayObject = floor.arrayObject.filter(obj => obj.type !== 'segment');
+});
+
+Shiny.addCustomMessageHandler('roomLayersChanged', message => {
+    const floor = FloorArray[message.CanvasID];
+    if (!floor) return;
+    for (const entry of message.rooms || []) {
+        const room = floor.arrayObject.find(obj => obj.type === 'rectangle' && obj.id === entry.id);
+        if (room) room.zIndex = entry.z_index;
+    }
+});
+
+Shiny.addCustomMessageHandler('canvasRoomSelected', message => {
+    const floor = FloorArray[message.CanvasID];
+    if (!floor) return;
+    floor.arrayObject.forEach(obj => {
+        obj.focused = obj.type === 'rectangle' && obj.id === message.roomID;
+    });
+});

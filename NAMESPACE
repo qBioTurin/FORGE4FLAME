@@ -2,6 +2,7 @@
 
 export(FORGE4FLAME.run)
 export(downloadContainers)
+export(f4f_import_floorplan_json)
 import(DT)
 import(EBImageExtra)
 import(av)

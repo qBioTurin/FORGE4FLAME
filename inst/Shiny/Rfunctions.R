@@ -87,22 +87,17 @@ theme_fancy <- function() {
 }
 
 find_ones_submatrix_coordinates <- function(mat, target_rows, target_cols) {
-  # target_rows= 1 + target_rows
-  # target_cols= 1 + target_cols
-
-  for (start_row in 2:(nrow(mat)-target_rows-1)) {
-    for (start_col in 2:(ncol(mat)-target_cols-1)) {
-      end_row <- start_row + target_rows - 1
-      end_col <- start_col + target_cols - 1
-
-      submatrix <- mat[(start_row-1):end_row, (start_col-1):end_col]
-
-      if (all(submatrix == 0)) {
-        return(c(start_row-1, start_col-1))
-      }
+  # Dimensions describe the interior. Reserve the complete one-cell wall ring,
+  # allowing an existing zero-valued wall to be shared with the new room.
+  last_y <- nrow(mat) - target_rows - 2
+  last_x <- ncol(mat) - target_cols - 2
+  if (last_y < 1 || last_x < 1) return(NULL)
+  for (y in seq_len(last_y)) {
+    for (x in seq_len(last_x)) {
+      if (all(mat[y + 0:(target_rows + 1), x + 0:(target_cols + 1)] == 0)) return(c(y, x))
     }
   }
-  return(NULL)
+  NULL
 }
 
 read_dxf_units <- function(dxf_path) {
@@ -176,14 +171,31 @@ sendBG <- function(gg,canvas_w,canvas_h,session, canvasSelect){
   ))
 }
 
+# Room x/y are one-based top/left wall indices. l/w count only interior cells;
+# the opposite wall indices are x+l+1 and y+w+1. Canvas pixels = wall index * 10.
+canvas_points_outside_rooms <- function(x, y, rooms) {
+  outside <- rep(TRUE, length(x))
+  if (!is.null(rooms)) for (i in seq_len(nrow(rooms))) {
+    r <- rooms[i, ]
+    outside <- outside & !(x >= r$x & x <= r$x + ceiling(r$l) + 1 &
+                            y >= r$y & y <= r$y + ceiling(r$w) + 1)
+  }
+  outside
+}
+
 CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
   matrixCanvas = matrix(0,
                         nrow = canvasObjects$canvasDimension$canvasHeight/10,
                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
   roomNames = canvasObjects$rooms
 
+  doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
+
+  doors <- doors[doors$CanvasID == canvas, , drop = FALSE]
+
   if(!is.null(canvasObjects$roomsINcanvas)){
-    rooms = canvasObjects$roomsINcanvas %>% filter(CanvasID == canvas)
+    rooms = normalize_canvas_rooms(canvasObjects$roomsINcanvas) %>% filter(CanvasID == canvas)
+    rooms <- rooms[order(-ceiling(rooms$l) * ceiling(rooms$w), rooms$ID), , drop = FALSE]
     for(i in rooms$ID){
       r = rooms %>% filter(ID == i)
 
@@ -198,15 +210,57 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       else
         matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = 1
 
-      ## Door position definition as 2
-      matrixCanvas[r$door_y, r$door_x] = if(r$door != "none") 2 else 0
-      if(r$type != "Fillingroom")
-        matrixCanvas[r$center_y, r$center_x] = roomNames$ID[roomNames$Name == r$Name]
+
     }
+
+    # Walls are one grid cell wide. Draw every wall after the interiors so a
+    # neighbouring room cannot overwrite a shared wall with traversable cells.
+    for (i in seq_len(nrow(rooms))) {
+      r <- rooms[i, ]
+      xs <- r$x + 0:(ceiling(r$l) + 1)
+      ys <- r$y + 0:(ceiling(r$w) + 1)
+      matrixCanvas[c(r$y, r$y + ceiling(r$w) + 1), xs] <- 0
+      matrixCanvas[ys, c(r$x, r$x + ceiling(r$l) + 1)] <- 0
+    }
+
+    # for (i in seq_len(nrow(rooms))) {
+    #   r <- rooms[i, ]
+    #   if (r$type != "Fillingroom" && any(room_interior_mask(r, rooms))) {
+    #     matrixCanvas[r$center_y, r$center_x] <- roomNames$ID[roomNames$Name == r$Name]
+    #   }
+    # }
+  }
+
+  # Both memberships of a shared door have the same matrix coordinates.
+  # Open the wall only after all interiors and walls have been drawn.
+  if (nrow(doors)){
+    valid_doors <- doors$x >= 1 & doors$x <= ncol(matrixCanvas) &
+      doors$y >= 1 & doors$y <= nrow(matrixCanvas)
+    matrixCanvas[cbind(doors$y[valid_doors], doors$x[valid_doors])] <- 2
+
+    for(d in which(valid_doors)){
+      door = doors[d,]
+      if(door$side == "top"){
+        matrixCanvas[door$y + 1, door$x] = rooms$typeID[rooms$ID == door$roomID]
+      } else if(door$side == "bottom"){
+        matrixCanvas[door$y - 1, door$x] =  rooms$typeID[rooms$ID == door$roomID]
+      }else if(door$side == "left"){
+        matrixCanvas[door$y, door$x + 1] =  rooms$typeID[rooms$ID == door$roomID]
+      }else if(door$side == "right"){
+        matrixCanvas[door$y, door$x - 1] =  rooms$typeID[rooms$ID == door$roomID]
+      }
+    }
+    # A neighbouring wall door can open an adjacent cell occupied by a freely
+    # positioned imported door. Door cells have final precedence.
+    matrixCanvas[cbind(doors$y[valid_doors], doors$x[valid_doors])] <- 2
   }
 
   if(!is.null(canvasObjects$nodesINcanvas)){
     nodes = canvasObjects$nodesINcanvas %>% filter(CanvasID == canvas)
+    floor_rooms <- canvasObjects$roomsINcanvas
+    if (!is.null(floor_rooms)) floor_rooms <- floor_rooms[floor_rooms$CanvasID == canvas, , drop = FALSE]
+    # Old graph points must never replace a wall or a door with a 3.
+    nodes <- nodes[canvas_points_outside_rooms(nodes$x + 1, nodes$y + 1, floor_rooms), , drop = FALSE]
     for(i in nodes$ID){
       r = nodes %>% filter(ID == i)
       matrixCanvas[r$y + 1, r$x + 1] = 3
@@ -255,10 +309,281 @@ rotate_matrix <- function(mat, angle) {
   }
 }
 
-CanvasRoomToMatrix = function(canvasObjects,canvas){
+empty_canvas_doors <- function() {
+  data.frame(ID = integer(), roomID = integer(), CanvasID = character(),
+             side = character(), offset = integer(), x = numeric(), y = numeric(),
+             ownerRoomID = integer(), wall_x = numeric(), wall_y = numeric(),
+             local_x = numeric(), local_y = numeric())
+}
 
-  roomsMatrix = lapply(canvasObjects$roomsINcanvas$ID,function(id){
-    n = canvasObjects$roomsINcanvas[which(canvasObjects$roomsINcanvas$ID == id),]$Name
+# A physical door is anchored to one room's wall. Other memberships are derived
+# from geometry, including a membership inside a surrounding room (side=interior).
+canvas_door_anchors <- function(doors) {
+  if (is.null(doors) || !nrow(doors)) return(empty_canvas_doors())
+  if (!"ownerRoomID" %in% names(doors)) {
+    doors <- doors[!duplicated(doors$ID), , drop = FALSE]
+    doors$ownerRoomID <- doors$roomID
+  } else {
+    doors <- doors[doors$roomID == doors$ownerRoomID, , drop = FALSE]
+  }
+  doors
+}
+
+shared_door_peer <- function(room, side, offset, rooms) {
+  candidates <- rooms[rooms$ID != room$ID & rooms$CanvasID == room$CanvasID &
+                        rooms$type != "Fillingroom", , drop = FALSE]
+  if (side == "interior") {
+    px <- room$x + offset[1]
+    py <- room$y + offset[2]
+    valid <- px >= candidates$x & px <= candidates$x + ceiling(candidates$l) + 1 &
+      py >= candidates$y & py <= candidates$y + ceiling(candidates$w) + 1
+    candidates <- candidates[valid, , drop = FALSE]
+    if (!nrow(candidates)) return(data.frame(roomID = integer(), side = character(), offset = integer()))
+    peer <- candidates[order(ceiling(candidates$l) * ceiling(candidates$w), candidates$ID)[1], , drop = FALSE]
+    return(data.frame(roomID = peer$ID, side = "interior", offset = NA_real_))
+  }
+  horizontal <- side %in% c("top", "bottom")
+  px <- room$x + if (horizontal) offset else if (side == "right") ceiling(room$l) + 1 else 0
+  py <- room$y + if (!horizontal) offset else if (side == "bottom") ceiling(room$w) + 1 else 0
+  # A door is one wall cell. The next cell beyond it must be inside the peer,
+  # not on another wall. This also excludes corner-only contact.
+  ex <- px + switch(side, left = -1, right = 1, 0)
+  ey <- py + switch(side, top = -1, bottom = 1, 0)
+  valid <- ex >= candidates$x + 1 & ex <= candidates$x + ceiling(candidates$l) &
+    ey >= candidates$y + 1 & ey <= candidates$y + ceiling(candidates$w)
+  candidates <- candidates[valid, , drop = FALSE]
+  if (!nrow(candidates)) return(data.frame(roomID = integer(), side = character(), offset = integer()))
+  peer <- candidates[order(ceiling(candidates$l) * ceiling(candidates$w), candidates$ID)[1], , drop = FALSE]
+  opposite <- c(top = "bottom", bottom = "top", left = "right", right = "left")
+  boundary <- switch(side, top = py == peer$y + ceiling(peer$w) + 1, bottom = py == peer$y,
+                     left = px == peer$x + ceiling(peer$l) + 1, right = px == peer$x)
+  data.frame(roomID = peer$ID, side = if (boundary) unname(opposite[side]) else "interior",
+             offset = if (boundary) (if (horizontal) px - peer$x else py - peer$y) else NA_real_)
+}
+
+sync_room_doors <- function(doors, rooms) {
+  anchors <- canvas_door_anchors(doors)
+  if (!nrow(anchors)) return(empty_canvas_doors())
+  if (is.null(rooms) || !nrow(rooms)) stop("Doors must belong to a room.")
+  if (anyNA(anchors$ID) || anyDuplicated(anchors$ID) || anyDuplicated(rooms$ID)) stop("Duplicate room or door ID.")
+  index <- match(anchors$roomID, rooms$ID)
+  if (anyNA(index)) stop("A door refers to an unknown room.")
+  r <- rooms[index, , drop = FALSE]
+  if (!"local_x" %in% names(anchors)) anchors$local_x <- anchors$x - r$x
+  if (!"local_y" %in% names(anchors)) anchors$local_y <- anchors$y - r$y
+  interior <- anchors$side == "interior"
+  horizontal <- anchors$side %in% c("top", "bottom")
+  wall_length <- ifelse(horizontal, ceiling(r$l), ceiling(r$w))
+  invalid_wall <- !interior & (!is.finite(anchors$offset) | anchors$offset != floor(anchors$offset) |
+    anchors$offset < 1 | anchors$offset > wall_length)
+  invalid_interior <- interior & (!is.finite(anchors$local_x) | !is.finite(anchors$local_y) |
+    anchors$local_x != floor(anchors$local_x) | anchors$local_y != floor(anchors$local_y))
+  if (anyNA(anchors$side) || any(!anchors$side %in% c("top", "bottom", "left", "right", "interior")) ||
+      any(invalid_wall) || any(invalid_interior) || any(r$type == "Fillingroom")) {
+    stop("Doors must occupy a valid wall cell of a non-filling room.")
+  }
+  anchors$CanvasID <- r$CanvasID
+  anchors$ownerRoomID <- r$ID
+  anchors$local_x[!interior] <- ifelse(horizontal[!interior], anchors$offset[!interior],
+    ifelse(anchors$side[!interior] == "right", ceiling(r$l[!interior]) + 1, 0))
+  anchors$local_y[!interior] <- ifelse(!horizontal[!interior], anchors$offset[!interior],
+    ifelse(anchors$side[!interior] == "bottom", ceiling(r$w[!interior]) + 1, 0))
+  anchors$x <- r$x + anchors$local_x
+  anchors$y <- r$y + anchors$local_y
+  anchors$wall_x <- anchors$x
+  anchors$wall_y <- anchors$y
+  # Two clicks on opposite sides of the same physical opening create one door.
+  anchors <- anchors[order(anchors$ID), names(empty_canvas_doors()), drop = FALSE]
+  anchors <- anchors[!duplicated(anchors[c("CanvasID", "wall_x", "wall_y")]), , drop = FALSE]
+  result <- lapply(seq_len(nrow(anchors)), function(i) {
+    door <- anchors[i, , drop = FALSE]
+    room <- rooms[rooms$ID == door$ownerRoomID, , drop = FALSE]
+    peer_offset <- if (door$side == "interior") c(door$local_x, door$local_y) else door$offset
+    peer <- shared_door_peer(room, door$side, peer_offset, rooms)
+    if (!nrow(peer)) return(door)
+    membership <- door
+    membership$roomID <- peer$roomID
+    membership$side <- peer$side
+    membership$offset <- peer$offset
+    # One physical opening, one global wall cell, even for an interior membership.
+    membership$x <- door$x
+    membership$y <- door$y
+    rbind(door, membership)
+  })
+  result <- do.call(rbind, result)
+
+  rownames(result) <- NULL
+  result
+}
+
+# Distances are in metres (one matrix cell). Use physical door anchors once,
+# and wall coordinates rather than the interior dimensions alone. Merely
+# adjacent rooms are excluded, so a door on their common wall remains valid.
+room_door_clearance_conflicts <- function(rooms, doors, changed_room_ids = rooms$ID,
+                                          min_distance = 2) {
+  conflicts <- data.frame(doorID = integer(), ownerRoomID = integer(),
+                          roomID = integer(), distance = numeric())
+  if (is.null(rooms) || nrow(rooms) < 2 || is.null(doors) || !nrow(doors)) return(conflicts)
+  anchors <- canvas_door_anchors(sync_room_doors(doors, rooms))
+  for (i in seq_len(nrow(anchors))) {
+    door <- anchors[i, , drop = FALSE]
+    owner <- rooms[rooms$ID == door$ownerRoomID, , drop = FALSE]
+    others <- rooms[rooms$CanvasID == owner$CanvasID & rooms$ID != owner$ID &
+                      (owner$ID %in% changed_room_ids | rooms$ID %in% changed_room_ids), , drop = FALSE]
+    if (!nrow(others)) next
+    right <- others$x + ceiling(others$l) + 1
+    bottom <- others$y + ceiling(others$w) + 1
+    overlap <- pmin(right, owner$x + ceiling(owner$l) + 1) > pmax(others$x, owner$x) &
+      pmin(bottom, owner$y + ceiling(owner$w) + 1) > pmax(others$y, owner$y)
+    # Point-to-segment distance, including the ends of each wall segment.
+    dx <- pmax(others$x - door$x, 0, door$x - right)
+    dy <- pmax(others$y - door$y, 0, door$y - bottom)
+    distance <- pmin(sqrt((door$x - others$x)^2 + dy^2),
+                     sqrt((door$x - right)^2 + dy^2),
+                     sqrt(dx^2 + (door$y - others$y)^2),
+                     sqrt(dx^2 + (door$y - bottom)^2))
+    bad <- which(overlap & distance < min_distance - 1e-9)
+    if (length(bad)) conflicts <- rbind(conflicts,
+      data.frame(doorID = door$ID, ownerRoomID = owner$ID,
+                 roomID = others$ID[bad], distance = distance[bad]))
+  }
+  conflicts
+}
+
+room_door_clearance_message <- function(conflicts) {
+  first <- conflicts[1, ]
+  sprintf(paste0("Door %s of room %s is %.2f m from the border of room %s. ",
+                 "Overlapping rooms must keep at least 2 m between doors and the other room's borders."),
+          first$doorID, first$ownerRoomID, first$distance, first$roomID)
+}
+
+invalid_shared_door_ids <- function(doors, rooms) {
+  updated <- sync_room_doors(doors, rooms)
+  ids <- unique(doors$ID[duplicated(doors$ID)])
+  ids[vapply(ids, function(id) {
+    !setequal(doors$roomID[doors$ID == id], updated$roomID[updated$ID == id])
+  }, logical(1))]
+}
+
+new_room_door <- function(room, side, offset, id) {
+  sync_room_doors(data.frame(ID = id, roomID = room$ID, CanvasID = room$CanvasID,
+                            side = side, offset = offset, x = 0, y = 0), room)
+}
+
+add_canvas_door <- function(doors, rooms, roomID, side, offset) {
+  doors <- sync_room_doors(doors, rooms)
+  room <- rooms[rooms$ID == roomID, , drop = FALSE]
+  if (nrow(room) != 1) stop("Please select a room.")
+  door <- new_room_door(room, side, offset, max(c(0, doors$ID)) + 1L)
+  sync_room_doors(rbind(doors, door), rooms)
+}
+
+room_doors_for_canvas <- function(doors, roomID) {
+  # Only draw the owner's copy; a containing room must not paint ghost doors
+  # after its child has been hidden behind another layer.
+  doors <- doors[doors$roomID == roomID & doors$ownerRoomID == roomID, , drop = FALSE]
+  doors[, c("ID", "side", "offset", "local_x", "local_y"), drop = FALSE]
+}
+
+# Geometry ownership is independent of visual layering: smaller rooms carve
+# their footprint out of larger rooms; ID resolves equal-area overlaps.
+room_interior_mask <- function(room, rooms) {
+  mask <- matrix(TRUE, nrow = ceiling(room$w), ncol = ceiling(room$l))
+  own_area <- ceiling(room$l) * ceiling(room$w)
+  others <- rooms[rooms$CanvasID == room$CanvasID & rooms$ID != room$ID, , drop = FALSE]
+  grid_x <- room$x + seq_len(ncol(mask))
+  grid_y <- room$y + seq_len(nrow(mask))
+  for (i in seq_len(nrow(others))) {
+    other <- others[i, ]
+    right <- other$x + ceiling(other$l) + 1
+    bottom <- other$y + ceiling(other$w) + 1
+    xs <- which(grid_x >= other$x & grid_x <= right)
+    ys <- which(grid_y >= other$y & grid_y <= bottom)
+    other_area <- ceiling(other$l) * ceiling(other$w)
+    if (other_area < own_area || (other_area == own_area && other$ID > room$ID)) {
+      # Exclude both the child interior and its surrounding wall cells.
+      mask[ys, xs] <- FALSE
+    } else {
+      mask[which(grid_y %in% c(other$y, bottom)), xs] <- FALSE
+      mask[ys, which(grid_x %in% c(other$x, right))] <- FALSE
+    }
+  }
+  mask
+}
+
+normalize_canvas_rooms <- function(rooms) {
+  if (is.null(rooms) || !nrow(rooms)) return(rooms)
+  if (!"z_index" %in% names(rooms)) {
+    rooms$z_index <- rank(-ceiling(rooms$l) * ceiling(rooms$w), ties.method = "first")
+  }
+  if (any(!is.finite(rooms$z_index))) stop("Invalid room drawing order.")
+  for (i in seq_len(nrow(rooms))) {
+    r <- rooms[i, ]
+    mask <- room_interior_mask(r, rooms)
+    cells <- which(mask, arr.ind = TRUE)
+    if (!nrow(cells)) next
+    cx <- r$center_x - r$x
+    cy <- r$center_y - r$y
+    if (length(cx) != 1 || !is.finite(cx)) cx <- (ceiling(r$l) + 1) / 2
+    if (length(cy) != 1 || !is.finite(cy)) cy <- (ceiling(r$w) + 1) / 2
+    nearest <- which.min((cells[, 2] - cx)^2 + (cells[, 1] - cy)^2)
+    rooms$center_x[i] <- r$x + cells[nearest, 2]
+    rooms$center_y[i] <- r$y + cells[nearest, 1]
+  }
+  rooms
+}
+
+normalize_room_doors <- function(model) {
+  rooms <- model$roomsINcanvas
+  doors <- model$doorsINcanvas
+  if (!is.null(rooms) && nrow(rooms) > 0) {
+    if (!"object_rotation" %in% names(rooms)) {
+      rooms$object_rotation <- if ("door" %in% names(rooms)) {
+        vapply(rooms$door, get_rotation_angle, numeric(1))
+      } else rep(0, nrow(rooms))
+    }
+    # Migrate the old single-door schema only when the separate table is absent.
+    if (is.null(doors) && "door" %in% names(rooms)) {
+      doors <- empty_canvas_doors()
+      for (i in seq_len(nrow(rooms))) {
+        r <- rooms[i, , drop = FALSE]
+        if (r$type == "Fillingroom" || !r$door %in% c("top", "bottom", "left", "right")) next
+        horizontal <- r$door %in% c("top", "bottom")
+        offset <- if (horizontal) floor(ceiling(r$l) / 2) + 1 else if (r$door == "left") {
+          round(ceiling(r$w) / 2) + 1
+        } else floor(ceiling(r$w) / 2) + 1
+        # The old matrix builder recalculated midpoint doors and centres each
+        # time; saved coordinates can be stale after a drag or dimension change.
+        rooms$center_x[i] <- r$x + if (horizontal) offset else if (r$door == "left") {
+          ceiling((ceiling(r$l) + 1) / 2)
+        } else floor((ceiling(r$l) + 1) / 2)
+        rooms$center_y[i] <- r$y + if (!horizontal) offset else if (r$door == "top") {
+          ceiling((ceiling(r$w) + 1) / 2)
+        } else floor((ceiling(r$w) + 1) / 2)
+        doors <- rbind(doors, new_room_door(r, r$door, offset, nrow(doors) + 1L))
+      }
+    }
+    for (axis in c("x", "y")) {
+      center <- paste0("center_", axis)
+      size <- ceiling(rooms[[if (axis == "x") "l" else "w"]])
+      if (is.null(rooms[[center]])) rooms[[center]] <- rep(NA_real_, nrow(rooms))
+      invalid <- !is.finite(rooms[[center]]) | rooms[[center]] <= rooms[[axis]] |
+        rooms[[center]] > rooms[[axis]] + size
+      rooms[[center]][invalid] <- (rooms[[axis]] + floor((size + 1) / 2))[invalid]
+    }
+  }
+  if (!is.null(rooms)) rooms <- rooms[, setdiff(names(rooms), c("door", "door_x", "door_y")), drop = FALSE]
+  rooms <- normalize_canvas_rooms(rooms)
+  model$roomsINcanvas <- rooms
+  model$doorsINcanvas <- sync_room_doors(doors, rooms)
+  model
+}
+
+CanvasRoomToMatrix = function(canvasObjects,canvas){
+  rooms <- normalize_canvas_rooms(canvasObjects$roomsINcanvas) %>% filter(CanvasID == canvas)
+  doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
+  roomsMatrix = lapply(rooms$ID,function(id){
+    n = rooms$Name[rooms$ID == id]
 
     objects_list = canvasObjects$roomObjects[[n]]
     objects_df <- data.frame()
@@ -283,13 +608,14 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
     room= canvasObjects$roomsINcanvas %>%
       filter(ID == id, CanvasID == canvas)
 
-    if(room$door == "bottom" || room$door == "top"){
-      roomLength = room$l
-      roomWidth = room$w
+    rotation <- if (is.null(room$object_rotation)) 0 else room$object_rotation
+    if(!rotation %in% c(90, 270)){
+      roomLength = ceiling(room$l)
+      roomWidth = ceiling(room$w)
     }
     else{
-      roomLength = room$w
-      roomWidth = room$l
+      roomLength = ceiling(room$w)
+      roomWidth = ceiling(room$l)
     }
 
     matrixCanvas = matrix(1,
@@ -316,49 +642,42 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
       }
     }
 
-    ## Door position definition as 2
-    if(room$door != "none")
-      if(roomLength %% 2 == 0)
-        matrixCanvas[roomWidth+2, ceiling(roomLength/2)+2] =  2
-      else
-        matrixCanvas[roomWidth+2, ceiling(roomLength/2)+1] =  2
-
-    # Rotate the entire matrix based on door position
-    if (!is.null(room$door) && room$door != "none" && room$door != "bottom") {
-      rotation_angle <- get_rotation_angle(room$door)
-      matrixCanvas <- rotate_matrix(matrixCanvas, rotation_angle)
+    if (rotation != 0) matrixCanvas <- rotate_matrix(matrixCanvas, rotation)
+    occupied <- which(!room_interior_mask(room, rooms), arr.ind = TRUE)
+    if (nrow(occupied)) matrixCanvas[occupied + 1] <- 0
+    room_doors <- doors[doors$roomID == id, , drop = FALSE]
+    if (nrow(room_doors)) {
+      local_y <- room_doors$y - room$y + 1
+      local_x <- room_doors$x - room$x + 1
+      valid <- local_x >= 1 & local_x <= ncol(matrixCanvas) &
+        local_y >= 1 & local_y <= nrow(matrixCanvas)
+      matrixCanvas[cbind(local_y[valid], local_x[valid])] <- 2
     }
 
     return(matrixCanvas)
   })
 
-  names(roomsMatrix) = paste0(canvasObjects$roomsINcanvas$Name, "_", canvasObjects$roomsINcanvas$ID)
+  names(roomsMatrix) = paste0(rooms$Name, "_", rooms$ID)
 
   return(roomsMatrix)
 }
 
 
-command_addRoomObject = function(newroom){
-  txt = paste0("// Crea un nuovo oggetto Square con le proprietà desiderate
-                const newRoom = new Room(",newroom$ID,",",
-               newroom$x*10," , ",newroom$y*10," ,",
-               newroom$center_x*10,",",
-               newroom$center_y*10,",",
-               newroom$door_x*10,",",
-               newroom$door_y*10,",",
-               newroom$l*10,",",
-               newroom$w*10,",",
-               newroom$h,",",
-               newroom$colorFill,",",
-               newroom$colorBorder,", \" ",
-               newroom$Name,"\" , \"",newroom$door,"\");")
-  paste0(txt,"
-          // Aggiungi il nuovo oggetto Square all'array arrayObject
-         FloorArray[\"",newroom$CanvasID,"\"].arrayObject.push(newRoom);"
-  )
+command_addRoomObject = function(newroom, doors = empty_canvas_doors()){
+  doors <- room_doors_for_canvas(doors, newroom$ID)
+  # Encode strings as JSON: room names and CSS colours are data, not JavaScript.
+  args <- list(newroom$ID, newroom$x * 10, newroom$y * 10,
+               newroom$center_x * 10, newroom$center_y * 10,
+               (ceiling(newroom$l) + 1) * 10, (ceiling(newroom$w) + 1) * 10, newroom$h,
+               newroom$colorFill, newroom$colorBorder, newroom$Name,
+               doors, newroom$type, if (is.null(newroom$z_index)) 0 else newroom$z_index)
+  encoded <- vapply(args, function(x) as.character(jsonlite::toJSON(x, auto_unbox = TRUE, dataframe = "rows")), character(1))
+  paste0("FloorArray[", jsonlite::toJSON(newroom$CanvasID, auto_unbox = TRUE),
+         "].arrayObject.push(new Room(", paste(encoded, collapse = ","), "));" )
 }
 
 UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
+  mess <- normalize_room_doors(mess)
   messNames = names(mess)
   for(i in messNames)
     canvasObjects[[i]] = mess[[i]]
@@ -426,7 +745,7 @@ UpdatingData = function(input,output,canvasObjects, mess,areasColor, session){
     }
     for(r_id in canvasObjects$roomsINcanvas$ID){
       newroom = canvasObjects$roomsINcanvas %>% filter(ID == r_id)
-      runjs( command_addRoomObject( newroom) )
+      runjs( command_addRoomObject( newroom, canvasObjects$doorsINcanvas) )
     }
 
     # update types
@@ -1348,54 +1667,49 @@ F4FgetVolumes=function(exclude, from="~", custom_name="Home"){
   return(volumes)
 }
 
-is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas) {
-  x <- room$door_x
-  y <- room$door_y
-
-  # Check if all matrix values along Bresenham path are in allowed set (0, 2, 3)
-  check_path_values <- function(matrix, x_points, y_points) {
-    allowed_values <- c(0, 2, 3)
-
-    for (i in seq_along(x_points)) {
-      x <- x_points[i]
-      y <- y_points[i]
-
-      if (!(matrix[y, x] %in% allowed_values))
-        return(FALSE)
-    }
-
-    return(TRUE)
-  }
-
-  for (i in 1:nrow(roomsINcanvas)) {
-    if (x == roomsINcanvas[i,]$door_x && y == roomsINcanvas[i,]$door_y) next
-
-    ox <- roomsINcanvas[i,]$door_x
-    oy <- roomsINcanvas[i,]$door_y
-
-    line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
-    x_points <- line_pts$x
-    y_points <- line_pts$y
-
-    valid_path <- check_path_values(matrix, x_points, y_points)
-    if(valid_path) return(TRUE)
-  }
-
-  if(!is.null(nodesINcanvas) && nrow(nodesINcanvas) > 0){
-    for (i in 1:nrow(nodesINcanvas)) {
-      ox <- nodesINcanvas[i,]$x
-      oy <- nodesINcanvas[i,]$y
-
-      line_pts <- bresenham(x = c(x, ox), y = c(y, oy))
-      x_points <- line_pts$x
-      y_points <- line_pts$y
-
-      valid_path <- check_path_values(matrix, x_points, y_points)
-      if(valid_path) return(TRUE)
+canvas_graph_nodes <- function(canvasObjects, canvas) {
+  doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
+  doors <- doors[doors$CanvasID == canvas, , drop = FALSE]
+  horizontal <- doors$side %in% c("top", "bottom")
+  nodes <- data.frame(ID = seq_len(nrow(doors)), x = doors$x, y = doors$y,
+                      CanvasID = doors$CanvasID, door = doors$side, doorID = doors$ID,
+                      roomID = doors$roomID,
+                      offset_x = doors$x - doors$wall_x,
+                      offset_y = doors$y - doors$wall_y)
+  points <- canvasObjects$nodesINcanvas
+  if (!is.null(points)) {
+    points <- points[points$CanvasID == canvas, , drop = FALSE]
+    rooms <- canvasObjects$roomsINcanvas
+    if (!is.null(rooms)) rooms <- rooms[rooms$CanvasID == canvas, , drop = FALSE]
+    points <- points[canvas_points_outside_rooms(points$x + 1, points$y + 1, rooms), , drop = FALSE]
+    if (nrow(points)) {
+      nodes <- rbind(nodes, data.frame(ID = nrow(nodes) + seq_len(nrow(points)),
+                     x = points$x + 1, y = points$y + 1, CanvasID = points$CanvasID,
+                     door = "none", doorID = NA_integer_, roomID = NA_integer_,
+                     offset_x = 0.5, offset_y = 0.5))
     }
   }
+  nodes
+}
 
-  return(FALSE)
+is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas, doorsINcanvas) {
+  doors <- sync_room_doors(doorsINcanvas, roomsINcanvas)
+  doors <- doors[doors$CanvasID == room$CanvasID, , drop = FALSE]
+  own <- doors[doors$roomID == room$ID, , drop = FALSE]
+  others <- doors[doors$roomID != room$ID, c("x", "y"), drop = FALSE]
+  if (!is.null(nodesINcanvas)) {
+    points <- nodesINcanvas[nodesINcanvas$CanvasID == room$CanvasID, c("x", "y"), drop = FALSE]
+    floor_rooms <- roomsINcanvas[roomsINcanvas$CanvasID == room$CanvasID, , drop = FALSE]
+    points <- points[canvas_points_outside_rooms(points$x + 1, points$y + 1, floor_rooms), , drop = FALSE]
+    others <- rbind(others, points + 1)
+  }
+  for (i in seq_len(nrow(own))) {
+    for (j in seq_len(nrow(others))) {
+      path <- bresenham(c(own$x[i], others$x[j]), c(own$y[i], others$y[j]))
+      if (all(matrix[cbind(path$y, path$x)] %in% c(0, 2, 3))) return(TRUE)
+    }
+  }
+  FALSE
 }
 
 
@@ -1463,7 +1777,7 @@ check <- function(canvasObjects, input, output, InfoApp){
   }
 
   if(!is.null(canvasObjects$roomObjects)){
-    for(i in 1:length(canvasObjects$roomObjects)){
+    for(i in seq_along(canvasObjects$roomObjects)){
       collision_check <- check_door_collision(
         canvasObjects,
         names(canvasObjects$roomObjects)[i],
@@ -1476,9 +1790,6 @@ check <- function(canvasObjects, input, output, InfoApp){
       }
     }
   }
-
-
-  if (collision_check$collision)
 
 
   if(is.null(canvasObjects$roomsINcanvas) || length(canvasObjects$roomsINcanvas) == 0){
@@ -1651,58 +1962,32 @@ check <- function(canvasObjects, input, output, InfoApp){
     return(NULL)
   }
 
-  for(i in canvasObjects$roomsINcanvas$ID){
-    room = canvasObjects$roomsINcanvas %>% filter(ID == i)
-
-    if(room$door == "top"){
-      door_x = room$x + floor(room$l/2) + 1
-      door_y = room$y
-      center_y = room$y + ceiling((room$w + 1) / 2)
-      center_x = room$x + floor(room$l/2) + 1
-    }
-    else if(room$door == "bottom"){
-      door_x = room$x + floor(room$l/2) + 1
-      door_y = room$y + room$w + 1
-      center_y = room$y + floor((room$w + 1) / 2)
-      center_x = room$x + floor(room$l/2) + 1
-    }
-    else if(room$door == "left"){
-      door_x = room$x
-      door_y = room$y + round(room$w/2) + 1
-      center_y = room$y + round(room$w/2) + 1
-      center_x = room$x + ceiling((room$l + 1) / 2)
-    }
-    else if(room$door == "right"){
-      door_x = room$x + room$l + 1
-      door_y = room$y + floor(room$w/2) + 1
-      center_y = room$y + floor(room$w/2) + 1
-      center_x = room$x + floor((room$l + 1) / 2)
-    }
-    else{
-      door_x = 0
-      door_y = 0
-      center_y = 0
-      center_x = 0
-    }
-
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"door_x"] = door_x
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"door_y"] = door_y
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"center_y"] = center_y
-    canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == i,"center_x"] = center_x
+  canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
+  canvasObjects$doorsINcanvas <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
+  covered <- vapply(seq_len(nrow(canvasObjects$roomsINcanvas)), function(i) {
+    room <- canvasObjects$roomsINcanvas[i, ]
+    room$type != "Fillingroom" && !any(room_interior_mask(room, canvasObjects$roomsINcanvas))
+  }, logical(1))
+  if (any(covered)) {
+    shinyalert("Error", paste0("These rooms are entirely occupied by other rooms and have no usable interior: ",
+      paste(canvasObjects$roomsINcanvas$Name[covered], collapse = ", "), ". Move or resize them before generating the model."), type = "error")
+    remove_modal_spinner()
+    return(NULL)
   }
+  InfoApp$invalidRooms <- canvasObjects$roomsINcanvas$ID[canvasObjects$roomsINcanvas$type != "Fillingroom"]
 
   # Check if there are rooms not linked to any other room
   if(length(InfoApp$invalidRooms) > 0){
-    for(i in 1:length(InfoApp$invalidRooms)){
+    for(id in InfoApp$invalidRooms){
       room <- canvasObjects$roomsINcanvas %>%
-        filter(ID == InfoApp$invalidRooms[i])
+        filter(ID == id)
 
       matrix <- CanvasToMatrix(canvasObjects, canvas = room$CanvasID)
 
-      valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas)
+      valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas, canvasObjects$doorsINcanvas)
 
       if(valid_rooms){
-        InfoApp$invalidRooms <- InfoApp$invalidRooms[InfoApp$invalidRooms != room$id]
+        InfoApp$invalidRooms <- InfoApp$invalidRooms[InfoApp$invalidRooms != room$ID]
       }
     }
 
