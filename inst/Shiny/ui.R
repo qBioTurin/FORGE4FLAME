@@ -2741,7 +2741,7 @@ ui <- dashboardPage(
                       column(
                         offset = 4,
                         width = 4,
-                        downloadButton("DownloadPostProc_Button", label = "Download filtered data (from Disease Evolution filters)", style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);",)
+                        downloadButton("DownloadPostProc_Button", label = "Download filtered data (from Disease Evolution filters)", style = "margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);")
                       )
                     ),
                     fluidRow(
@@ -3286,43 +3286,6 @@ ui <- dashboardPage(
                     )
                 )
               )
-      ),
-      ## Tab Post Processing ####
-      tabItem(
-        tabName = "post_process",
-        fluidRow(
-          box(
-            title = h3("Post Processing Options"),
-            width = 12,
-            collapsible = TRUE,
-            fluidRow(
-              column(4,
-                     selectInput(
-                       inputId = "post_proc_option",
-                       label = "Select Analysis:",
-                       choices = c("2D Animation", "Infection Plot", "Agent State Plot", "Agent Location Plot"),
-                       selected = "2D Animation"
-                     )
-              ),
-              column(4,
-                     sliderInput("emoji_size_slider", "Emoji Size:",
-                                 min = 1, max = 20, value = 5, step = 1)
-              ),
-              column(2,
-                     actionButton("run_post_proc", "Run Analysis", style = "margin-top: 25px;")
-              )
-            )
-          )
-        ),
-        fluidRow(
-          box(
-            title = h3("Output"),
-            width = 12,
-            collapsible = TRUE,
-            imageOutput("post_proc_plot"),
-            hidden(downloadButton("DownloadPostProc_Button", "Download"))
-          )
-        )
       )
       #### END tabs ####
     )
