@@ -183,11 +183,13 @@ canvas_points_outside_rooms <- function(x, y, rooms) {
   outside
 }
 
-CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
+# FALSE keeps room IDs, TRUE uses 1 for interiors, and "NoInterior" uses 1
+# only where a single room occupies the cell (overlapping interiors become 0).
+CanvasToMatrix = function(canvasObjects,FullRoom = FALSE,canvas){
   matrixCanvas = matrix(0,
                         nrow = canvasObjects$canvasDimension$canvasHeight/10,
                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
-  roomNames = canvasObjects$rooms
+  masked_cells <- matrix(FALSE, nrow = nrow(matrixCanvas), ncol = ncol(matrixCanvas))
 
   doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
 
@@ -205,13 +207,16 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
       r$l <- ceiling(r$l)
       r$w <- ceiling(r$w)
 
-      if(FullRoom)
-        matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = i
-      else
-        matrixCanvas[y + 1:(r$w), x + 1:(r$l)] = 1
-
+      if (FullRoom == "NoInterior") {
+        matrixCanvas[y + seq_len(r$w), x + seq_len(r$l)] <-
+          matrixCanvas[y + seq_len(r$w), x + seq_len(r$l)] + 1
+      } else {
+        matrixCanvas[y + seq_len(r$w), x + seq_len(r$l)] <- if (FullRoom) 1 else i
+      }
 
     }
+
+    if (FullRoom == "NoInterior") masked_cells <- matrixCanvas > 1
 
     # Walls are one grid cell wide. Draw every wall after the interiors so a
     # neighbouring room cannot overwrite a shared wall with traversable cells.
@@ -267,6 +272,8 @@ CanvasToMatrix = function(canvasObjects,FullRoom = F,canvas){
     }
   }
 
+  # Door approach markers must not reopen an overlapping room interior.
+  matrixCanvas[masked_cells] <- 0
   return(matrixCanvas)
 }
 
@@ -511,6 +518,25 @@ room_interior_mask <- function(room, rooms) {
   mask
 }
 
+# Warn about possible object coverage without requiring an exact collision.
+# Use the same geometry as the exported room matrices, including partial overlaps.
+room_object_overlap_message <- function(rooms, room_objects, changed_room_ids) {
+  if (is.null(rooms) || nrow(rooms) < 2 || !length(room_objects)) return(NULL)
+  affected <- vapply(seq_len(nrow(rooms)), function(i) {
+    room <- rooms[i, , drop = FALSE]
+    if (!length(room_objects[[room$Name]])) return(FALSE)
+    relevant <- if (room$ID %in% changed_room_ids) rooms else {
+      rooms[rooms$ID %in% c(room$ID, changed_room_ids), , drop = FALSE]
+    }
+    any(!room_interior_mask(room, relevant))
+  }, logical(1))
+  if (!any(affected)) return(NULL)
+  labels <- paste0(rooms$Name[affected], " #", rooms$ID[affected],
+                   " (", rooms$CanvasID[affected], ")")
+  paste0("Overlapping rooms may cover objects in: ", paste(labels, collapse = ", "),
+         ". Check the room layouts and reposition any affected objects.")
+}
+
 normalize_canvas_rooms <- function(rooms) {
   if (is.null(rooms) || !nrow(rooms)) return(rooms)
   if (!"z_index" %in% names(rooms)) {
@@ -579,16 +605,21 @@ normalize_room_doors <- function(model) {
   model
 }
 
-CanvasRoomToMatrix = function(canvasObjects,canvas){
+CanvasRoomToMatrix = function(canvasObjects, FullRoom = FALSE, canvas){
+  if (!isFALSE(FullRoom) && !identical(FullRoom, "NoInterior")) {
+    stop("FullRoom must be FALSE or 'NoInterior'.")
+  }
   rooms <- normalize_canvas_rooms(canvasObjects$roomsINcanvas) %>% filter(CanvasID == canvas)
   doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
-  roomsMatrix = lapply(rooms$ID,function(id){
-    n = rooms$Name[rooms$ID == id]
+  if (!nrow(rooms)) return(list())
 
-    objects_list = canvasObjects$roomObjects[[n]]
+  room_matrix <- function(room) {
+    n <- room$Name
+
+    objects_list <- canvasObjects$roomObjects[[n]]
     objects_df <- data.frame()
 
-    if(!is.null(objects_list)){
+    if (length(objects_list)) {
       objects_df <- do.call(rbind, lapply(objects_list, function(obj) {
         data.frame(
           Name = obj$name,
@@ -605,10 +636,9 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
       }))
     }
 
-    room= canvasObjects$roomsINcanvas %>%
-      filter(ID == id, CanvasID == canvas)
-
     rotation <- if (is.null(room$object_rotation)) 0 else room$object_rotation
+    # Canvas dimensions already include the placement rotation. Reconstruct
+    # the original layout dimensions before drawing and rotating the objects.
     if(!rotation %in% c(90, 270)){
       roomLength = ceiling(room$l)
       roomWidth = ceiling(room$w)
@@ -618,48 +648,102 @@ CanvasRoomToMatrix = function(canvasObjects,canvas){
       roomWidth = ceiling(room$l)
     }
 
-    matrixCanvas = matrix(1,
-                            nrow = roomWidth+2,
-                            ncol = roomLength+2)
+    matrixCanvas <- matrix(1, nrow = roomWidth + 2, ncol = roomLength + 2)
 
-    matrixCanvas[1,] = 0
-    matrixCanvas[,1] = 0
-    matrixCanvas[nrow(matrixCanvas),] = 0
-    matrixCanvas[,ncol(matrixCanvas)] = 0
+    matrixCanvas[1, ] <- 0
+    matrixCanvas[, 1] <- 0
+    matrixCanvas[nrow(matrixCanvas), ] <- 0
+    matrixCanvas[, ncol(matrixCanvas)] <- 0
 
-    # Handle rooms without objects (door is assumed at bottom, no rotation needed for objects)
-    if(!is.null(objects_df) && nrow(objects_df) > 0){
-      for(i in 1:nrow(objects_df) ){
-        r = objects_df[i,]
+    # Object coordinates refer to the unrotated room layout.
+    if (nrow(objects_df)) {
+      for (i in seq_len(nrow(objects_df))) {
+        r <- objects_df[i, ]
 
-        x = floor(r$X)
-        y = floor(r$Y)
+        x <- floor(r$X)
+        y <- floor(r$Y)
 
         obj_width <- ceiling(r$Width)
         obj_length <- ceiling(r$Length)
 
-        matrixCanvas[(y + 1:(obj_width))+1,(x + 1:(obj_length))+1] = - r$ID
+        matrixCanvas[y + seq_len(obj_width) + 1,
+                     x + seq_len(obj_length) + 1] <- -r$ID
       }
     }
 
+    # Rotate every object together, then apply masks and doors in canvas coordinates.
     if (rotation != 0) matrixCanvas <- rotate_matrix(matrixCanvas, rotation)
-    occupied <- which(!room_interior_mask(room, rooms), arr.ind = TRUE)
-    if (nrow(occupied)) matrixCanvas[occupied + 1] <- 0
-    room_doors <- doors[doors$roomID == id, , drop = FALSE]
-    if (nrow(room_doors)) {
-      local_y <- room_doors$y - room$y + 1
-      local_x <- room_doors$x - room$x + 1
-      valid <- local_x >= 1 & local_x <= ncol(matrixCanvas) &
-        local_y >= 1 & local_y <= nrow(matrixCanvas)
-      matrixCanvas[cbind(local_y[valid], local_x[valid])] <- 2
+    matrixCanvas
+  }
+
+  base_matrices <- lapply(seq_len(nrow(rooms)), function(i) room_matrix(rooms[i, , drop = FALSE]))
+
+  if (identical(FullRoom, "NoInterior")) {
+    roomsMatrix <- lapply(seq_len(nrow(rooms)), function(i) {
+      room <- rooms[i, , drop = FALSE]
+      matrixCanvas <- base_matrices[[i]]
+      occupied <- which(!room_interior_mask(room, rooms), arr.ind = TRUE)
+      if (nrow(occupied)) matrixCanvas[occupied + 1] <- 0
+      room_doors <- doors[doors$roomID == room$ID, , drop = FALSE]
+      if (nrow(room_doors)) {
+        local_y <- room_doors$y - room$y + 1
+        local_x <- room_doors$x - room$x + 1
+        valid <- local_x >= 1 & local_x <= ncol(matrixCanvas) &
+          local_y >= 1 & local_y <= nrow(matrixCanvas)
+        matrixCanvas[cbind(local_y[valid], local_x[valid])] <- 2
+      }
+      matrixCanvas
+    })
+  } else {
+    # Paint large rooms first. Smaller rooms (and the higher ID for equal areas)
+    # own overlapping cells and therefore retain their IDs and objects.
+    canvas_height <- canvasObjects$canvasDimension$canvasHeight / 10
+    canvas_width <- canvasObjects$canvasDimension$canvasWidth / 10
+    composite <- matrix(NA_real_, nrow = canvas_height, ncol = canvas_width)
+    area <- ceiling(rooms$l) * ceiling(rooms$w)
+    drawing_order <- order(-area, rooms$ID)
+    for (i in drawing_order) {
+      room <- rooms[i, , drop = FALSE]
+      values <- base_matrices[[i]]
+      #values[values == 1] <- room$ID
+      rows <- room$y + 0:(nrow(values) - 1)
+      cols <- room$x + 0:(ncol(values) - 1)
+      composite[rows, cols] <- values
+    }
+    valid_doors <- doors$x >= 1 & doors$x <= ncol(composite) &
+      doors$y >= 1 & doors$y <= nrow(composite)
+    if (any(valid_doors)) {
+      composite[cbind(doors$y[valid_doors], doors$x[valid_doors])] <- 2
     }
 
-    return(matrixCanvas)
-  })
+    roomsMatrix <- lapply(seq_len(nrow(rooms)), function(i) {
+      room <- rooms[i, , drop = FALSE]
+      rows <- room$y + 0:(ceiling(room$w) + 1)
+      cols <- room$x + 0:(ceiling(room$l) + 1)
+      matrixCanvas <- composite[rows, cols, drop = FALSE]
+      # The represented room remains traversable; only nested rooms use IDs.
+      matrixCanvas[matrixCanvas == room$ID] <- 1
+      matrixCanvas
+    })
+  }
 
-  names(roomsMatrix) = paste0(rooms$Name, "_", rooms$ID)
+  names(roomsMatrix) <- paste0(rooms$Name, "_", rooms$ID)
+  roomsMatrix
+}
 
-  return(roomsMatrix)
+# WithoutMask embeds nested room IDs and objects in containing room matrices;
+# WithMask represents the same footprints as obstacles.
+CanvasMatrices <- function(canvasObjects) {
+  matrices <- list(WithoutMask = list(), WithMask = list())
+  for (canvas in unique(canvasObjects$roomsINcanvas$CanvasID)) {
+    matrices$WithoutMask[[canvas]] <- list(
+      floor = CanvasToMatrix(canvasObjects, FullRoom = FALSE, canvas = canvas),
+      rooms = CanvasRoomToMatrix(canvasObjects, FullRoom = FALSE, canvas = canvas))
+    matrices$WithMask[[canvas]] <- list(
+      floor = CanvasToMatrix(canvasObjects, FullRoom = "NoInterior", canvas = canvas),
+      rooms = CanvasRoomToMatrix(canvasObjects, FullRoom = "NoInterior", canvas = canvas))
+  }
+  matrices
 }
 
 
@@ -1983,7 +2067,7 @@ check <- function(canvasObjects, input, output, InfoApp){
       room <- canvasObjects$roomsINcanvas %>%
         filter(ID == id)
 
-      matrix <- CanvasToMatrix(canvasObjects, canvas = room$CanvasID)
+      matrix <- CanvasToMatrix(canvasObjects, FullRoom = TRUE, canvas = room$CanvasID)
 
       valid_rooms <- is_room_connected(matrix, room, canvasObjects$roomsINcanvas, canvasObjects$nodesINcanvas, canvasObjects$doorsINcanvas)
 

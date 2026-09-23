@@ -218,6 +218,39 @@ In this script, the user can define a set of partitions, reservations, GPUs, and
 
 Specifically, we run the experiments presented in the main document using Slurm on HPC4AI [1] (more information [here](https://hpc4ai.unito.it/documentation/)).
 
+## Room rotation
+
+When adding a room on the Canvas page, select a clockwise rotation of 0, 90,
+180 or 270 degrees. Width and length are swapped for 90 and 270 degrees.
+The selected angle is saved as `roomsINcanvas$object_rotation`; the exported
+room matrices rotate all objects with the room in both `WithoutMask` and
+`WithMask`. The initial door selector specifies its side on the placed room.
+
+## Saved canvas matrices
+
+Models exported by the Shiny app (RDS and JSON) contain two variants under
+`matricesCanvas`, retaining the existing lowercase field name:
+
+```r
+model$matricesCanvas$WithoutMask[[floor_name]]$floor
+model$matricesCanvas$WithoutMask[[floor_name]]$rooms[[room_name_and_id]]
+model$matricesCanvas$WithMask[[floor_name]]$floor
+model$matricesCanvas$WithMask[[floor_name]]$rooms[[room_name_and_id]]
+```
+
+`WithoutMask` keeps room IDs in floor interiors, including nested rooms, and
+zeros for walls. `WithMask` uses 1 for non-overlapping interiors and 0 for cells
+inside multiple rooms. Existing door and graph-point markers remain, except
+where a door marker would reopen a masked interior cell.
+
+In the local room matrices, `WithoutMask` represents nested room interiors with
+their room IDs and includes their walls, doors and negative object IDs. This is
+recursive, so objects in deeper nested rooms also appear in every containing
+room. `WithMask` instead turns nested-room footprints into obstacles. A nested
+room's own matrix remains usable and retains its rotated objects in both
+variants. Room keys use the format `Name_ID`. Existing readers of
+`matricesCanvas[[floor_name]]` must now select `WithoutMask` or `WithMask` first.
+
 ## How to reproduce the results
 To reproduce the results presented in the main document---comparing FLAME GPU 2 and NetLogo using the ITP and the alert scenarios---run the following Bash commands (note that this process may take time, especially for NetLogo):
 ```

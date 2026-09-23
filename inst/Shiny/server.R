@@ -985,6 +985,15 @@ server <- function(input, output, session) {
   })
 
   #### DRAW rooms: ####
+  warn_room_object_overlap <- function(room_ids) {
+    message <- room_object_overlap_message(canvasObjects$roomsINcanvas,
+                                           canvasObjects$roomObjects, room_ids)
+    if (!is.null(message)) {
+      showNotification(message, type = "warning", duration = 10,
+                       id = "room-object-overlap")
+    }
+  }
+
   ## add in canvas a new selected room
   observeEvent(input$add_room, {
     disable("rds_generation")
@@ -1006,16 +1015,18 @@ server <- function(input, output, session) {
         }
       }
 
+      rotation <- as.integer(input$rotate_new_room)
+      req(length(rotation) == 1L, rotation %in% c(0L, 90L, 180L, 270L))
+
       width <- roomSelected$w
       length <- roomSelected$l
       height <- roomSelected$h
-      if(isTRUE(input$rotate_new_room)){
+      if(rotation %in% c(90L, 270L)){
         width = roomSelected$l
         length = roomSelected$w
       }
 
-      # FullRoom is a flag to set TRUE if inside the matrix representing
-      # the room we want the ID of the room
+      # Use binary room interiors when checking available space.
       matrix <- CanvasToMatrix(canvasObjects, FullRoom = T, canvas = input$canvas_selector)
       # Check if there is still space for the new room
       result <- find_ones_submatrix_coordinates(matrix, target_rows = ceiling(width), target_cols = ceiling(length))
@@ -1063,7 +1074,7 @@ server <- function(input, output, session) {
           center_x = xnew + floor((ceiling(length) + 1) / 2),
           center_y = ynew + floor((ceiling(width) + 1) / 2),
           w = width, l = length, h = height,
-          object_rotation = if (isTRUE(input$rotate_new_room)) 90 else 0,
+          object_rotation = rotation,
           z_index = max(c(0, canvasObjects$roomsINcanvas$z_index)) + 1,
           Name = roomSelected$Name,
           colorFill = room_color_display,
@@ -1097,6 +1108,7 @@ server <- function(input, output, session) {
         canvasObjects$selectedId = newroom$ID
 
         runjs(command_addRoomObject(newroom, canvasObjects$doorsINcanvas))
+        warn_room_object_overlap(newroom$ID)
 
         rooms <- canvasObjects$roomsINcanvas %>% filter(type != "Fillingroom", type != "Stair", type != "Spawnroom")
         roomsAvailable <- c("", unique(paste0(rooms$type, "-", rooms$area)))
@@ -1160,6 +1172,7 @@ server <- function(input, output, session) {
                     newroom <- canvasObjects$roomsINcanvas[canvasObjects$roomsINcanvas$ID == newroom$ID, , drop = FALSE]
 
                     runjs(command_addRoomObject(newroom, canvasObjects$doorsINcanvas))
+                    warn_room_object_overlap(newroom$ID)
                     send_room_doors(canvasObjects$roomsINcanvas$ID[canvasObjects$roomsINcanvas$CanvasID == floor])
                     invalidate_canvas_paths(floor)
 
@@ -1876,7 +1889,7 @@ server <- function(input, output, session) {
     for (i in pathINcanvasLIST$id) {
       pIc <- pathINcanvasLIST %>% filter(id == i)
       path <- bresenham(c(pIc$fromX / 10, pIc$toX / 10), c(pIc$fromY / 10, pIc$toY / 10))
-      matrixCanvas <- CanvasToMatrix(canvasObjects, canvas = input$canvas_selector)
+      matrixCanvas <- CanvasToMatrix(canvasObjects, FullRoom = TRUE, canvas = input$canvas_selector)
       sum <- 0
       for (j in 1:length(path$x)) {
         if (matrixCanvas[path$y[j], path$x[j]] == 1) {
@@ -1925,6 +1938,7 @@ server <- function(input, output, session) {
         invalidate_canvas_paths(event$CanvasID)
         send_room_doors(rooms$ID[rooms$CanvasID == event$CanvasID])
         canvasObjects$selectedId <- event$id
+        warn_room_object_overlap(event$id)
       }
       room <- canvasObjects$roomsINcanvas[index, , drop = FALSE]
       event$x <- room$x * 10
@@ -2071,12 +2085,7 @@ server <- function(input, output, session) {
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
 
-      matricesCanvas <- list()
-      for (cID in unique(canvasObjects$roomsINcanvas$CanvasID)) {
-        matricesCanvas[[cID]]$floor <- CanvasToMatrix(canvasObjects, canvas = cID)
-        matricesCanvas[[cID]]$rooms <- CanvasRoomToMatrix(canvasObjects, canvas = cID)
-      }
-      canvasObjects$matricesCanvas <- matricesCanvas
+      canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
       model <- reactiveValuesToList(canvasObjects)
 
@@ -2116,12 +2125,7 @@ server <- function(input, output, session) {
   observeEvent(input$save_text, {
     removeModal()
 
-    matricesCanvas <- list()
-    for (cID in unique(canvasObjects$roomsINcanvas$CanvasID)) {
-      matricesCanvas[[cID]]$floor <- CanvasToMatrix(canvasObjects, canvas = cID)
-      matricesCanvas[[cID]]$rooms <- CanvasRoomToMatrix(canvasObjects, canvas = cID)
-    }
-    canvasObjects$matricesCanvas <- matricesCanvas
+    canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
     postprocObjects$simulation_log <- NULL
     postprocObjects$simulation_log_folder <- NULL
@@ -9649,12 +9653,7 @@ server <- function(input, output, session) {
 
     pathResults <- parseDirPath(vols_dir_results, input$dir_results)
 
-    matricesCanvas <- list()
-    for (cID in unique(canvasObjects$roomsINcanvas$CanvasID)) {
-      matricesCanvas[[cID]]$floor <- CanvasToMatrix(canvasObjects, canvas = cID)
-      matricesCanvas[[cID]]$rooms <- CanvasRoomToMatrix(canvasObjects, canvas = cID)
-    }
-    canvasObjects$matricesCanvas <- matricesCanvas
+    canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
     postprocObjects$simulation_log_folder <- NULL
     postprocObjects$simulation_log <- NULL

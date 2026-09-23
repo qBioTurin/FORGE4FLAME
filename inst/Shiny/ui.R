@@ -496,7 +496,10 @@ ui <- dashboardPage(
                        fluidRow(
                          column(10,offset=1,
                                 h2(),
-                                checkboxInput("rotate_new_room", "Rotate room 90 degrees", FALSE),
+                                selectInput("rotate_new_room", "Room rotation (clockwise):",
+                                            choices = c("0 degrees" = "0", "90 degrees" = "90",
+                                                        "180 degrees" = "180", "270 degrees" = "270"),
+                                            selected = "0"),
                                 selectInput(inputId = "door_new_room", label = "Initial door (optional):",
                                             choices = c("none","right","left","top","bottom"), selected = "none")
                          ),
