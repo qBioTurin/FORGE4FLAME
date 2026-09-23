@@ -202,6 +202,7 @@ server <- function(input, output, session) {
 
 
   hideElement("outside_contagion_plot")
+  disable("DownloadPostProc_Button")
   hideElement("DownloadPostProc_Button")
 
   # Helper function to update agent-resource links dataframe
@@ -5771,30 +5772,6 @@ server <- function(input, output, session) {
                    return() # Exit the event if no valid directory path is selected
                  }
 
-                 postprocObjects$dirPath <- dirPath
-
-                 # check if any of the required file is missing, if yes stop
-                 missing_files <- sapply(required_files, function(f) {
-                   length(list.files(postprocObjects$dirPath,
-                                     pattern = paste0("^", f, "$"),
-                                     recursive = TRUE, full.names = TRUE
-                   )) == 0
-                 })
-
-                 if (any(missing_files)) {
-                   shinyalert(
-                     title = "Error",
-                     text = paste(
-                       "The following required files are missing (even in subfolders):\n",
-                       paste(names(missing_files)[missing_files], collapse = "\n")
-                     ),
-                     type = "error"
-                   )
-                   postprocObjects$dirPath <- NULL
-                   return()
-                 }
-
-
                  output$dirPath <- renderText({
                    dirPath
                  })
@@ -5807,12 +5784,19 @@ server <- function(input, output, session) {
     if (is_docker_compose) {
       req(input$Folder_Selection_Compose_cell_clicked$value)
       dirname <- input$Folder_Selection_Compose_cell_clicked$value
+      target_path <- paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", dirname)
     } else {
-      dirname <- req(input$dir)
+      req(input$dir)
+      target_path <- parseDirPath(roots = vols, input$dir)
+    }
+
+    if (is.null(target_path) || length(target_path) == 0 || target_path == "" || !dir.exists(target_path)) {
+      shinyalert("Error", "Please select a valid directory first.", "error")
+      return()
     }
 
     missing_files <- sapply(required_files, function(f) {
-      length(list.files(postprocObjects$dirPath,
+      length(list.files(target_path,
                         pattern = paste0("^", f, "$"),
                         recursive = TRUE, full.names = TRUE
       )) == 0
@@ -5829,24 +5813,22 @@ server <- function(input, output, session) {
         type = "error"
       )
       postprocObjects$dirPath <- NULL
+      disable("DownloadPostProc_Button")
+      hideElement("DownloadPostProc_Button")
       return()
     }
 
     if (is.null(canvasObjects$roomsINcanvas)) {
-      shinyalert("Error", "The corresponding F4F model must loaded before inspecting the simulations.", "error")
+      shinyalert("Error", "The corresponding F4F model must be loaded before inspecting the simulations.", "error")
       return()
     }
 
-    if (!is.null(postprocObjects$dirPath)) {
-      # to fix
-      postprocObjects$FLAGmodelLoaded <- FALSE
-    }
-
-    if (is_docker_compose) {
-      postprocObjects$dirPath <- paste0("/usr/local/lib/R/site-library/FORGE4FLAME/FLAMEGPU-FORGE4FLAME/results/", dirname)
-    } else {
-      postprocObjects$dirPath <- parseDirPath(roots = vols, dirname)
-    }
+    disable("DownloadPostProc_Button")
+    hideElement("DownloadPostProc_Button")
+    postprocObjects$dirPath <- target_path
+    output$dirPath <- renderText({
+      target_path
+    })
   })
 
 
@@ -5952,7 +5934,7 @@ server <- function(input, output, session) {
         list(name = "COUNTERScsv", file = "counters.csv", cols = c("Day", "Agents births", "Agents deaths", "Agents in quarantine", "Number of swabs", "Number of agents infected \noutside the environment")),
         list(name = "AEROSOLcsv", file = "AEROSOL.csv", cols = c("time", "virus_concentration", "room_id")),
         list(name = "CONTACTcsv", file = "CONTACT.csv", cols = c("time", "agent_id1", "agent_id2", "room_id")),
-        list(name = "CONTACTmatrix", file = "CONTACTS_MATRIX.csv", cols = c("time", "type1", "type2", "contacts"))
+        list(name = "CONTACTmatrix_raw", file = "CONTACTS_MATRIX.csv", cols = c("time", "type1", "type2", "contacts"))
       )
 
       # Process files in parallel
@@ -5977,7 +5959,6 @@ server <- function(input, output, session) {
   })
 
   observe({
-    req(postprocObjects$FLAGmodelLoaded)
     dir <- req(postprocObjects$dirPath)
     Mapping <- req(postprocObjects$Mapping)
 
@@ -6012,9 +5993,8 @@ server <- function(input, output, session) {
   #### query ####
   observe({
     CONTACTcsv <- req(postprocObjects$CONTACTcsv)
-    CONTACTmatrix <- req(postprocObjects$CONTACTmatrix)
+    CONTACTmatrix_raw <- req(postprocObjects$CONTACTmatrix_raw)
     AEROSOLcsv <- req(postprocObjects$AEROSOLcsv)
-    req(postprocObjects$FLAGmodelLoaded)
     req(postprocObjects$MappingID_room)
     Mapping <- req(postprocObjects$Mapping)
 
@@ -6048,6 +6028,7 @@ server <- function(input, output, session) {
         ungroup() %>%
         select(-time_diff)
 
+      CONTACTmatrix <- CONTACTmatrix_raw
       CONTACTmatrix$type1 <- agents[CONTACTmatrix$type1 + 1]
       CONTACTmatrix$type2 <- agents[CONTACTmatrix$type2 + 1]
 
@@ -6056,19 +6037,20 @@ server <- function(input, output, session) {
         group_by(type2, type1, Folder) %>%
         summarise(
           Mean = mean(contacts),
-          Sd = sd(contacts)
+          Sd = sd(contacts),
+          .groups = "drop"
         )
 
       # Count the number of unique meetings per hour
       C_COUNTERS <- postprocObjects$CONTACT_std %>%
         mutate(hour = ceiling((time * step) / (60 * 60))) %>% # Convert time to hourly bins
         group_by(CanvasID, Name, area, type, Folder, hour, ID) %>%
-        summarise(contact_counts = n())
+        summarise(contact_counts = n(), .groups = "drop")
 
       A_COUNTERS <- postprocObjects$AEROSOL_std %>%
         mutate(hour = ceiling((time * step) / (60 * 60))) %>%
         group_by(CanvasID, Name, area, type, Folder, hour, ID) %>%
-        summarize(virus_concentration = mean(virus_concentration))
+        summarize(virus_concentration = mean(virus_concentration), .groups = "drop")
 
       A_C_COUNTERS <- merge(C_COUNTERS, A_COUNTERS, all = T)
 
@@ -6080,9 +6062,6 @@ server <- function(input, output, session) {
         session = session, inputId = "Room_Counters_A_C_selectize",
         choices = c("", rooms), selected = ""
       )
-
-      #####
-      postprocObjects$FLAGmodelLoaded <- FALSE
 
       # Set default values for 2D visualization: show average cumulative aerosol
       updateSelectInput(session, "visualColor_select", selected = "CumulAerosol")
@@ -6111,7 +6090,6 @@ server <- function(input, output, session) {
     })
 
     remove_modal_spinner()
-    showElement("DownloadPostProc_Button")
   })
 
   observe({
@@ -6267,6 +6245,13 @@ server <- function(input, output, session) {
       # Store full simulation log for enhanced disease evolution plot
       postprocObjects$simulation_log_full <- simulation_log
     })
+  })
+
+  # Enable and show DownloadPostProc_Button once simulation log is ready
+  observe({
+    req(postprocObjects$simulation_log_full)
+    showElement("DownloadPostProc_Button")
+    enable("DownloadPostProc_Button")
   })
 
   ##### Disease State Evolution - Enhanced Visualization #####
@@ -7654,150 +7639,185 @@ server <- function(input, output, session) {
       paste0("PostProcData_filtered_", Sys.Date(), ".zip")
     },
     content = function(file) {
-      AEROSOL_std <- postprocObjects$AEROSOL_std
-      CONTACT_std <- postprocObjects$CONTACT_std
-      CONTACTmatrix <- postprocObjects$CONTACTmatrix
-      COUNTERScsv <- postprocObjects$COUNTERScsv
-      Mapping <- postprocObjects$Mapping
       simulation_log <- postprocObjects$simulation_log_full
 
-      if (is.null(simulation_log)) {
+      if (is.null(simulation_log) || nrow(simulation_log) == 0) {
         showNotification("No simulation data loaded.", type = "error")
         return(NULL)
       }
 
       show_modal_spinner()
 
-      temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
-      dir.create(temp_directory)
+      temp_directory <- file.path(tempdir(), paste0("postproc_export_", as.integer(Sys.time())))
+      dir.create(temp_directory, recursive = TRUE, showWarnings = FALSE)
 
-      # Apply filters based on Disease Evolution settings
-      selected_sims <- input$diseaseEvol_simulation
-      selected_rooms <- input$diseaseEvol_room
-      selected_agents <- input$diseaseEvol_agentType
-      selected_floors <- input$diseaseEvol_floor
-      selected_states <- input$diseaseEvol_states
+      on.exit({
+        remove_modal_spinner()
+        unlink(temp_directory, recursive = TRUE)
+      }, add = TRUE)
 
-      # Filter simulation log
-      sim_data_filtered <- simulation_log
+      tryCatch({
+        AEROSOL_std <- postprocObjects$AEROSOL_std
+        CONTACT_std <- postprocObjects$CONTACT_std
+        CONTACTmatrix <- postprocObjects$CONTACTmatrix
+        COUNTERScsv <- postprocObjects$COUNTERScsv
+        Mapping <- postprocObjects$Mapping
 
-      # Filter by simulation/folder
-      if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
-        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(Folder %in% selected_sims)
-      }
+        # Apply filters based on Disease Evolution settings
+        selected_sims <- input$diseaseEvol_simulation
+        selected_rooms <- input$diseaseEvol_room
+        selected_agents <- input$diseaseEvol_agentType
+        selected_floors <- input$diseaseEvol_floor
+        selected_states <- input$diseaseEvol_states
 
-      # Filter by room
-      if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
-        Mapping_with_id <- Mapping %>%
-          dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
-        selected_room_ids <- Mapping_with_id %>%
-          dplyr::filter(RoomID %in% selected_rooms) %>%
-          dplyr::pull(ID) %>%
-          unique()
-        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(room_id %in% selected_room_ids)
-      }
+        # Filter simulation log
+        sim_data_filtered <- simulation_log
 
-      # Filter by agent type
-      if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
-        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(agent_type %in% selected_agents)
-      }
-
-      # Filter by floor
-      if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
-        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
-      }
-
-      # Filter by disease state
-      if (!is.null(selected_states) && !"All" %in% selected_states && length(selected_states) > 0) {
-        sim_data_filtered <- sim_data_filtered %>% dplyr::filter(disease_state %in% selected_states)
-      }
-
-      # Save filtered simulation log
-      file_name <- glue("SIMULATION_LOG_filtered.RDs")
-      saveRDS(sim_data_filtered, file = file.path(temp_directory, file_name))
-
-      # Also save as CSV for easier access
-      file_name <- glue("SIMULATION_LOG_filtered.csv")
-      write.csv(sim_data_filtered, file = file.path(temp_directory, file_name), row.names = FALSE)
-
-      # Filter AEROSOL data
-      if (!is.null(AEROSOL_std) && nrow(AEROSOL_std) > 0) {
-        AEROSOL_filtered <- AEROSOL_std
+        # Filter by simulation/folder
         if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
-          AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(Folder %in% selected_sims)
+          sim_data_filtered <- sim_data_filtered %>% dplyr::filter(Folder %in% selected_sims)
         }
-        if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
-          AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
-        }
+
+        # Filter by room
         if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
-          Mapping_with_id <- Mapping %>%
-            dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
-          selected_room_names <- Mapping_with_id %>%
-            dplyr::filter(RoomID %in% selected_rooms) %>%
-            dplyr::select(Name, type, area) %>%
-            dplyr::distinct()
-          AEROSOL_filtered <- AEROSOL_filtered %>%
-            dplyr::semi_join(selected_room_names, by = c("Name", "type", "area"))
+          if (!is.null(Mapping) && all(c("Name", "type", "area", "ID") %in% names(Mapping))) {
+            Mapping_with_id <- Mapping %>%
+              dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+            selected_room_ids <- Mapping_with_id %>%
+              dplyr::filter(RoomID %in% selected_rooms) %>%
+              dplyr::pull(ID) %>%
+              unique()
+            if (length(selected_room_ids) > 0) {
+              sim_data_filtered <- sim_data_filtered %>% dplyr::filter(room_id %in% selected_room_ids)
+            }
+          }
         }
-        saveRDS(AEROSOL_filtered, file = file.path(temp_directory, "AEROSOL_filtered.RDs"))
-        write.csv(AEROSOL_filtered, file = file.path(temp_directory, "AEROSOL_filtered.csv"), row.names = FALSE)
-      }
 
-      # Filter CONTACT data
-      if (!is.null(CONTACT_std) && nrow(CONTACT_std) > 0) {
-        CONTACT_filtered <- CONTACT_std
-        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
-          CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(Folder %in% selected_sims)
-        }
-        if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
-          CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
-        }
-        saveRDS(CONTACT_filtered, file = file.path(temp_directory, "CONTACT_filtered.RDs"))
-        write.csv(CONTACT_filtered, file = file.path(temp_directory, "CONTACT_filtered.csv"), row.names = FALSE)
-      }
-
-      # Filter CONTACT matrix
-      if (!is.null(CONTACTmatrix) && nrow(CONTACTmatrix) > 0) {
-        CONTACTmatrix_filtered <- CONTACTmatrix
-        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
-          CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>% dplyr::filter(Folder %in% selected_sims)
-        }
+        # Filter by agent type
         if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
-          CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>%
-            dplyr::filter(agent_type_1 %in% selected_agents | agent_type_2 %in% selected_agents)
+          sim_data_filtered <- sim_data_filtered %>% dplyr::filter(agent_type %in% selected_agents)
         }
-        saveRDS(CONTACTmatrix_filtered, file = file.path(temp_directory, "CONTACT_MATRIX_filtered.RDs"))
-        write.csv(CONTACTmatrix_filtered, file = file.path(temp_directory, "CONTACT_MATRIX_filtered.csv"), row.names = FALSE)
-      }
 
-      # Filter COUNTERS data
-      if (!is.null(COUNTERScsv) && nrow(COUNTERScsv) > 0) {
-        COUNTERS_filtered <- COUNTERScsv
-        if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
-          COUNTERS_filtered <- COUNTERS_filtered %>% dplyr::filter(Folder %in% selected_sims)
+        # Filter by floor
+        if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+          sim_data_filtered <- sim_data_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
         }
-        saveRDS(COUNTERS_filtered, file = file.path(temp_directory, "COUNTERS_filtered.RDs"))
-        write.csv(COUNTERS_filtered, file = file.path(temp_directory, "COUNTERS_filtered.csv"), row.names = FALSE)
-      }
 
-      # Save filter metadata
-      filter_info <- list(
-        simulations = selected_sims,
-        rooms = selected_rooms,
-        agent_types = selected_agents,
-        floors = selected_floors,
-        disease_states = selected_states,
-        download_date = Sys.time()
-      )
-      saveRDS(filter_info, file = file.path(temp_directory, "FILTER_INFO.RDs"))
+        # Filter by disease state
+        if (!is.null(selected_states) && !"All" %in% selected_states && length(selected_states) > 0) {
+          sim_data_filtered <- sim_data_filtered %>% dplyr::filter(disease_state %in% selected_states)
+        }
 
-      zip::zip(
-        zipfile = file,
-        files = dir(temp_directory),
-        root = temp_directory
-      )
+        # Save filtered simulation log
+        file_name <- glue("SIMULATION_LOG_filtered.RDs")
+        saveRDS(sim_data_filtered, file = file.path(temp_directory, file_name))
 
-      remove_modal_spinner()
+        # Also save as CSV for easier access
+        file_name <- glue("SIMULATION_LOG_filtered.csv")
+        write.csv(sim_data_filtered, file = file.path(temp_directory, file_name), row.names = FALSE)
+
+        # Filter AEROSOL data
+        if (!is.null(AEROSOL_std) && nrow(AEROSOL_std) > 0) {
+          AEROSOL_filtered <- AEROSOL_std
+          if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+            AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(Folder %in% selected_sims)
+          }
+          if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+            AEROSOL_filtered <- AEROSOL_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
+          }
+          if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
+            if (!is.null(Mapping) && all(c("Name", "type", "area") %in% names(Mapping))) {
+              Mapping_with_id <- Mapping %>%
+                dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+              selected_room_names <- Mapping_with_id %>%
+                dplyr::filter(RoomID %in% selected_rooms) %>%
+                dplyr::select(Name, type, area) %>%
+                dplyr::distinct()
+              AEROSOL_filtered <- AEROSOL_filtered %>%
+                dplyr::semi_join(selected_room_names, by = c("Name", "type", "area"))
+            }
+          }
+          saveRDS(AEROSOL_filtered, file = file.path(temp_directory, "AEROSOL_filtered.RDs"))
+          write.csv(AEROSOL_filtered, file = file.path(temp_directory, "AEROSOL_filtered.csv"), row.names = FALSE)
+        }
+
+        # Filter CONTACT data
+        if (!is.null(CONTACT_std) && nrow(CONTACT_std) > 0) {
+          CONTACT_filtered <- CONTACT_std
+          if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+            CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(Folder %in% selected_sims)
+          }
+          if (!is.null(selected_floors) && !"All" %in% selected_floors && length(selected_floors) > 0) {
+            CONTACT_filtered <- CONTACT_filtered %>% dplyr::filter(CanvasID %in% selected_floors)
+          }
+          if (!is.null(selected_rooms) && !"All" %in% selected_rooms && length(selected_rooms) > 0) {
+            if (!is.null(Mapping) && all(c("Name", "type", "area") %in% names(Mapping))) {
+              Mapping_with_id <- Mapping %>%
+                dplyr::mutate(RoomID = paste0(Name, " (", type, " - ", area, ")"))
+              selected_room_names <- Mapping_with_id %>%
+                dplyr::filter(RoomID %in% selected_rooms) %>%
+                dplyr::select(Name, type, area) %>%
+                dplyr::distinct()
+              CONTACT_filtered <- CONTACT_filtered %>%
+                dplyr::semi_join(selected_room_names, by = c("Name", "type", "area"))
+            }
+          }
+          if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
+            CONTACT_filtered <- CONTACT_filtered %>%
+              dplyr::filter(agent_id1 %in% selected_agents | agent_id2 %in% selected_agents)
+          }
+          saveRDS(CONTACT_filtered, file = file.path(temp_directory, "CONTACT_filtered.RDs"))
+          write.csv(CONTACT_filtered, file = file.path(temp_directory, "CONTACT_filtered.csv"), row.names = FALSE)
+        }
+
+        # Filter CONTACT matrix
+        if (!is.null(CONTACTmatrix) && nrow(CONTACTmatrix) > 0) {
+          CONTACTmatrix_filtered <- CONTACTmatrix
+          if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+            CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>% dplyr::filter(Folder %in% selected_sims)
+          }
+          if (!is.null(selected_agents) && !"All" %in% selected_agents && length(selected_agents) > 0) {
+            CONTACTmatrix_filtered <- CONTACTmatrix_filtered %>%
+              dplyr::filter(type1 %in% selected_agents | type2 %in% selected_agents)
+          }
+          saveRDS(CONTACTmatrix_filtered, file = file.path(temp_directory, "CONTACT_MATRIX_filtered.RDs"))
+          write.csv(CONTACTmatrix_filtered, file = file.path(temp_directory, "CONTACT_MATRIX_filtered.csv"), row.names = FALSE)
+        }
+
+        # Filter COUNTERS data
+        if (!is.null(COUNTERScsv) && nrow(COUNTERScsv) > 0) {
+          COUNTERS_filtered <- COUNTERScsv
+          if (!is.null(selected_sims) && !"All" %in% selected_sims && length(selected_sims) > 0) {
+            COUNTERS_filtered <- COUNTERS_filtered %>% dplyr::filter(Folder %in% selected_sims)
+          }
+          saveRDS(COUNTERS_filtered, file = file.path(temp_directory, "COUNTERS_filtered.RDs"))
+          write.csv(COUNTERS_filtered, file = file.path(temp_directory, "COUNTERS_filtered.csv"), row.names = FALSE)
+        }
+
+        # Save filter metadata
+        filter_info <- list(
+          simulations = selected_sims,
+          rooms = selected_rooms,
+          agent_types = selected_agents,
+          floors = selected_floors,
+          disease_states = selected_states,
+          download_date = Sys.time()
+        )
+        saveRDS(filter_info, file = file.path(temp_directory, "FILTER_INFO.RDs"))
+
+        files_to_zip <- dir(temp_directory)
+        if (length(files_to_zip) > 0) {
+          zip::zip(
+            zipfile = normalizePath(file, winslash = "/", mustWork = FALSE),
+            files = files_to_zip,
+            root = temp_directory
+          )
+        } else {
+          showNotification("No data matched the selected filters to download.", type = "warning")
+        }
+      }, error = function(e) {
+        showNotification(paste("Error creating download:", e$message), type = "error")
+      })
     },
     contentType = "application/zip"
   )
