@@ -190,6 +190,7 @@ CanvasToMatrix = function(canvasObjects,FullRoom = FALSE,canvas){
                         nrow = canvasObjects$canvasDimension$canvasHeight/10,
                         ncol = canvasObjects$canvasDimension$canvasWidth/10)
   masked_cells <- matrix(FALSE, nrow = nrow(matrixCanvas), ncol = ncol(matrixCanvas))
+  rooms <- NULL
 
   doors <- sync_room_doors(canvasObjects$doorsINcanvas, canvasObjects$roomsINcanvas)
 
@@ -258,6 +259,13 @@ CanvasToMatrix = function(canvasObjects,FullRoom = FALSE,canvas){
     # A neighbouring wall door can open an adjacent cell occupied by a freely
     # positioned imported door. Door cells have final precedence.
     matrixCanvas[cbind(doors$y[valid_doors], doors$x[valid_doors])] <- 2
+    if (identical(FullRoom, "NoInterior") && !is.null(rooms)) {
+      internal_rooms <- rooms$ID[rooms$containerID != rooms$ID]
+      internal_doors <- valid_doors & doors$ownerRoomID %in% internal_rooms
+      if (any(internal_doors)) {
+        matrixCanvas[cbind(doors$y[internal_doors], doors$x[internal_doors])] <- 0
+      }
+    }
   }
 
   if(!is.null(canvasObjects$nodesINcanvas)){
@@ -537,6 +545,33 @@ room_object_overlap_message <- function(rooms, room_objects, changed_room_ids) {
          ". Check the room layouts and reposition any affected objects.")
 }
 
+add_room_containment_metadata <- function(rooms) {
+  if (is.null(rooms) || !nrow(rooms)) return(rooms)
+  rooms$containerID <- as.integer(rooms$ID)
+  rooms$containedRooms <- 0L
+  for (canvas in unique(rooms$CanvasID)) {
+    indices <- which(rooms$CanvasID == canvas)
+    left <- rooms$x[indices]
+    top <- rooms$y[indices]
+    right <- left + ceiling(rooms$l[indices]) + 1
+    bottom <- top + ceiling(rooms$w[indices]) + 1
+    contains <- outer(left, left, `<=`) & outer(top, top, `<=`) &
+      outer(right, right, `>=`) & outer(bottom, bottom, `>=`)
+    strict <- outer(left, left, `!=`) | outer(top, top, `!=`) |
+      outer(right, right, `!=`) | outer(bottom, bottom, `!=`)
+    contains <- contains & strict
+    rooms$containedRooms[indices] <- as.integer(rowSums(contains))
+    footprint <- (right - left + 1) * (bottom - top + 1)
+    for (j in seq_along(indices)) {
+      containers <- which(contains[, j])
+      if (!length(containers)) next
+      outermost <- containers[order(-footprint[containers], rooms$ID[indices][containers])[1]]
+      rooms$containerID[indices[j]] <- as.integer(rooms$ID[indices[outermost]])
+    }
+  }
+  rooms
+}
+
 normalize_canvas_rooms <- function(rooms) {
   if (is.null(rooms) || !nrow(rooms)) return(rooms)
   if (!"z_index" %in% names(rooms)) {
@@ -545,18 +580,12 @@ normalize_canvas_rooms <- function(rooms) {
   if (any(!is.finite(rooms$z_index))) stop("Invalid room drawing order.")
   for (i in seq_len(nrow(rooms))) {
     r <- rooms[i, ]
-    mask <- room_interior_mask(r, rooms)
-    cells <- which(mask, arr.ind = TRUE)
-    if (!nrow(cells)) next
-    cx <- r$center_x - r$x
-    cy <- r$center_y - r$y
-    if (length(cx) != 1 || !is.finite(cx)) cx <- (ceiling(r$l) + 1) / 2
-    if (length(cy) != 1 || !is.finite(cy)) cy <- (ceiling(r$w) + 1) / 2
-    nearest <- which.min((cells[, 2] - cx)^2 + (cells[, 1] - cy)^2)
-    rooms$center_x[i] <- r$x + cells[nearest, 2]
-    rooms$center_y[i] <- r$y + cells[nearest, 1]
+    # The room centre describes its geometry and remains fixed even when that
+    # cell is covered by another room.
+    rooms$center_x[i] <- r$x + floor((ceiling(r$l) + 1) / 2)
+    rooms$center_y[i] <- r$y + floor((ceiling(r$w) + 1) / 2)
   }
-  rooms
+  add_room_containment_metadata(rooms)
 }
 
 normalize_room_doors <- function(model) {
@@ -683,7 +712,6 @@ CanvasRoomToMatrix = function(canvasObjects, FullRoom = FALSE, canvas){
       room <- rooms[i, , drop = FALSE]
       matrixCanvas <- base_matrices[[i]]
       occupied <- which(!room_interior_mask(room, rooms), arr.ind = TRUE)
-      if (nrow(occupied)) matrixCanvas[occupied + 1] <- 0
       room_doors <- doors[doors$roomID == room$ID, , drop = FALSE]
       if (nrow(room_doors)) {
         local_y <- room_doors$y - room$y + 1
@@ -692,6 +720,8 @@ CanvasRoomToMatrix = function(canvasObjects, FullRoom = FALSE, canvas){
           local_y >= 1 & local_y <= nrow(matrixCanvas)
         matrixCanvas[cbind(local_y[valid], local_x[valid])] <- 2
       }
+      # Apply the mask last so doors of nested rooms cannot reopen obstacles.
+      if (nrow(occupied)) matrixCanvas[occupied + 1] <- 0
       matrixCanvas
     })
   } else {

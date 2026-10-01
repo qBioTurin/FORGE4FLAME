@@ -14,6 +14,12 @@
 #'   report is always included in the returned model's `floorplan_import` attribute.
 #'
 #' @return Invisibly, an F4F model list, also saved if `output_file` is supplied.
+#'   `roomsINcanvas$containerID` identifies the outermost room containing each
+#'   room, or the room's own ID when it has no container. The
+#'   `roomsINcanvas$containedRooms` column counts every fully contained room,
+#'   including rooms nested at deeper levels.
+#'   `center_x` and `center_y` identify the room's geometric centre, even when
+#'   that cell is covered by another room.
 #'   `attr(model, "floorplan_import")` contains the source data, scale, room and
 #'   door mappings, overlaps and source shared doors that could not remain shared.
 #' @details
@@ -23,21 +29,16 @@
 #' ring: x/y identify the top-left wall, and the opposite walls are x+l+1/y+w+1.
 #' Shared-door memberships use the same global x/y cell.
 #' Rooms that collapse at this scale are rejected.
-#' Doors of rooms that were rectangular in the source are projected onto the
-#' nearest rectangle border. For a room converted from a non-rectangular polygon,
-#' each door keeps its original transformed coordinate inside the bounding
-#' rectangle. All coordinates are snapped to F4F's one-metre grid. Doors
-#' collapsing to the same cell are merged and reported.
-#' A room with at least one door is omitted when all of its doors are internal
-#' after this conversion. Its doors are omitted as well and recorded in the
-#' import report.
+#' Every door is projected onto the nearest wall of the generated rectangle,
+#' including doors from non-rectangular source rooms. All coordinates are
+#' snapped to F4F's one-metre grid. Doors collapsing to the same cell are
+#' merged and reported.
 #'
 #' Identical source door coordinates in two rooms identify a candidate shared
-#' door. For rectangular source rooms, its two rows share an ID only if the
-#' resulting rectangles have opposing, touching walls at that door cell. A door
-#' retained from a non-rectangular room can instead be linked at its unchanged
-#' coordinate. Otherwise the entries remain separate and the report identifies
-#' the lost connection. Bounding rectangles may overlap;
+#' door. When both projections are within five metres of opposing walls, those
+#' walls are aligned to one grid coordinate and the door is stored as one
+#' physical opening with two room memberships. Otherwise the entries remain
+#' separate and the report identifies the lost connection. Bounding rectangles may overlap;
 #' these overlaps are reported, not silently repaired. Review the imported plan
 #' before configuring agents, a Spawnroom and the remaining simulation settings.
 #' Requires the F4F version with the separate `doorsINcanvas` table.
@@ -161,56 +162,102 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
     for (entry in entries) {
       point <- xy(entry, paste("door of room", ids[i]))
       p <- transform_xy(point)
-      if (!rectangular[i]) {
-        # The room itself is approximated by a bounding rectangle, but moving
-        # its doors to that artificial border would alter the source geometry.
-        position <- round(p)
-        natural_sides <- character()
-        natural_offsets <- integer()
-        if (position[2] == top[i] && position[1] > left[i] && position[1] <= right[i]) {
-          natural_sides <- c(natural_sides, "top")
-          natural_offsets <- c(natural_offsets, position[1] - left[i])
-        }
-        if (position[2] == bottom[i] + 1 && position[1] > left[i] && position[1] <= right[i]) {
-          natural_sides <- c(natural_sides, "bottom")
-          natural_offsets <- c(natural_offsets, position[1] - left[i])
-        }
-        if (position[1] == left[i] && position[2] > top[i] && position[2] <= bottom[i]) {
-          natural_sides <- c(natural_sides, "left")
-          natural_offsets <- c(natural_offsets, position[2] - top[i])
-        }
-        if (position[1] == right[i] + 1 && position[2] > top[i] && position[2] <= bottom[i]) {
-          natural_sides <- c(natural_sides, "right")
-          natural_offsets <- c(natural_offsets, position[2] - top[i])
-        }
-        if (length(natural_sides)) {
-          side <- natural_sides[1]
-          offset <- natural_offsets[1]
-        } else {
-          side <- "interior"
-          offset <- NA_integer_
-        }
-        distances <- rep(0, max(1L, length(natural_sides)))
-      } else {
-        clamped_x <- max(left[i], min(right[i] + 1, p[1]))
-        clamped_y <- max(top[i], min(bottom[i] + 1, p[2]))
-        candidates <- rbind(top = c(clamped_x, top[i]), bottom = c(clamped_x, bottom[i] + 1),
-                            left = c(left[i], clamped_y), right = c(right[i] + 1, clamped_y))
-        distances <- rowSums(sweep(candidates, 2, p, "-")^2)
-        side <- names(which.min(distances))
-        horizontal <- side %in% c("top", "bottom")
-        along <- if (horizontal) p[1] - left[i] else p[2] - top[i]
-        offset <- max(1, min(if (horizontal) rooms$l[i] else rooms$w[i], floor(along + 0.5)))
-        position <- c(if (horizontal) left[i] + offset else if (side == "right") right[i] + 1 else left[i],
-                      if (!horizontal) top[i] + offset else if (side == "bottom") bottom[i] + 1 else top[i])
-      }
+      # The canvas represents every polygon as its bounding rectangle, so each
+      # imported door must be placed on one of that rectangle's actual walls.
+      clamped_x <- max(left[i], min(right[i] + 1, p[1]))
+      clamped_y <- max(top[i], min(bottom[i] + 1, p[2]))
+      candidates <- rbind(top = c(clamped_x, top[i]), bottom = c(clamped_x, bottom[i] + 1),
+                          left = c(left[i], clamped_y), right = c(right[i] + 1, clamped_y))
+      distances <- rowSums(sweep(candidates, 2, p, "-")^2)
+      side <- names(which.min(distances))
+      horizontal <- side %in% c("top", "bottom")
+      along <- if (horizontal) p[1] - left[i] else p[2] - top[i]
+      offset <- max(1, min(if (horizontal) rooms$l[i] else rooms$w[i], floor(along + 0.5)))
+      position <- c(if (horizontal) left[i] + offset else if (side == "right") right[i] + 1 else left[i],
+                    if (!horizontal) top[i] + offset else if (side == "bottom") bottom[i] + 1 else top[i])
       door_map <- rbind(door_map, data.frame(roomID = ids[i], source_x = point[1], source_y = point[2],
                                              side = side, offset = offset, projected_x = position[1], projected_y = position[2],
                                              distance_m = sqrt(sum((p - position)^2)),
-                                             ambiguous_side = if (rectangular[i]) {
-                                               sum(abs(distances - min(distances)) < 1e-10) > 1
-                                             } else length(natural_sides) > 1,
+                                             ambiguous_side = sum(abs(distances - min(distances)) < 1e-10) > 1,
                                              row.names = NULL))
+    }
+  }
+  source_keys <- paste(sprintf("%.17g", door_map$source_x),
+                       sprintf("%.17g", door_map$source_y), sep = ":")
+  door_map$source_door_id <- match(source_keys, unique(source_keys))
+
+  # Source polygons often describe the two faces of a thick wall, leaving the
+  # generated room walls a few cells apart. Align nearby opposing walls so a
+  # source door shared by two rooms becomes one physical canvas opening.
+  opposite <- c(top = "bottom", bottom = "top", left = "right", right = "left")
+  shared_edges <- list()
+  for (source_id in unique(door_map$source_door_id)) {
+    pair <- which(door_map$source_door_id == source_id)
+    if (length(pair) != 2 || length(unique(door_map$roomID[pair])) != 2) next
+    a <- door_map[pair[1], ]
+    b <- door_map[pair[2], ]
+    compatible <- !is.na(opposite[a$side]) && opposite[a$side] == b$side
+    nearby <- all(door_map$distance_m[pair] <= 5)
+    if (compatible && nearby) {
+      shared_edges[[length(shared_edges) + 1L]] <- data.frame(
+        node1 = paste(a$roomID, a$side, sep = ":"),
+        node2 = paste(b$roomID, b$side, sep = ":"), stringsAsFactors = FALSE)
+    }
+  }
+  if (length(shared_edges)) {
+    edges <- do.call(rbind, shared_edges)
+    remaining <- unique(c(edges$node1, edges$node2))
+    while (length(remaining)) {
+      component <- remaining[1]
+      repeat {
+        connected <- edges$node1 %in% component | edges$node2 %in% component
+        expanded <- unique(c(component, edges$node1[connected], edges$node2[connected]))
+        if (length(expanded) == length(component)) break
+        component <- expanded
+      }
+      wall_coordinates <- vapply(component, function(node) {
+        parts <- strsplit(node, ":", fixed = TRUE)[[1]]
+        room_index <- match(as.integer(parts[1]), rooms$ID)
+        switch(parts[2], left = left[room_index], right = right[room_index] + 1,
+               top = top[room_index], bottom = bottom[room_index] + 1)
+      }, numeric(1))
+      shared_coordinate <- round(mean(wall_coordinates))
+      for (node in component) {
+        parts <- strsplit(node, ":", fixed = TRUE)[[1]]
+        room_index <- match(as.integer(parts[1]), rooms$ID)
+        if (parts[2] == "left") left[room_index] <- shared_coordinate
+        if (parts[2] == "right") right[room_index] <- shared_coordinate - 1
+        if (parts[2] == "top") top[room_index] <- shared_coordinate
+        if (parts[2] == "bottom") bottom[room_index] <- shared_coordinate - 1
+      }
+      remaining <- setdiff(remaining, component)
+    }
+    if (any(right <= left | bottom <= top)) {
+      fail("Aligning shared doors collapses one or more rooms at the selected scale.")
+    }
+    rooms$x <- left
+    rooms$y <- top
+    rooms$l <- right - left
+    rooms$w <- bottom - top
+    rooms$center_x <- pmax(left + 1, pmin(right, rooms$center_x))
+    rooms$center_y <- pmax(top + 1, pmin(bottom, rooms$center_y))
+
+    # Reproject every door because aligning one wall changes the room rectangle.
+    for (i in seq_len(nrow(door_map))) {
+      room_index <- match(door_map$roomID[i], rooms$ID)
+      p <- transform_xy(c(x = door_map$source_x[i], y = door_map$source_y[i]))
+      horizontal <- door_map$side[i] %in% c("top", "bottom")
+      along <- if (horizontal) p[1] - left[room_index] else p[2] - top[room_index]
+      door_map$offset[i] <- max(1, min(if (horizontal) rooms$l[room_index] else rooms$w[room_index],
+                                      floor(along + 0.5)))
+      door_map$projected_x[i] <- if (horizontal) left[room_index] + door_map$offset[i] else {
+        if (door_map$side[i] == "right") right[room_index] + 1 else left[room_index]
+      }
+      door_map$projected_y[i] <- if (!horizontal) top[room_index] + door_map$offset[i] else {
+        if (door_map$side[i] == "bottom") bottom[room_index] + 1 else top[room_index]
+      }
+      door_map$distance_m[i] <- sqrt((p[1] - door_map$projected_x[i])^2 +
+                                     (p[2] - door_map$projected_y[i])^2)
     }
   }
   removed_room_ids <- ids[vapply(ids, function(id) {
@@ -218,18 +265,15 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
     nrow(room_doors) > 0 && all(room_doors$side == "interior")
   }, logical(1))]
   discarded_doors <- door_map[door_map$roomID %in% removed_room_ids, , drop = FALSE]
-  if (length(removed_room_ids)) {
-    door_map <- door_map[!door_map$roomID %in% removed_room_ids, , drop = FALSE]
-    rooms <- rooms[!rooms$ID %in% removed_room_ids, , drop = FALSE]
-  }
+  # if (length(removed_room_ids)) {
+  #   door_map <- door_map[!door_map$roomID %in% removed_room_ids, , drop = FALSE]
+  #   rooms <- rooms[!rooms$ID %in% removed_room_ids, , drop = FALSE]
+  # }
   if (!nrow(rooms)) fail("All rooms were removed because they contain only internal doors.")
 
-  source_keys <- paste(sprintf("%.17g", door_map$source_x), sprintf("%.17g", door_map$source_y), sep = ":")
-  door_map$source_door_id <- match(source_keys, unique(source_keys))
   cells <- paste(door_map$roomID, door_map$projected_x, door_map$projected_y, sep = ":")
   door_map$doorID <- match(cells, unique(cells))
   door_map$merged <- duplicated(cells)
-  opposite <- c(top = "bottom", bottom = "top", left = "right", right = "left")
   for (key in unique(source_keys)) {
     pair <- which(source_keys == key)
     pair <- pair[!duplicated(cells[pair])]
@@ -271,6 +315,7 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
     fail("The selected scale needs more than 10 million canvas cells. Increase units_per_metre.")
   }
   model <- .f4f_floorplan_defaults()
+  rooms <- .f4f_normalize_room_centres(.f4f_add_room_containment_metadata(rooms))
   model$rooms <- rooms[, c("Name", "typeID", "type", "w", "l", "h", "colorFill")]
   names(model$rooms)[2] <- "ID"
   model$roomsINcanvas <- rooms
@@ -280,7 +325,7 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
   model$matrixCanvas <- matrix(0, nrow = canvas_h, ncol = canvas_w)
   model$selectedId <- rooms$ID[1]
   issues <- character()
-  if (length(removed_room_ids)) issues <- c(issues, paste("Rooms removed because they contain only internal doors:",
+  if (length(removed_room_ids)) issues <- c(issues, paste("Rooms containing only internal doors:",
                                                           paste(removed_room_ids, collapse = ", ")))
   retained_rectangularized <- ids[!rectangular & !ids %in% removed_room_ids]
   if (length(retained_rectangularized)) issues <- c(issues, paste("Bounding rectangles used for rooms:",
@@ -305,6 +350,43 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
   invisible(model)
 }
 
+.f4f_add_room_containment_metadata <- function(rooms) {
+  if (is.null(rooms) || !nrow(rooms)) return(rooms)
+  rooms$containerID <- as.integer(rooms$ID)
+  rooms$containedRooms <- 0L
+  for (canvas in unique(rooms$CanvasID)) {
+    indices <- which(rooms$CanvasID == canvas)
+    left <- rooms$x[indices]
+    top <- rooms$y[indices]
+    right <- left + ceiling(rooms$l[indices]) + 1
+    bottom <- top + ceiling(rooms$w[indices]) + 1
+    contains <- outer(left, left, `<=`) & outer(top, top, `<=`) &
+      outer(right, right, `>=`) & outer(bottom, bottom, `>=`)
+    strict <- outer(left, left, `!=`) | outer(top, top, `!=`) |
+      outer(right, right, `!=`) | outer(bottom, bottom, `!=`)
+    contains <- contains & strict
+    rooms$containedRooms[indices] <- as.integer(rowSums(contains))
+    footprint <- (right - left + 1) * (bottom - top + 1)
+    for (j in seq_along(indices)) {
+      containers <- which(contains[, j])
+      if (!length(containers)) next
+      outermost <- containers[order(-footprint[containers], rooms$ID[indices][containers])[1]]
+      rooms$containerID[indices[j]] <- as.integer(rooms$ID[indices[outermost]])
+    }
+  }
+  rooms
+}
+
+.f4f_normalize_room_centres <- function(rooms) {
+  if (is.null(rooms) || !nrow(rooms)) return(rooms)
+  for (i in seq_len(nrow(rooms))) {
+    room <- rooms[i, , drop = FALSE]
+    rooms$center_x[i] <- room$x + floor((ceiling(room$l) + 1) / 2)
+    rooms$center_y[i] <- room$y + floor((ceiling(room$w) + 1) / 2)
+  }
+  rooms
+}
+
 .f4f_floorplan_defaults <- function() {
   list(rooms = NULL, roomsINcanvas = NULL, doorsINcanvas = NULL,
        nodesINcanvas = NULL, pathINcanvas = NULL,
@@ -318,7 +400,7 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
        agent_resource_links_df = data.frame(agent_id = character(), agent_name = character(),
                                             room = character(), object = character(), has_access = logical(), concurrent_usage = numeric()),
        color = "Room", matricesCanvas = NULL,
-       starting = data.frame(seed = NA, simulation_days = 10, day = "Monday", time = "00:00", step = 60, nrun = 100, prun = 10),
+       starting = data.frame(seed = 1234, simulation_days = 10, day = "Monday", time = "00:00", step = 60, nrun = 100, prun = 10),
        rooms_whatif = data.frame(Measure = character(), Type = character(), Parameters = character(), From = numeric(), To = numeric()),
        agents_whatif = data.frame(Measure = character(), Type = character(), Parameters = character(), From = numeric(), To = numeric()),
        initial_infected = data.frame(Type = character(), Number = numeric()), outside_contagion = NULL,

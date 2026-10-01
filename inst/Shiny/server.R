@@ -1077,6 +1077,8 @@ server <- function(input, output, session) {
           w = width, l = length, h = height,
           object_rotation = rotation,
           z_index = max(c(0, canvasObjects$roomsINcanvas$z_index)) + 1,
+          containerID = NA_integer_,
+          containedRooms = 0L,
           Name = roomSelected$Name,
           colorFill = room_color_display,
           colorFillBase = room_color_base,
@@ -2086,6 +2088,7 @@ server <- function(input, output, session) {
       temp_directory <- file.path(tempdir(), as.integer(Sys.time()))
       dir.create(temp_directory)
 
+      canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
       canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
       model <- reactiveValuesToList(canvasObjects)
@@ -2126,6 +2129,7 @@ server <- function(input, output, session) {
   observeEvent(input$save_text, {
     removeModal()
 
+    canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
     canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
     postprocObjects$simulation_log <- NULL
@@ -9673,6 +9677,7 @@ server <- function(input, output, session) {
 
     pathResults <- parseDirPath(vols_dir_results, input$dir_results)
 
+    canvasObjects$roomsINcanvas <- normalize_canvas_rooms(canvasObjects$roomsINcanvas)
     canvasObjects$matricesCanvas <- CanvasMatrices(canvasObjects)
 
     postprocObjects$simulation_log_folder <- NULL
