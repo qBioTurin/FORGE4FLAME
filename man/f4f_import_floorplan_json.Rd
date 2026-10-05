@@ -36,6 +36,12 @@ report is always included in the returned model's \code{floorplan_import} attrib
 }
 \value{
 Invisibly, an F4F model list, also saved if \code{output_file} is supplied.
+\code{roomsINcanvas$containerID} identifies the outermost room containing each
+room, or the room's own ID when it has no container. The
+\code{roomsINcanvas$containedRooms} column counts every fully contained room,
+including rooms nested at deeper levels.
+\code{center_x} and \code{center_y} identify the room's geometric centre, even when
+that cell is covered by another room.
 \code{attr(model, "floorplan_import")} contains the source data, scale, room and
 door mappings, overlaps and source shared doors that could not remain shared.
 }
@@ -49,21 +55,16 @@ rounded to F4F's one-metre grid. Width and length exclude the one-cell wall
 ring: x/y identify the top-left wall, and the opposite walls are x+l+1/y+w+1.
 Shared-door memberships use the same global x/y cell.
 Rooms that collapse at this scale are rejected.
-Doors of rooms that were rectangular in the source are projected onto the
-nearest rectangle border. For a room converted from a non-rectangular polygon,
-each door keeps its original transformed coordinate inside the bounding
-rectangle. All coordinates are snapped to F4F's one-metre grid. Doors
-collapsing to the same cell are merged and reported.
-A room with at least one door is omitted when all of its doors are internal
-after this conversion. Its doors are omitted as well and recorded in the
-import report.
+Every door is projected onto the nearest wall of the generated rectangle,
+including doors from non-rectangular source rooms. All coordinates are
+snapped to F4F's one-metre grid. Doors collapsing to the same cell are
+merged and reported.
 
 Identical source door coordinates in two rooms identify a candidate shared
-door. For rectangular source rooms, its two rows share an ID only if the
-resulting rectangles have opposing, touching walls at that door cell. A door
-retained from a non-rectangular room can instead be linked at its unchanged
-coordinate. Otherwise the entries remain separate and the report identifies
-the lost connection. Bounding rectangles may overlap;
+door. When both projections are within five metres of opposing walls, those
+walls are aligned to one grid coordinate and the door is stored as one
+physical opening with two room memberships. Otherwise the entries remain
+separate and the report identifies the lost connection. Bounding rectangles may overlap;
 these overlaps are reported, not silently repaired. Review the imported plan
 before configuring agents, a Spawnroom and the remaining simulation settings.
 Requires the F4F version with the separate \code{doorsINcanvas} table.

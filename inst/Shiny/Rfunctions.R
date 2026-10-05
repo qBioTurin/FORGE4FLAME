@@ -1828,51 +1828,63 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas, doorsI
 
 
 # Helper function to check if an object overlaps with the door area
-check_door_collision <- function(canvasObjects, room_name, objects_list) {
-  # Get room information
-  browser()
-  room_info <- canvasObjects$rooms %>%
-    filter(Name == room_name) %>%
-    mutate(door_x = floor(w/ 2)+1, door_y = l) %>%
-    select(door_x, door_y, w, l) %>%
-    distinct()
-
-  if (nrow(room_info) == 0) {
-    return(list(collision = FALSE, message = ""))
-  }
-
-  door_x <- room_info$door_x[1]
-  door_y <- room_info$door_y[1]
-  room_width <- room_info$w[1]
-  room_length <- room_info$l[1]
-
-  # Define door area based on door position (door area is 1 meter wide)
-  door_area <- list(x_min = door_x - 0.5, x_max = door_x + 0.5, y_min = door_y - 0.3, y_max = door_y + 0.3)
-
-  # Check if any object overlaps with door area
-  for (obj in objects_list) {
-    obj_x_min <- obj$x
-    obj_x_max <- obj$x + obj$width
-    obj_y_min <- obj$y
-    obj_y_max <- obj$y + obj$length
-
-    # Check for overlap (AABB - Axis-Aligned Bounding Box collision)
-    has_overlap <- !(
-      obj_x_max <= door_area$x_min ||  # Object is completely to the left
-        obj_x_min >= door_area$x_max ||  # Object is completely to the right
-        obj_y_max <= door_area$y_min ||  # Object is completely above
-        obj_y_min >= door_area$y_max     # Object is completely below
-    )
-
-    if (has_overlap) {
-      return(list(
-        collision = TRUE,
-        message = paste0("Object '", obj$name, "' cannot be placed in front of the door. Please reposition it.")
-      ))
+# Project all placed-room doors back into the shared, unrotated object layout.
+# Object coordinates start at the interior's top-left; a door spans one cell.
+room_doors_for_objects <- function(canvasObjects, room_name) {
+  result <- list()
+  rooms <- canvasObjects$roomsINcanvas
+  if (is.null(rooms) || !nrow(rooms)) return(result)
+  doors <- sync_room_doors(canvasObjects$doorsINcanvas, rooms)
+  for (i in which(rooms$Name == room_name)) {
+    room <- rooms[i, , drop = FALSE]
+    rotation <- if (is.null(room$object_rotation)) 0 else room$object_rotation %% 360
+    width <- ceiling(room$l)
+    height <- ceiling(room$w)
+    inverse <- function(x, y) {
+      switch(as.character(rotation),
+             "90" = c(y, width - x),
+             "180" = c(width - x, height - y),
+             "270" = c(height - y, x), c(x, y))
+    }
+    for (j in which(doors$roomID == room$ID)) {
+      door <- doors[j, , drop = FALSE]
+      x <- door$x - room$x - 0.5
+      y <- door$y - room$y - 0.5
+      # Reserve the interior cell immediately in front of each opening.
+      if (door$side == "left") x <- 0
+      if (door$side == "right") x <- width
+      if (door$side == "top") y <- 0
+      if (door$side == "bottom") y <- height
+      xmin <- max(0, x - if (door$side == "right") 1 else 0.5)
+      xmax <- min(width, x + if (door$side == "left") 1 else 0.5)
+      ymin <- max(0, y - if (door$side == "bottom") 1 else 0.5)
+      ymax <- min(height, y + if (door$side == "top") 1 else 0.5)
+      point <- inverse(x, y)
+      a <- inverse(xmin, ymin)
+      b <- inverse(xmax, ymax)
+      result[[length(result) + 1L]] <- list(
+        id = door$ID, roomID = room$ID, x = point[1], y = point[2],
+        clearance = list(x = min(a[1], b[1]), y = min(a[2], b[2]),
+                         length = abs(a[1] - b[1]), width = abs(a[2] - b[2])))
     }
   }
+  result
+}
 
-  return(list(collision = FALSE, message = ""))
+check_door_collision <- function(canvasObjects, room_name, objects_list) {
+  doors <- room_doors_for_objects(canvasObjects, room_name)
+  for (obj in objects_list) {
+    for (door in doors) {
+      area <- door$clearance
+      if (obj$x < area$x + area$length && obj$x + obj$length > area$x &&
+          obj$y < area$y + area$width && obj$y + obj$width > area$y) {
+        return(list(collision = TRUE, message = paste0(
+          "Object '", obj$name, "' blocks door #", door$id,
+          " in room #", door$roomID, ". Please reposition it.")))
+      }
+    }
+  }
+  list(collision = FALSE, message = "")
 }
 
 check <- function(canvasObjects, input, output, InfoApp){
@@ -1893,7 +1905,6 @@ check <- function(canvasObjects, input, output, InfoApp){
 
   if(!is.null(canvasObjects$roomObjects) && length(canvasObjects$roomObjects) > 0){
     for(i in 1:length(canvasObjects$roomObjects)){
-      browser()
       collision_check <- check_door_collision(
         canvasObjects,
         names(canvasObjects$roomObjects)[i],

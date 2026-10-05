@@ -240,8 +240,9 @@ model$matricesCanvas$WithMask[[floor_name]]$rooms[[room_name_and_id]]
 
 `WithoutMask` keeps room IDs in floor interiors, including nested rooms, and
 zeros for walls. `WithMask` uses 1 for non-overlapping interiors and 0 for cells
-inside multiple rooms. Existing door and graph-point markers remain, except
-where a door marker would reopen a masked interior cell.
+inside multiple rooms. Doors belonging to nested rooms are also 0 in the masked
+floor and in each containing-room matrix; they remain available in the nested
+room's own matrix.
 
 In the local room matrices, `WithoutMask` represents nested room interiors with
 their room IDs and includes their walls, doors and negative object IDs. This is
@@ -250,6 +251,9 @@ room. `WithMask` instead turns nested-room footprints into obstacles. A nested
 room's own matrix remains usable and retains its rotated objects in both
 variants. Room keys use the format `Name_ID`. Existing readers of
 `matricesCanvas[[floor_name]]` must now select `WithoutMask` or `WithMask` first.
+
+`roomsINcanvas$center_x` and `center_y` identify the room's geometric centre.
+They remain there even when the centre is covered by another room.
 
 ## How to reproduce the results
 To reproduce the results presented in the main document---comparing FLAME GPU 2 and NetLogo using the ITP and the alert scenarios---run the following Bash commands (note that this process may take time, especially for NetLogo):
