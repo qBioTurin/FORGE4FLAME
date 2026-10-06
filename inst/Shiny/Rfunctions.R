@@ -1830,8 +1830,29 @@ is_room_connected <- function(matrix, room, roomsINcanvas, nodesINcanvas, doorsI
   FALSE
 }
 
-
- - room$y - 0.5
+# Helper function to check if an object overlaps with the door area
+# Project all placed-room doors back into the shared, unrotated object layout.
+# Object coordinates start at the interior's top-left; a door spans one cell.
+room_doors_for_objects <- function(canvasObjects, room_name) {
+  result <- list()
+  rooms <- canvasObjects$roomsINcanvas
+  if (is.null(rooms) || !nrow(rooms)) return(result)
+  doors <- sync_room_doors(canvasObjects$doorsINcanvas, rooms)
+  for (i in which(rooms$Name == room_name)) {
+    room <- rooms[i, , drop = FALSE]
+    rotation <- if (is.null(room$object_rotation)) 0 else room$object_rotation %% 360
+    width <- ceiling(room$l)
+    height <- ceiling(room$w)
+    inverse <- function(x, y) {
+      switch(as.character(rotation),
+             "90" = c(y, width - x),
+             "180" = c(width - x, height - y),
+             "270" = c(height - y, x), c(x, y))
+    }
+    for (j in which(doors$roomID == room$ID)) {
+      door <- doors[j, , drop = FALSE]
+      x <- door$x - room$x - 0.5
+      y <- door$y - room$y - 0.5
       # Reserve the interior cell immediately in front of each opening.
       if (door$side == "left") x <- 0
       if (door$side == "right") x <- width
