@@ -100,33 +100,30 @@ function drawObjectsGrid() {
     objectsBgCtx.restore();
 }
 
-// Draw reference indicator (yellow dot at bottom of room)
+// Draw the actual doors and the space that must remain free in front of them.
 function drawReferenceIndicator() {
-    // Draw a yellow dot at the center right border
-
-    const dotX = Math.floor(obj_w / 2) + 1;
-    const dotY = obj_h ;
-    const dotRadius = 5;
-
     objectsBgCtx.save();
-
-    // Draw yellow dot
-    objectsBgCtx.fillStyle = '#FFD700';  // Gold/Yellow color
-    objectsBgCtx.beginPath();
-    objectsBgCtx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-    objectsBgCtx.fill();
-
-    // Draw border around dot
-    objectsBgCtx.strokeStyle = '#FF8C00';  // Orange border
-    objectsBgCtx.lineWidth = 2;
-    objectsBgCtx.stroke();
-
+    (currentRoomData?.doors || []).forEach(door => {
+        const area = door.clearance;
+        objectsBgCtx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+        objectsBgCtx.fillRect(area.x * SCALE, area.y * SCALE,
+            area.length * SCALE, area.width * SCALE);
+        objectsBgCtx.fillStyle = '#FFD700';
+        objectsBgCtx.strokeStyle = '#FF8C00';
+        objectsBgCtx.lineWidth = 2;
+        objectsBgCtx.beginPath();
+        objectsBgCtx.arc(door.x * SCALE, door.y * SCALE, 5, 0, Math.PI * 2);
+        objectsBgCtx.fill();
+        objectsBgCtx.stroke();
+    });
     objectsBgCtx.restore();
 }
 
 // Set room dimensions and update canvas
 Shiny.addCustomMessageHandler("setRoomForObjects", function (data) {
     currentRoomData = data;
+    selectedObjectIndex = -1;
+    isDragging = false;
     objectsArray = data.objects || [];
 
     // Get room dimensions in meters
@@ -168,8 +165,11 @@ function drawObject(obj, isSelected) {
         objectsCtx.fillStyle = obj.color;
         objectsCtx.fillRect(x, y, width, length);
 
-        // Add diagonal stripes for obstacles
+        // Clip diagonal stripes to the obstacle rectangle.
         objectsCtx.save();
+        objectsCtx.beginPath();
+        objectsCtx.rect(x, y, width, length);
+        objectsCtx.clip();
         objectsCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
         objectsCtx.lineWidth = 2;
         for (let i = -length; i < width; i += 10) {
@@ -215,6 +215,12 @@ function checkOverlap(obj1, obj2) {
 
 // Check if an object overlaps with any existing objects
 function hasCollision(newObj, excludeIndex = -1) {
+    if (newObj.x < 0 || newObj.y < 0 ||
+        newObj.x + newObj.length > objectsCanvas.width / SCALE ||
+        newObj.y + newObj.width > objectsCanvas.height / SCALE) return true;
+    if ((currentRoomData?.doors || []).some(door => checkOverlap(newObj, door.clearance))) {
+        return true;
+    }
     for (let i = 0; i < objectsArray.length; i++) {
         if (i === excludeIndex) continue; // Skip the object being moved
         if (checkOverlap(newObj, objectsArray[i])) {
@@ -236,8 +242,8 @@ function findNonOverlappingPosition(obj) {
     const maxX = (objectsCanvas.width / SCALE) - obj.length;   // length is horizontal
     const maxY = (objectsCanvas.height / SCALE) - obj.width;   // width is vertical
 
-    for (let y = 1; y <= maxY; y += step) {
-        for (let x = 1; x <= maxX; x += step) {
+    for (let y = 0; y <= maxY; y += step) {
+        for (let x = 0; x <= maxX; x += step) {
             const testObj = { ...obj, x: x, y: y };
             if (!hasCollision(testObj)) {
                 return { x: x, y: y };
@@ -254,8 +260,8 @@ Shiny.addCustomMessageHandler("addObjectToCanvas", function (data) {
     const newObject = {
         name: data.name,
         id: data.id,
-        x: data.x || 1.0,
-        y: data.y || 1.0,
+        x: data.x ?? 1.0,
+        y: data.y ?? 1.0,
         width: data.width || 1,
         length: data.length || 1,
         color: data.color || '#FF6B6B',
@@ -281,6 +287,7 @@ Shiny.addCustomMessageHandler("addObjectToCanvas", function (data) {
 
     // Send updated objects back to Shiny
     Shiny.setInputValue('objects_updated', {
+        roomName: currentRoomData?.roomName,
         objects: objectsArray,
         timestamp: Date.now()
     });
@@ -294,7 +301,8 @@ Shiny.addCustomMessageHandler("removeObjectFromCanvas", function (index) {
         redrawObjectsCanvas();
 
         Shiny.setInputValue('objects_updated', {
-            objects: objectsArray,
+            roomName: currentRoomData?.roomName,
+        objects: objectsArray,
             timestamp: Date.now()
         });
     }
@@ -307,6 +315,7 @@ Shiny.addCustomMessageHandler("clearAllObjects", function (data) {
     redrawObjectsCanvas();
 
     Shiny.setInputValue('objects_updated', {
+        roomName: currentRoomData?.roomName,
         objects: objectsArray,
         timestamp: Date.now()
     });
@@ -395,7 +404,8 @@ objectsCanvas.addEventListener('mouseup', function (e) {
 
         // Send updated objects back to Shiny
         Shiny.setInputValue('objects_updated', {
-            objects: objectsArray,
+            roomName: currentRoomData?.roomName,
+        objects: objectsArray,
             timestamp: Date.now()
         });
     }
@@ -426,7 +436,8 @@ objectsCanvas.addEventListener('mouseleave', function (e) {
         }
 
         Shiny.setInputValue('objects_updated', {
-            objects: objectsArray,
+            roomName: currentRoomData?.roomName,
+        objects: objectsArray,
             timestamp: Date.now()
         });
     }

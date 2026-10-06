@@ -843,7 +843,7 @@ ui <- dashboardPage(
                        br(),
                        tags$span(
                          style = "margin-left: 28px; display: inline-block; color: #333; font-size: 13px;",
-                         "Objects cannot be placed directly in front of the room door. The system will reject any object positioned in the door area."
+                         "Objects cannot be placed in front of any room door. Keep the highlighted entrance areas free."
                        )
                      )
               )
@@ -960,9 +960,9 @@ ui <- dashboardPage(
                    icon("lightbulb", style = "color: #FFD700;"),
                    tags$strong(style = "color: #FF8C00;", " Door Position Indicator:"),
                    br(),
-                   "The ", tags$strong("yellow dot at the bottom"), " with a dashed line shows the door position using the formula: ",
-                   tags$code("floor(length / 2) + 1"),
-                   ". Objects cannot be placed on or near this line."
+                   "The ", tags$strong("yellow dots"), " show the actual door positions. ",
+                   "The highlighted areas must remain free of objects (1 m in front of each wall door). ",
+                   "For a room placed more than once, doors from all placements are shown in the shared object layout."
                  )
           )
         ),

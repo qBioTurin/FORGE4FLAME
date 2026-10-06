@@ -9890,8 +9890,8 @@ server <- function(input, output, session) {
     }
   })
 
-  # Update canvas when room is selected
-  observeEvent(input$select_room_for_objects, {
+  # Refresh doors when placements or openings change, even with the same selection.
+  send_objects_room <- function() {
     req(input$select_room_for_objects)
     if (input$select_room_for_objects == "") {
       return()
@@ -9913,9 +9913,15 @@ server <- function(input, output, session) {
         width = room_data$w,
         length = room_data$l,
         height = room_data$h,
+        roomName = input$select_room_for_objects,
+        doors = room_doors_for_objects(canvasObjects, input$select_room_for_objects),
         objects = existing_objects
       ))
     }
+  }
+  observeEvent(list(input$select_room_for_objects, canvasObjects$roomsINcanvas,
+                    canvasObjects$doorsINcanvas, canvasObjects$rooms), {
+    send_objects_room()
   })
 
   # Copy objects from another room
@@ -10097,6 +10103,7 @@ server <- function(input, output, session) {
   observeEvent(input$objects_updated, {
     req(input$select_room_for_objects)
     if (input$select_room_for_objects != "") {
+      req(identical(input$objects_updated$roomName, input$select_room_for_objects))
       # Validate that no objects are in front of the door
       collision_check <- check_door_collision(
         canvasObjects,
@@ -10110,7 +10117,8 @@ server <- function(input, output, session) {
           collision_check$message,
           type = "error"
         )
-        # Do not update the canvas objects - keep the previous valid state
+        # Restore the accepted layout in the browser as well.
+        send_objects_room()
         return()
       }
 
