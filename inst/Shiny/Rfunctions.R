@@ -423,6 +423,10 @@ sync_room_doors <- function(doors, rooms) {
     # One physical opening, one global wall cell, even for an interior membership.
     membership$x <- door$x
     membership$y <- door$y
+    # Local coordinates are relative to each membership's room, not its owner.
+    peer_room <- rooms[rooms$ID == membership$roomID, , drop = FALSE]
+    membership$local_x <- membership$x - peer_room$x
+    membership$local_y <- membership$y - peer_room$y
     rbind(door, membership)
   })
   result <- do.call(rbind, result)
