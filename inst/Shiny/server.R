@@ -2503,7 +2503,7 @@ server <- function(input, output, session) {
           ),
           selection = "single",
           rownames = F,
-          colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+          colnames = c("Room", "Distribution", "Time", "Activity", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
         )
       )
 
@@ -3186,7 +3186,7 @@ server <- function(input, output, session) {
                     ),
                     selection = "single",
                     rownames = F,
-                    colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+                    colnames = c("Room", "Distribution", "Time", "Activity", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
       )
     )
 
@@ -3217,7 +3217,7 @@ server <- function(input, output, session) {
                         ),
                         selection = "single",
                         rownames = F,
-                        colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+                        colnames = c("Room", "Distribution", "Time", "Activity", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       } else {
@@ -3244,7 +3244,7 @@ server <- function(input, output, session) {
             ),
             selection = "single",
             rownames = F,
-            colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+            colnames = c("Room", "Distribution", "Time", "Activity", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
           )
         )
       }
@@ -3293,7 +3293,7 @@ server <- function(input, output, session) {
                   ),
                   selection = "single",
                   rownames = F,
-                  colnames = c("Room", "Distribution", "Activity", "Time", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
+                  colnames = c("Room", "Distribution", "Time", "Activity", "Nr. of times", "Time Slot", "Agent Linked", "Agent Linked Type", "Timeout", "Timeout behaviour")
                 )
               )
             } else {
@@ -8663,6 +8663,11 @@ server <- function(input, output, session) {
           MaxCol <- customMax
         } else {
           MaxCol <- dataMaxCol
+        }
+
+        # Ensure MaxCol is finite; if not (e.g., data is empty), set a default value
+        if (!is.finite(MaxCol)) {
+          MaxCol <- 1
         }
 
         # Get scale type selection
