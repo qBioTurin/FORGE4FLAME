@@ -3030,6 +3030,13 @@ server <- function(input, output, session) {
     EntryTime <- input[["EntryTimeRate_rand_flow"]]
     ExitTime <- input[["ExitTimeRate_rand_flow"]]
 
+    if(EntryTime == ""){
+      EntryTime = "00:00"
+    }
+    if(ExitTime == ""){
+      ExitTime = "23:59"
+    }
+
     activity <- switch(input$RandActivity,
                        "Very Light - e.g. resting" = 1,
                        "Light - e.g. speak while resting" = 1.7777,
@@ -3076,6 +3083,7 @@ server <- function(input, output, session) {
 
     if (length(listTimes) == 0) listTimes <- NULL
     times <- CheckEntryExit(EntryTime, ExitTime, listTimes)
+
 
     if (times[1] == "Error") {
       shinyalert("Error", times[2], type = "error")
