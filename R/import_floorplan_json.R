@@ -104,7 +104,7 @@ f4f_import_floorplan_json <- function(json_file, units_per_metre,
     item <- source[[i]]
     if(is.null(item$nome_stanza))
       paste0("Room_", item$id_stanza_univoca)
-    else item$nome_stanza
+    else gsub(" ", "_", tolower(item$nome_stanza))
   }, character(1))
 
   if (anyDuplicated(ids)) fail("id_stanza_univoca must be unique.")

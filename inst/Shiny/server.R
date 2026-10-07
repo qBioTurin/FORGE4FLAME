@@ -1454,7 +1454,7 @@ server <- function(input, output, session) {
   toListen <- reactive({
     if (!is.null(canvasObjects$rooms)) {
       ListCol <- lapply(canvasObjects$rooms$Name, function(i) {
-        if (!is.null(input[[paste0("col_", i)]])) {
+        if (! (is.null(input[[paste0("col_", i)]]) || input[[paste0("col_", i)]] == "") ) {
           data.frame(Name = i, Col = input[[paste0("col_", i)]])
         }
       })
@@ -1472,7 +1472,7 @@ server <- function(input, output, session) {
       ColDF <- do.call(
         rbind,
         lapply(canvasObjects$rooms$Name, function(i) {
-          if (!is.null(input[[paste0("col_", i)]])) {
+          if (! (is.null(input[[paste0("col_", i)]])) ) {
             data.frame(
               Name = i,
               ColNew = paste0("rgba(", paste(col2rgb(input[[paste0("col_", i)]]), collapse = ", "), ", 1)")
