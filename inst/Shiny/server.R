@@ -5889,7 +5889,7 @@ server <- function(input, output, session) {
     }
 
     postprocObjects$Model <- tryCatch(
-      readRDS(model_file),
+      normalize_room_doors(readRDS(model_file)),
       error = function(e) {
         return(NULL)
       }
@@ -5905,21 +5905,6 @@ server <- function(input, output, session) {
     isolate({
       G <- read_table(rooms_file, col_names = FALSE)
       colnames(G) <- c("ID", "x", "y", "z")
-
-      roomsINcanvas <- req(canvasObjects$roomsINcanvas)
-      floors <- req(canvasObjects$floors) %>%
-        mutate(y = (Order - 1) * 10, CanvasID = Name)
-
-      fillroomsINcanvas <- roomsINcanvas %>%
-        filter(type == "Fillingroom") %>%
-        mutate(z = y) %>%
-        select(x, z, CanvasID, w, h) %>%
-        left_join(floors, by = "CanvasID") %>%
-        select(x, y, z, w, h) %>%
-        mutate(x = x + ceiling(w / 2), z = z + ceiling(h / 2), ID = -1) %>%
-        select(ID, x, y, z)
-
-      G <- rbind(G, fillroomsINcanvas)
 
       postprocObjects$Mapping <- G
 
@@ -5980,25 +5965,16 @@ server <- function(input, output, session) {
     }
 
     isolate({
-      roomsINcanvas <- req(canvasObjects$roomsINcanvas)
-      roomsINcanvas <- roomsINcanvas %>% mutate(coord = ifelse(type == "Fillingroom", paste0(x + ceiling(w / 2), "-", y + ceiling(h / 2), "-", CanvasID), paste0(center_x, "-", center_y, "-", CanvasID)))
-      rooms_id <- roomsINcanvas$Name
-      names(rooms_id) <- roomsINcanvas$coord
+      roomsINcanvas <- withCallingHandlers(
+        postproc_room_mapping(postprocObjects$Model, Mapping),
+        warning = function(w) {
+          showNotification(conditionMessage(w), type = "warning", duration = NULL)
+          invokeRestart("muffleWarning")
+        })
+      postprocObjects$MappingID_room <- roomsINcanvas
+      postprocObjects$Mapping <- roomsINcanvas %>%
+        filter(!is.na(ID)) %>% select(ID, CanvasID, Name, type, area) %>% distinct()
 
-      Mapping <- Mapping %>% mutate(
-        CanvasID = canvasObjects$floors$Name[(y / 10) + 1],
-        coord = paste0(x, "-", z, "-", CanvasID),
-        Name = rooms_id[coord]
-      )
-
-      Mapping <- merge(Mapping, roomsINcanvas %>% select(coord, type, area, Name))
-
-      postprocObjects$MappingID_room <- merge(roomsINcanvas %>% select(-ID, -typeID),
-                                              Mapping %>% select(-y, -coord) %>% rename(center_x = x, center_y = z),
-                                              all.x = T
-      )
-
-      postprocObjects$Mapping <- Mapping %>% select(-coord, -x, -y, -z)
     })
   })
 
@@ -6205,7 +6181,7 @@ server <- function(input, output, session) {
     canvasObjects <- req(canvasObjects)
 
     isolate({
-      floors <- canvasObjects$floors %>%
+      floors <- postprocObjects$Model$floors %>%
         arrange(Order) %>%
         rename(CanvasID = Name)
 
@@ -6229,11 +6205,11 @@ server <- function(input, output, session) {
         ungroup()
 
       # add agent names to the simulation log!
-      if (!is.null(names(canvasObjects$agents))) {
+      if (!is.null(names(postprocObjects$Model$agents))) {
         agent_with_time_window <- Filter(function(x) x$entry_type == "Time window", canvasObjects$agents)
         agent_with_daily_rate <- Filter(function(x) x$entry_type == "Daily Rate", canvasObjects$agents)
         canvasObjects$agents <- c(agent_with_time_window, agent_with_daily_rate)
-        simulation_log <- simulation_log %>% mutate(agent_type = names(canvasObjects$agents)[agent_type + 1])
+        simulation_log <- simulation_log %>% mutate(agent_type = names(postprocObjects$Model$agents)[agent_type + 1])
       }
 
       simulation_log <- simulation_log %>%
@@ -7843,7 +7819,7 @@ server <- function(input, output, session) {
     info <- input$PostProc_table_cell_clicked
     folder <- req(info$value)
     req(postprocObjects$simulation_log_full) -> simulation_log
-    floors <- req(canvasObjects$floors)
+    floors <- req(postprocObjects$Model$floors)
 
     # Reset show average checkbox when a folder is selected
     updateCheckboxInput(session, "visualShowAverage", value = FALSE)
@@ -7929,7 +7905,7 @@ server <- function(input, output, session) {
                           value = 0, step = step
         )
 
-        floors <- canvasObjects$floors
+        floors <- postprocObjects$Model$floors
         if (!is.null(floors)) {
           updateSelectInput("visualFloor_select",
                             session = session,
@@ -8010,26 +7986,17 @@ server <- function(input, output, session) {
   })
 
   output$TwoDMapPlots <- renderUI({
-    showAverage <- isTRUE(input$visualShowAverage)
-    colorFeat <- input$visualColor_select
-    floors <- req(canvasObjects$floors)
-
-    # When showing averages with supported color features, use floor info from canvasObjects
-    if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
-      if (is.null(floors)) {
-        return(tags$p("Please load data first."))
-      }
-      num_floors_in_canvas <- length(unique(floors$Name)) + 1 # +1 to match CanvasID since in this case there is not the "Outside"
-    } else {
-      simulation_log_folder <- req(postprocObjects$simulation_log_folder)
-      num_floors_in_canvas <- length(unique(simulation_log_folder$CanvasID))
-    }
-
-    # Increase height per floor to 800 pixels, with minimum of 1000px
-    H <- max(400, num_floors_in_canvas * 400)
-    plot_output_list <- plotOutput(outputId = "plot_map", height = paste0(H, "px"), width = "100%")
-
-    (plot_output_list)
+    floors <- req(postprocObjects$Model$floors)
+    selected <- input$visualFloor_select
+    count <- if (is.null(selected) || selected == "All") nrow(floors) else 1L
+    height <- max(600, ceiling(count / 2) * 450)
+    tagList(
+      plotOutput("plot_map", height = paste0(height, "px"), width = "100%"),
+      tags$details(open = NA, tags$summary("Legend"),
+        uiOutput("emoji_map_key"),
+        tags$div(style = "max-height: 320px; overflow: auto;",
+          plotOutput("plot_map_legend", height = "auto", width = "100%")))
+    )
   })
 
   ### EMOJI shapes ####
@@ -8039,28 +8006,30 @@ server <- function(input, output, session) {
     dat.filename <- system.file("emojis.RData", package = "emoGG")
     emojis <- NULL
     load(dat.filename)
-    # Get unique emojis with their codes and all keywords
-    # Transform codes for Twemoji CDN compatibility:
-    # - For ZWJ sequences (containing \u): convert \u to - and add -fe0f at the end
-    # - For simple emojis: use raw code as-is
     emojis %>%
-      mutate(
-        has_zwj = grepl("\\\\u|\\\\U", code),
-        # Convert \u and \U to hyphens for ZWJ sequences
-        code_transformed = ifelse(
-          has_zwj,
-          paste0(gsub("\\\\[uU]", "-", code), "-fe0f"), # ZWJ: convert \u to - and add -fe0f
-          code # Simple: use as-is
-        )
-      ) %>%
-      group_by(emoji, code_transformed) %>%
-      summarise(
-        keywords = paste(unique(keyword), collapse = ", "),
-        original_code = first(code),
-        .groups = "drop"
-      ) %>%
-      rename(code = code_transformed) %>%
-      ungroup()
+      mutate(code = vapply(code, postproc_emoji_code, character(1))) %>%
+      group_by(code) %>%
+      summarise(emoji = first(emoji), keywords = paste(unique(keyword), collapse = ", "),
+                .groups = "drop") %>%
+      mutate(character = vapply(code, postproc_emoji_character, character(1)))
+  })
+
+  emoji_asset <- postproc_emoji_cache()
+  emojiRenderAssignments <- reactive({
+    req(input$agentVisualMode == "emojis")
+    types <- req(postprocObjects$agentTypes)
+    assignments <- emojiAssignments()
+    codes <- vapply(types, function(agent) {
+      if (is.null(assignments[[agent]])) "1f9d1" else assignments[[agent]]$code
+    }, character(1))
+    result <- data.frame(Agents = types, EmojiCode = codes, stringsAsFactors = FALSE)
+    result$EmojiImage <- I(lapply(codes, emoji_asset))
+    result$EmojiSize <- if (is.null(input$emojiSize)) 6 else input$emojiSize
+    if (any(vapply(result$EmojiImage, is.null, logical(1)))) {
+      showNotification("Some emoji images are unavailable. These agents use a circle until images can be loaded in a new session.",
+        type = "warning", duration = 8)
+    }
+    result
   })
 
   # Reactive value to store emoji assignments for each agent type
@@ -8070,7 +8039,7 @@ server <- function(input, output, session) {
   observe({
     agentTypes <- postprocObjects$agentTypes
     if (!is.null(agentTypes) && length(agentTypes) > 0) {
-      current <- emojiAssignments()
+      current <- isolate(emojiAssignments())
       # Default emojis for new agents
       defaultEmojis <- c(
         "1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
@@ -8080,7 +8049,7 @@ server <- function(input, output, session) {
         agent <- agentTypes[i]
         if (is.null(current[[agent]])) {
           current[[agent]] <- list(
-            code = defaultEmojis[min(i, length(defaultEmojis))],
+            code = defaultEmojis[(i - 1L) %% length(defaultEmojis) + 1L],
             emoji = NA
           )
         }
@@ -8089,24 +8058,23 @@ server <- function(input, output, session) {
     }
   })
 
+  emojiSearchTerm <- debounce(reactive(input$emojiSearchKeyword), 250)
+
   # Search emojis by keyword
   output$emojiSearchResults <- renderUI({
     req(input$agentVisualMode == "emojis")
-    searchTerm <- input$emojiSearchKeyword
+    searchTerm <- emojiSearchTerm()
     emojiDB <- emojiDatabase()
 
-    if (is.null(searchTerm) || nchar(trimws(searchTerm)) < 2) {
-      return(tags$p(
-        style = "color: #888; font-style: italic;",
-        "Enter at least 2 characters to search..."
-      ))
+    searchTerm <- if (is.null(searchTerm)) "" else tolower(trimws(searchTerm))
+    if (!nzchar(searchTerm)) {
+      matches <- emojiDB %>% filter(grepl("person|face|doctor|walk|nurse", keywords)) %>% head(36)
+    } else {
+      matches <- emojiDB %>%
+        filter(grepl(searchTerm, tolower(emoji), fixed = TRUE) |
+               grepl(searchTerm, tolower(keywords), fixed = TRUE) |
+               grepl(searchTerm, character, fixed = TRUE)) %>% head(60)
     }
-
-    # Search in emoji names and keywords
-    searchTerm <- tolower(trimws(searchTerm))
-    matches <- emojiDB %>%
-      filter(grepl(searchTerm, tolower(emoji)) | grepl(searchTerm, tolower(keywords))) %>%
-      head(30) # Limit results
 
     if (nrow(matches) == 0) {
       return(tags$p(style = "color: #cc0000;", "No emojis found for '", searchTerm, "'"))
@@ -8117,13 +8085,12 @@ server <- function(input, output, session) {
       row <- matches[i, ]
       actionButton(
         inputId = paste0("selectEmoji_", row$code),
-        label = row$emoji,
+        label = tags$span(row$character, style = "font-size: 28px;"),
         style = "font-size: 24px; padding: 8px 12px; margin: 3px; background-color: #fff; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;",
         title = paste0(row$emoji, " (", row$code, ")\nKeywords: ", row$keywords),
-        onclick = sprintf(
-          "Shiny.setInputValue('selectedEmojiCode', '%s', {priority: 'event'}); Shiny.setInputValue('selectedEmojiName', '%s', {priority: 'event'});",
-          row$code, row$emoji
-        )
+        onclick = paste0("Shiny.setInputValue('selectedEmoji', ",
+          jsonlite::toJSON(list(code = row$code, name = row$emoji), auto_unbox = TRUE),
+          ", {priority: 'event'});")
       )
     })
 
@@ -8140,26 +8107,20 @@ server <- function(input, output, session) {
   })
 
   # Handle emoji selection from search
-  observeEvent(input$selectedEmojiCode, {
-    req(input$selectedEmojiCode)
-    req(input$emojiAgentSelector)
-
-    selectedAgent <- input$emojiAgentSelector
-    if (selectedAgent != "") {
-      current <- emojiAssignments()
-      current[[selectedAgent]] <- list(
-        code = input$selectedEmojiCode,
-        emoji = input$selectedEmojiName
-      )
-      emojiAssignments(current)
-
-      # Show confirmation
-      showNotification(
-        paste0("Assigned ", input$selectedEmojiName, " to ", selectedAgent),
-        type = "message",
-        duration = 2
-      )
+  observeEvent(input$selectedEmoji, {
+    selected <- input$selectedEmoji
+    agents <- intersect(input$emojiAgentSelector, postprocObjects$agentTypes)
+    if (!length(agents)) {
+      showNotification("Select at least one agent type first.", type = "message")
+      return()
     }
+    db <- emojiDatabase()
+    match <- match(selected$code, db$code)
+    req(!is.na(match))
+    current <- emojiAssignments()
+    for (agent in agents) current[[agent]] <- list(code = db$code[match], emoji = db$emoji[match])
+    emojiAssignments(current)
+    showNotification(paste("Assigned", db$character[match], "to", length(agents), "agent types"), duration = 2)
   })
 
   # Render emoji assignments table
@@ -8171,32 +8132,33 @@ server <- function(input, output, session) {
 
       data.frame(
         Agent = agentTypes,
-        Emoji = sapply(agentTypes, function(a) {
-          if (!is.null(assignments[[a]])) {
-            code <- assignments[[a]]$code
-            # Try to get emoji character from database
-            emojiRow <- emojiDB %>%
-              filter(code == !!code) %>%
-              head(1)
-            if (nrow(emojiRow) > 0) {
-              emojiRow$emoji
-            } else {
-              paste0("[", code, "]")
-            }
-          } else {
-            "Not set"
-          }
-        }),
-        Code = sapply(agentTypes, function(a) {
-          if (!is.null(assignments[[a]])) assignments[[a]]$code else ""
-        }),
-        stringsAsFactors = FALSE
-      )
+        Emoji = vapply(agentTypes, function(a) {
+          if (is.null(assignments[[a]])) return("")
+          postproc_emoji_character(assignments[[a]]$code)
+        }, character(1)),
+        Name = vapply(agentTypes, function(a) {
+          if (is.null(assignments[[a]])) return("Not set")
+          name <- emojiDB$emoji[match(assignments[[a]]$code, emojiDB$code)]
+          if (is.na(name)) "Person" else gsub("_", " ", name, fixed = TRUE)
+        }, character(1)), stringsAsFactors = FALSE)
+
     },
     striped = TRUE,
     hover = TRUE,
     bordered = TRUE
   )
+
+  output$emoji_map_key <- renderUI({
+    if (!identical(input$agentVisualMode, "emojis")) return(NULL)
+    types <- req(postprocObjects$agentTypes)
+    assignments <- emojiAssignments()
+    tags$div(style = "display:flex; flex-wrap:wrap; gap:8px; padding:12px 0;",
+      lapply(types, function(agent) {
+        code <- if (is.null(assignments[[agent]])) "1f9d1" else assignments[[agent]]$code
+        tags$span(style = "display:inline-flex; align-items:center; gap:6px; padding:4px 8px; background:#f1f5f9; border-radius:6px;",
+          tags$span(postproc_emoji_character(code), style = "font-size:24px;"), agent)
+      }))
+  })
 
   output$agentShapeSelectors <- renderUI({
     agentTypes <- req(postprocObjects$agentTypes)
@@ -8212,7 +8174,7 @@ server <- function(input, output, session) {
           tags$p(
             style = "margin: 0;",
             tags$strong(icon("info-circle"), " How to use:"),
-            " 1) Select an agent type, 2) Search for an emoji by keyword, 3) Click the emoji to assign it."
+            " Select one or more agent types, then click an emoji. Search by English keyword or paste an emoji."
           )
         ),
 
@@ -8220,10 +8182,11 @@ server <- function(input, output, session) {
         fluidRow(
           column(
             4,
-            selectInput("emojiAgentSelector",
-                        label = tags$span(icon("user"), " Select Agent Type:"),
+            selectizeInput("emojiAgentSelector",
+                        label = tags$span(icon("user"), " Agent types (one or more):"),
                         choices = agentTypes,
-                        selected = agentTypes[1],
+                        selected = if (is.null(isolate(input$emojiAgentSelector))) agentTypes[1] else isolate(input$emojiAgentSelector),
+                        multiple = TRUE,
                         width = "100%"
             )
           ),
@@ -8302,7 +8265,7 @@ server <- function(input, output, session) {
           )),
           column(4, numericInput(
             inputId = paste0("agentSize_", gsub("[^[:alnum:]]", "_", agentType)),
-            label = NULL, value = 5, min = 1, max = 20, step = 1
+            label = NULL, value = 3, min = 1, max = 20, step = 0.5
           ))
         )
       })
@@ -8373,6 +8336,33 @@ server <- function(input, output, session) {
     showNotification("Background image cleared.", type = "message", duration = 3)
   })
 
+  floorplan_geometry <- reactive({
+    model <- req(postprocObjects$Model)
+    postproc_floorplan_geometry(model$roomsINcanvas, model$doorsINcanvas)
+  })
+
+  legend_2d <- reactiveVal(NULL)
+  legend_2d_key <- NULL
+  update_2d_legend <- function(plot, key) {
+    if (!identical(key, legend_2d_key)) {
+      legend_2d_key <<- key
+      legend_2d(plot)
+    }
+  }
+  output$plot_map_legend <- renderPlot({
+    plot <- req(legend_2d())
+    table <- ggplotGrob(plot + theme(legend.position = "bottom"))
+    guides <- which(grepl("^guide-box", table$layout$name))
+    guides <- guides[!vapply(table$grobs[guides], inherits, logical(1), "zeroGrob")]
+    grid::grid.newpage()
+    if (length(guides)) grid::grid.draw(table$grobs[[guides[1]]])
+  }, height = function() {
+    plot <- legend_2d()
+    shape_scale <- if (!is.null(plot)) plot$scales$get_scales("shape") else NULL
+    count <- if (!is.null(shape_scale)) length(shape_scale$get_limits()) else 0
+    max(180, 140 + ceiling(count / 4) * 30)
+  })
+
   observe({
     info <- input$PostProc_table_cell_clicked
     showAverage <- isTRUE(input$visualShowAverage)
@@ -8394,15 +8384,23 @@ server <- function(input, output, session) {
     input$animation_show_bg
     input$animation_bg_alpha
     room_fill_alpha <- input$room_fill_alpha
+    show_grid <- isTRUE(input$visualGrid)
+    highlight_doors <- isTRUE(input$visualDoors)
+    label_size <- if (is.null(input$visualLabelSize)) 2.8 else input$visualLabelSize
 
-    # For averages mode, we need to react to animation slider changes
-    animationTime <- input$animation
+    # Static geometry and scales are rebuilt only when display settings or data change.
+    geometry <- floorplan_geometry()
+    postprocObjects$AEROSOL_std
+    postprocObjects$CONTACT_std
+    input$visualColor_maxValue
+    input$visualScaleType
+    input$customBreak1
+    input$customBreak2
+    input$customBreak3
     Label <- input$visualLabel_select
 
     isolate({
       step <- as.numeric(postprocObjects$Model$starting$step)
-      timeIn <- animationTime / step
-      timeGrid <- seq(0, timeIn, 1) # number of steps to reach the seconds selected
 
       disease <- strsplit(isolate(req("SEIRD")), "")[[1]]
 
@@ -8418,206 +8416,47 @@ server <- function(input, output, session) {
       ##
       if (colorFeat == "Area") {
         roomsINcanvas <- merge(roomsINcanvas %>% select(-colorFill),
-                               canvasObjects$areas %>% select(-ID),
+                               postprocObjects$Model$areas %>% select(-ID),
                                by.x = "area", by.y = "Name"
         ) %>% rename(colorFill = Color)
         roomsINcanvas$IDtoColor <- roomsINcanvas$area
       } else if (colorFeat == "Type") {
         roomsINcanvas <- merge(roomsINcanvas %>% select(-colorFill),
-                               canvasObjects$types %>% select(-ID),
+                               postprocObjects$Model$types %>% select(-ID),
                                by.x = "type", by.y = "Name"
         ) %>%
           rename(colorFill = Color)
         roomsINcanvas$IDtoColor <- roomsINcanvas$type
       } else if (colorFeat == "Name") {
         roomsINcanvas <- merge(roomsINcanvas %>% select(-colorFill),
-                               canvasObjects$rooms %>% select(Name, colorFill),
+                               postprocObjects$Model$rooms %>% select(Name, colorFill),
                                by.x = "Name", by.y = "Name"
         )
         roomsINcanvas$IDtoColor <- roomsINcanvas$Name
-      } else if (colorFeat == "CumulContact") {
-        if (showAverage) {
-          # Average across all folders
-          CONTACT_std <- postprocObjects$CONTACT_std %>%
-            filter(time <= timeIn)
-
-          if (dim(CONTACT_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            # Count per folder, then average
-            CONTACT_std <- CONTACT_std %>%
-              group_by(Folder, CanvasID, Name, area, type, ID) %>%
-              summarize(counts = n(), .groups = "drop") %>%
-              group_by(CanvasID, Name, area, type, ID) %>%
-              summarize(IDtoColor = mean(counts), .groups = "drop")
-
-            CONTACT_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              full_join(CONTACT_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, CONTACT_std)
-          }
-        } else {
-          CONTACT_std <- postprocObjects$CONTACT_std %>%
-            filter(Folder == folder, time <= timeIn) %>%
-            select(-Folder)
-
-          if (dim(CONTACT_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            CONTACT_std <- CONTACT_std %>%
-              group_by(CanvasID, Name, area, type, ID) %>%
-              summarize(counts = n()) %>%
-              rename(IDtoColor = counts)
-
-            CONTACT_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              full_join(CONTACT_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, CONTACT_std)
-          }
-        }
-      } else if (colorFeat == "Aerosol") {
-        if (showAverage) {
-          # Average across all folders
-          AEROSOL_std <- postprocObjects$AEROSOL_std %>%
-            filter(time <= timeIn)
-
-          if (dim(AEROSOL_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            # Get the closest time step per folder, then average across folders
-            AEROSOL_std <- AEROSOL_std %>%
-              mutate(difftime = (time - timeIn)) %>%
-              filter(difftime <= 0) %>%
-              group_by(Folder) %>%
-              filter(difftime == max(difftime)) %>%
-              ungroup() %>%
-              group_by(type, area, Name, CanvasID, ID) %>%
-              summarize(IDtoColor = mean(virus_concentration), .groups = "drop")
-
-            AEROSOL_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, AEROSOL_std)
-          }
-        } else {
-          AEROSOL_std <- postprocObjects$AEROSOL_std %>%
-            filter(Folder == folder, time <= timeIn) %>%
-            select(-Folder)
-
-          ### Check if it has all the data for each time step
-
-          if (dim(AEROSOL_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            AEROSOL_std <- AEROSOL_std %>%
-              mutate(difftime = (time - timeIn)) %>%
-              filter(difftime <= 0, difftime == max(difftime)) %>%
-              select(virus_concentration, type, area, Name, CanvasID, ID) %>%
-              rename(IDtoColor = virus_concentration)
-            # here i give to each room for each step a virus concetration = 0 when is not present
-            AEROSOL_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, AEROSOL_std)
-          }
-        }
-      } else if (colorFeat == "CumulAerosol") {
-        if (showAverage) {
-          # Average across all folders
-          AEROSOL_std <- postprocObjects$AEROSOL_std %>%
-            filter(time <= timeIn) %>%
-            group_by(Folder, ID, type, area, Name, CanvasID) %>%
-            summarise(virus_concentration = sum(virus_concentration), .groups = "drop") %>%
-            group_by(ID, type, area, Name, CanvasID) %>%
-            summarise(IDtoColor = mean(virus_concentration), .groups = "drop")
-
-          if (dim(AEROSOL_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            AEROSOL_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, AEROSOL_std)
-          }
-        } else {
-          AEROSOL_std <- postprocObjects$AEROSOL_std %>%
-            filter(Folder == folder, time <= timeIn) %>%
-            group_by(ID, type, area, Name, CanvasID) %>%
-            summarise(virus_concentration = sum(virus_concentration)) %>%
-            mutate(time = timeIn) %>%
-            ungroup()
-
-          if (dim(AEROSOL_std)[1] == 0) {
-            roomsINcanvas$IDtoColor <- 0
-          } else {
-            AEROSOL_std <- AEROSOL_std %>%
-              mutate(difftime = (time - timeIn)) %>%
-              filter(difftime <= 0, difftime == max(difftime)) %>%
-              select(virus_concentration, type, area, Name, CanvasID, ID) %>%
-              rename(IDtoColor = virus_concentration)
-
-            # here i give to each room for each step a virus concetration = 0 when is not present
-            AEROSOL_std <- roomsINcanvas %>%
-              select(Name, CanvasID, type, area, ID) %>%
-              distinct() %>%
-              left_join(AEROSOL_std, by = c("Name", "CanvasID", "type", "area", "ID")) %>%
-              mutate(IDtoColor = ifelse(is.na(IDtoColor), 0, IDtoColor))
-
-            if ("IDtoColor" %in% colnames(roomsINcanvas)) {
-              roomsINcanvas <- roomsINcanvas %>% select(-IDtoColor)
-            }
-            roomsINcanvas <- merge(roomsINcanvas, AEROSOL_std)
-          }
-        }
+      } else {
+        # Per-time statistics are applied once, by generate2DPlotWithAgents.
+        roomsINcanvas$IDtoColor <- 0
       }
 
-      df <- roomsINcanvas %>%
-        mutate(
-          xmin = x + l,
-          xmax = x,
-          ymin = y + w,
-          ymax = y
-        )
-
-      floors <- canvasObjects$floors
-
+      df <- roomsINcanvas
+      floors <- postprocObjects$Model$floors
       if (floorSelected != "All") {
         df <- df %>% filter(CanvasID == floorSelected)
-      } else {
+      }
+      room_labels <- merge(df, geometry$labels, by = c("CanvasID", "canvasRoomID"))
+      wall_df <- geometry$wall_segments[geometry$wall_segments$CanvasID %in% df$CanvasID, , drop = FALSE]
+      bounds <- postprocObjects$Model$roomsINcanvas
+      bounds <- bounds[bounds$CanvasID %in% df$CanvasID, , drop = FALSE]
+      x_limits <- range(c(bounds$x - 1, bounds$x + ceiling(bounds$l) + 2))
+      y_limits <- range(c(bounds$y - 1, bounds$y + ceiling(bounds$w) + 2))
+      door_df <- geometry$doors[geometry$doors$CanvasID %in% df$CanvasID, , drop = FALSE]
+      df <- merge(df, geometry$interiors, by = c("CanvasID", "canvasRoomID"))
+      if (floorSelected == "All") {
         df$CanvasID <- factor(df$CanvasID, levels = floors$Name)
       }
 
       if (colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+        df$IDtoColor[is.na(df$ID)] <- NA_real_
         MinCol <- 0
 
         # Calculate data max - for averages, compute max of averages across all folders
@@ -8689,7 +8528,7 @@ server <- function(input, output, session) {
             limits = c(1e-10, MaxCol + 1e-10),
             trans = "log10",
             guide = "colourbar",
-            na.value = "green"
+            na.value = "grey80"
           )
         } else if (scaleType == "Sqrt") {
           # Square root scale - good compromise between linear and log
@@ -8698,7 +8537,7 @@ server <- function(input, output, session) {
             limits = c(MinCol, MaxCol),
             trans = "sqrt",
             guide = "colourbar",
-            na.value = "green"
+            na.value = "grey80"
           )
         } else if (scaleType == "Custom") {
           # Custom breakpoints defined by user (as percentages)
@@ -8714,14 +8553,14 @@ server <- function(input, output, session) {
             values = breaks,
             limits = c(MinCol, MaxCol),
             guide = "colourbar",
-            na.value = "green"
+            na.value = "grey80"
           )
         } else {
           # Linear scale (default)
           sc_fill <- scale_fill_gradient(
             low = "green", high = "red",
             limits = c(MinCol, MaxCol),
-            guide = "colourbar"
+            guide = "colourbar", na.value = "grey80"
           )
         }
 
@@ -8812,14 +8651,21 @@ server <- function(input, output, session) {
         geom_rect(
           data = df_normal,
           aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = IDtoColor),
-          color = "black", alpha = room_alpha
+          color = NA, alpha = room_alpha
         ) +
         # Draw special rooms (Spawnroom, Fillingroom) always in grey
         geom_rect(
           data = df_special,
           aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-          fill = "grey80", color = "black", alpha = room_alpha
+          fill = "grey80", color = NA, alpha = room_alpha
         ) +
+        geom_segment(data = wall_df,
+          aes(x = x, xend = xend, y = y, yend = yend),
+          color = "#64748b", linewidth = 0.35, lineend = "butt") +
+        geom_rect(data = door_df,
+          aes(xmin = x - 0.5, xmax = x + 0.5, ymin = y - 0.5, ymax = y + 0.5),
+          fill = if (highlight_doors) "#e0f2fe" else "white",
+          color = if (highlight_doors) "#0284c7" else NA, linewidth = 0.25) +
         sc_fill + guide_fill +
         scale_color_manual(
           values = colorDisease$Col,
@@ -8827,31 +8673,41 @@ server <- function(input, output, session) {
           labels = (colorDisease$State),
           drop = FALSE
         ) +
-        coord_fixed() +
-        facet_wrap(~CanvasID, ncol = 2) +
-        theme_bw() +
+        coord_fixed(xlim = x_limits, ylim = rev(y_limits), expand = FALSE) +
+        facet_wrap(~CanvasID, ncol = 2, drop = FALSE) +
+        theme_minimal(base_size = 11) +
         theme(
-          legend.position = "bottom",
-          legend.direction = "vertical",
-          axis.text = element_text(size = 16),
-          axis.title = element_text(size = 20, face = "bold"),
-          plot.title = element_text(size = 22, face = "bold", hjust = 0.5),
-          legend.text = element_text(size = 14),
-          legend.key.size = unit(1.5, "cm"),
-          legend.title = element_text(face = "bold", size = 18),
-          strip.text = element_text(size = 18, face = "bold")
-        )
+          legend.position = "bottom", legend.box = "vertical",
+          legend.direction = "horizontal",
+          legend.key.size = unit(0.5, "cm"),
+          legend.title = element_text(size = 10, face = "bold"),
+          legend.text = element_text(size = 9),
+          axis.text = if (show_grid) element_text(color = "#64748b", size = 9) else element_blank(),
+          panel.grid.major = if (show_grid) element_line(color = "#e2e8f0", linewidth = 0.25) else element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "#f8fafc", color = NA),
+          plot.title = element_text(size = 16, face = "bold", color = "#0f172a"),
+          plot.subtitle = element_text(size = 10, color = "#64748b"),
+          plot.caption = element_text(size = 9, color = "#64748b", hjust = 0),
+          strip.text = element_text(size = 12, face = "bold", color = "#334155"),
+          plot.margin = margin(12, 12, 12, 12)
+        ) +
+        labs(caption = paste0(if (highlight_doors) "Blue openings: doors.  " else "",
+          "Grey rooms: spawn / filling rooms or unavailable statistics."))
 
 
       if (!Label %in% c("None", "Agent ID")) {
-        df <- df %>% rename(name = Name, id = ID)
-        pl <- pl + geom_label(
+        df <- room_labels %>% rename(name = Name, id = ID)
+        df$room_label <- stringr::str_wrap(gsub("_", " ", df[[tolower(Label)]], fixed = TRUE), width = 18)
+        pl <- pl + geom_text(
           data = df,
           aes(
-            x = (xmin + xmax) / 2, y = (ymin + ymax) / 2,
-            label = get(tolower(Label))
+            x = label_x, y = label_y,
+            label = room_label
           ),
-          color = "black", size = 4
+          color = "#0f172a", size = label_size, lineheight = 0.95,
+          check_overlap = TRUE
         )
       }
       # else if(Label == "Agent ID"){
@@ -8862,14 +8718,7 @@ server <- function(input, output, session) {
       #                        size = 4)
       # }
 
-      postprocObjects$plot_2D <- pl +
-        theme(
-          panel.border = element_rect(
-            color = "white",
-            fill = NA,
-            linewidth = 15
-          )
-        )
+      postprocObjects$plot_2D <- pl
     })
   })
 
@@ -8891,15 +8740,20 @@ server <- function(input, output, session) {
         break
       }
     }
+    # ggproto layers are mutable: never modify the cached base or another frame.
+    original_room_layer <- pl$layers[[room_layer_idx]]
+    pl$layers[[room_layer_idx]] <- ggplot2::ggproto(NULL, original_room_layer)
     df <- pl$layers[[room_layer_idx]]$data
 
-    # Filter simulation log for current time
-    sim_log <- simulation_log %>%
-      dplyr::filter(time <= timeIn) %>%
-      dplyr::group_by(id) %>%
-      dplyr::filter(time == max(time)) %>%
-      dplyr::filter(y != 10000) %>%
-      dplyr::ungroup()
+    # Keep the latest available position per agent; an empty initial frame is valid.
+    sim_log <- simulation_log %>% dplyr::filter(time <= timeIn)
+    if (nrow(sim_log)) {
+      sim_log <- sim_log %>%
+        dplyr::group_by(id) %>%
+        dplyr::filter(time == max(time)) %>%
+        dplyr::filter(y != 10000) %>%
+        dplyr::ungroup()
+    }
 
     if (visualAgent != "All") {
       sim_log <- sim_log %>% dplyr::filter(agent_type == visualAgent)
@@ -8955,9 +8809,12 @@ server <- function(input, output, session) {
             dplyr::select(virus_concentration, type, area, Name, CanvasID, ID) %>%
             dplyr::rename(IDtoColor = virus_concentration)
         } else if (!("IDtoColor" %in% colnames(AEROSOL_data))) {
-          # For averages when CumulAerosol, IDtoColor is already computed above
           AEROSOL_data <- AEROSOL_data %>%
-            dplyr::select(type, area, Name, CanvasID, ID, IDtoColor)
+            dplyr::group_by(Folder) %>%
+            dplyr::filter(time == max(time)) %>%
+            dplyr::ungroup() %>%
+            dplyr::group_by(type, area, Name, CanvasID, ID) %>%
+            dplyr::summarise(IDtoColor = mean(virus_concentration), .groups = "drop")
         }
 
         AEROSOL_data <- roomsINcanvas %>%
@@ -9015,40 +8872,38 @@ server <- function(input, output, session) {
       pl$layers[[room_layer_idx]]$data <- df
     }
 
+    if (colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol")) {
+      pl$layers[[room_layer_idx]]$data$IDtoColor[is.na(pl$layers[[room_layer_idx]]$data$ID)] <- NA_real_
+    }
+
     # Add agents to plot
     if (visualMode == "emojis" && !is.null(emojiAgents)) {
       sim_log <- sim_log %>%
         dplyr::mutate(agent_type_char = as.character(agent_type)) %>%
-        dplyr::left_join(emojiAgents, by = c("agent_type_char" = "Agents"))
-
-      unique_emoji_codes <- unique(sim_log$EmojiCode)
-      for (emoji_code in unique_emoji_codes) {
-        sim_subset <- sim_log %>% dplyr::filter(EmojiCode == emoji_code)
-        if (nrow(sim_subset) > 0) {
-          pl <- pl + emoGG::geom_emoji(data = sim_subset, aes(x = x, y = z), emoji = emoji_code)
-        }
-      }
-      # Position the disease state indicator above the emoji (offset by ~0.8 units)
-      # Since scale_y_reverse() is used, we subtract to move visually upward
-      pl <- pl + geom_point(
-        data = sim_log, aes(x = x, y = z - 0.8, color = disease_state),
-        size = 4, alpha = 0.7, shape = 19, stroke = 1
-      ) +
-        guides(color = guide_legend(override.aes = list(size = 5)))
+        dplyr::left_join(emojiAgents[, c("Agents", "EmojiCode")], by = c("agent_type_char" = "Agents"))
+      emoji_size <- if ("EmojiSize" %in% names(emojiAgents)) emojiAgents$EmojiSize[1] else 6
+      # Centred health-state halo uses physical units, just like the emoji image.
+      pl <- pl + geom_point(data = sim_log,
+        aes(x = x, y = z, color = disease_state), shape = 21, fill = "white",
+        size = emoji_size + 1, stroke = 1, show.legend = TRUE) +
+        postproc_emoji_layer(sim_log, emojiAgents, emoji_size) +
+        guides(color = guide_legend(nrow = 1, override.aes = list(size = 3)))
     } else if (!is.null(shapeAgents)) {
       # Add black contour layer first (slightly larger, behind the colored points)
       pl <- pl + geom_point(
-        data = sim_log, aes(x = x, y = z, shape = agent_type), size = 6,
-        color = "black", stroke = 2.5, show.legend = FALSE
+        data = sim_log, aes(x = x, y = z, shape = agent_type, size = agent_type),
+        color = "white", stroke = 1.4, show.legend = FALSE
       ) +
         # Add colored points on top
         geom_point(data = sim_log, aes(
           x = x, y = z, group = id, shape = agent_type,
-          color = disease_state
-        ), size = 6, stroke = 1.5) +
-        scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents)) +
+          color = disease_state, size = agent_type
+        ), stroke = 0.5, show.legend = TRUE) +
+        scale_shape_manual(values = setNames(shapeAgents$Shape, shapeAgents$Agents),
+                           limits = shapeAgents$Agents, drop = FALSE) +
         scale_size_manual(values = setNames(shapeAgents$Size, shapeAgents$Agents), guide = "none") +
-        guides(shape = guide_legend(ncol = 8, order = 1))
+        guides(shape = guide_legend(ncol = 4, order = 1),
+               color = guide_legend(nrow = 1, override.aes = list(size = 3)))
     }
 
     if (Label == "Agent ID") {
@@ -9065,7 +8920,8 @@ server <- function(input, output, session) {
     minutes <- remaining_seconds %/% 60
     seconds <- remaining_seconds %% 60
 
-    title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", titleSuffix)
+    title_text <- paste0("Day ", days + 1, " · ", sprintf("%02d:%02d:%02d", as.integer(hours), as.integer(minutes), as.integer(seconds)), titleSuffix)
+    pl <- pl + labs(subtitle = paste0("Step ", round(timeIn), " · ", nrow(sim_log), " agents in view"))
 
     if (visualMode == "emojis") {
       title <- labs(
@@ -9112,7 +8968,7 @@ server <- function(input, output, session) {
     pl <- req(postprocObjects$plot_2D)
 
     roomsINcanvas <- postprocObjects$MappingID_room
-    floors <- canvasObjects$floors
+    floors <- postprocObjects$Model$floors
     if (is.null(visualMode)) visualMode <- "shapes"
 
     if (is.null(initial_time)) initial_time <- "00:00"
@@ -9140,10 +8996,15 @@ server <- function(input, output, session) {
     # When showing averages WITHOUT a folder AND no simulation log, show just the base plot with title
     if (showAverage && colorFeat %in% c("CumulContact", "Aerosol", "CumulAerosol") && is.null(folder) && !hasSimulationLog) {
       title_text <- paste0(days + 1, "d:", hours, "h:", minutes, "m:", seconds, "s (# steps: ", round(timeIn), ")", title_suffix)
-      final_plot <- pl + labs(title = title_text, x = "", y = "")
-
+      empty_log <- data.frame(time = numeric(), id = integer(), x = numeric(),
+        y = numeric(), z = numeric(), CanvasID = character(), agent_type = character())
+      final_plot <- generate2DPlotWithAgents(pl, empty_log, timeIn, folder, colorFeat,
+        "All", "All", Label, floorSelected, "shapes", NULL, NULL, floors, roomsINcanvas,
+        postprocObjects$AEROSOL_std, postprocObjects$CONTACT_std, initial_time, step,
+        showAverage = TRUE, titleSuffix = title_suffix)
+      update_2d_legend(final_plot, list(pl, "average"))
       output[["plot_map"]] <- renderPlot({
-        final_plot
+        final_plot + theme(legend.position = "none")
       })
       return()
     }
@@ -9155,28 +9016,7 @@ server <- function(input, output, session) {
     agentTypesInLog <- unique(simulation_log$agent_type)
 
     if (visualMode == "emojis") {
-      # Emoji mode: Get emoji codes from emojiAssignments reactive
-      defaultEmojiCodes <- c(
-        "1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
-        "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d"
-      )
-
-      assignments <- emojiAssignments()
-
-      customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
-        at <- agentTypesInLog[i]
-        if (!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
-          return(assignments[[at]]$code)
-        }
-        return(defaultEmojiCodes[min(i, length(defaultEmojiCodes))])
-      })
-      names(customEmojiCodes) <- NULL
-
-      emojiAgents <- data.frame(
-        Agents = agentTypesInLog,
-        EmojiCode = customEmojiCodes,
-        stringsAsFactors = F
-      )
+      emojiAgents <- emojiRenderAssignments()
       shapeAgents <- NULL
     } else {
       # Shape mode: Get custom shapes and sizes from user input
@@ -9245,8 +9085,9 @@ server <- function(input, output, session) {
       showAverage = showAverage
     )
 
+    update_2d_legend(final_plot, list(pl, shapeAgents, emojiAgents, visualMode))
     output[["plot_map"]] <- renderPlot({
-      final_plot
+      final_plot + theme(legend.position = "none")
     })
   })
 
@@ -9304,20 +9145,7 @@ server <- function(input, output, session) {
         agentTypesInLog <- unique(simulation_log$agent_type)
 
         if (visualMode == "emojis") {
-          defaultEmojiCodes <- c(
-            "1f9d1", "1f468", "1f469", "1f477", "1f9d2", "1f46e", "1f9d3", "1f476",
-            "1f3c3", "1f6b6", "1f913", "1f60a", "1f431", "1f436", "1f916", "1f47d"
-          )
-          assignments <- emojiAssignments()
-          customEmojiCodes <- sapply(seq_along(agentTypesInLog), function(i) {
-            at <- agentTypesInLog[i]
-            if (!is.null(assignments[[at]]) && !is.null(assignments[[at]]$code)) {
-              return(assignments[[at]]$code)
-            }
-            return(defaultEmojiCodes[min(i, length(defaultEmojiCodes))])
-          })
-          names(customEmojiCodes) <- NULL
-          emojiAgents <- data.frame(Agents = agentTypesInLog, EmojiCode = customEmojiCodes, stringsAsFactors = FALSE)
+          emojiAgents <- emojiRenderAssignments()
           shapeAgents <- NULL
         } else {
           # Extract prefix and assign shapes by prefix (not by individual agent type)
@@ -9387,7 +9215,7 @@ server <- function(input, output, session) {
         dir.create(framesDir, showWarnings = FALSE, recursive = TRUE)
 
         # Prepare floor data
-        floors <- canvasObjects$floors
+        floors <- postprocObjects$Model$floors
         roomsINcanvas <- postprocObjects$MappingID_room
 
         # Get initial time
@@ -9479,7 +9307,7 @@ server <- function(input, output, session) {
             on.exit(parallel::stopCluster(cl), add = TRUE)
 
             # Export necessary functions and packages to cluster
-            parallel::clusterExport(cl, c("generate2DPlotWithAgents"), envir = environment())
+            parallel::clusterExport(cl, c("generate2DPlotWithAgents", "postproc_emoji_layer"), envir = environment())
             parallel::clusterEvalQ(cl, {
               library(ggplot2)
               library(dplyr)

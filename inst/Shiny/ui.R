@@ -3067,6 +3067,12 @@ ui <- dashboardPage(
                               )
                             )
                           ),
+                          fluidRow(
+                            column(4, checkboxInput("visualGrid", "Show coordinate grid", FALSE)),
+                            column(4, checkboxInput("visualDoors", "Highlight door openings", TRUE)),
+                            column(4, sliderInput("visualLabelSize", "Room label size", min = 2,
+                                                  max = 5, value = 2.8, step = 0.2))
+                          ),
                           # Row 3: Labels
                           tags$div(
                             tags$h5(icon("tag"), " Labels", style = "color: #337ab7; margin-bottom: 10px;"),
@@ -3239,6 +3245,10 @@ ui <- dashboardPage(
                                           " Shapes render faster for large simulations. Emojis provide better visual distinction."
                                         )
                                  )
+                               ),
+                               conditionalPanel("input.agentVisualMode == 'emojis'",
+                                 sliderInput("emojiSize", "Emoji size (mm)", min = 3, max = 12,
+                                             value = 6, step = 0.5)
                                ),
                                tags$hr(style = "margin: 10px 0;"),
                                fluidRow(

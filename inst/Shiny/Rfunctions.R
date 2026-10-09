@@ -459,7 +459,9 @@ room_door_clearance_conflicts <- function(rooms, doors, changed_room_ids = rooms
     dy <- pmax(others$y - door$y, 0, door$y - bottom)
     distance <- pmin(sqrt((door$x - others$x)^2 + dy^2),
                      sqrt((door$x - right)^2 + dy^2),
-                     sqrt(dx^2 + (door$y - others$y)^2),
+                     sqrt
+                     
+                     (dx^2 + (door$y - others$y)^2),
                      sqrt(dx^2 + (door$y - bottom)^2))
     bad <- which(overlap & distance < min_distance - 1e-9)
     if (length(bad)) conflicts <- rbind(conflicts,
@@ -2142,4 +2144,166 @@ first_missing_number <- function(arr) {
     }
   }
   return(length(arr) + 1)
+}
+
+# Post-processing uses the saved simulation geometry, not the editable canvas.
+# Compress horizontal runs of cells to keep animation layers small.
+postproc_floorplan_geometry <- function(rooms, doors) {
+  empty <- data.frame(CanvasID = character(), canvasRoomID = integer(),
+                      xmin = numeric(), xmax = numeric(), ymin = numeric(), ymax = numeric())
+  runs <- function(mask, room) {
+    result <- lapply(seq_len(nrow(mask)), function(y) {
+      spans <- rle(mask[y, ])
+      ends <- cumsum(spans$lengths)
+      keep <- which(spans$values)
+      data.frame(CanvasID = rep(as.character(room$CanvasID), length(keep)),
+        canvasRoomID = rep(room$ID, length(keep)),
+        xmin = room$x + ends[keep] - spans$lengths[keep] + 0.5,
+        xmax = room$x + ends[keep] + 0.5,
+        ymin = rep(room$y + y - 0.5, length(keep)),
+        ymax = rep(room$y + y + 0.5, length(keep)))
+    })
+    do.call(rbind, result)
+  }
+  interiors <- walls <- labels <- segments <- list()
+  doors <- canvas_door_anchors(sync_room_doors(doors, rooms))
+  for (i in seq_len(nrow(rooms))) {
+    room <- rooms[i, , drop = FALSE]
+    mask <- room_interior_mask(room, rooms)
+    interiors[[i]] <- runs(mask, room)
+    # A label belongs to an accessible cell, never to a nested room.
+    cells <- which(mask, arr.ind = TRUE)
+    if (nrow(cells)) {
+      best <- which.min((cells[, 2] - (ncol(mask) + 1) / 2)^2 +
+                        (cells[, 1] - (nrow(mask) + 1) / 2)^2)
+      labels[[i]] <- data.frame(CanvasID = room$CanvasID, canvasRoomID = room$ID,
+        label_x = room$x + cells[best, 2], label_y = room$y + cells[best, 1])
+    }
+    wall <- matrix(FALSE, nrow(mask) + 2, ncol(mask) + 2)
+    wall[c(1, nrow(wall)), ] <- TRUE
+    wall[, c(1, ncol(wall))] <- TRUE
+    floor_doors <- doors[doors$CanvasID == room$CanvasID, , drop = FALSE]
+    dx <- floor_doors$x - room$x + 1
+    dy <- floor_doors$y - room$y + 1
+    valid <- dx >= 1 & dx <= ncol(wall) & dy >= 1 & dy <= nrow(wall)
+    wall[cbind(dy[valid], dx[valid])] <- FALSE
+    # Draw wall centre-lines, keeping the full one-cell gaps at doors.
+    edge <- function(values, horizontal, fixed, origin) {
+      spans <- rle(values)
+      ends <- cumsum(spans$lengths)
+      keep <- which(spans$values)
+      start <- pmax(origin, origin + ends[keep] - spans$lengths[keep] - 0.5)
+      end <- pmin(origin + length(values) - 1, origin + ends[keep] - 0.5)
+      data.frame(CanvasID = rep(as.character(room$CanvasID), length(keep)),
+        x = if (horizontal) start else rep(fixed, length(keep)),
+        xend = if (horizontal) end else rep(fixed, length(keep)),
+        y = if (horizontal) rep(fixed, length(keep)) else start,
+        yend = if (horizontal) rep(fixed, length(keep)) else end)
+    }
+    segments[[i]] <- rbind(
+      edge(wall[1, ], TRUE, room$y, room$x),
+      edge(wall[nrow(wall), ], TRUE, room$y + nrow(wall) - 1, room$x),
+      edge(wall[, 1], FALSE, room$x, room$y),
+      edge(wall[, ncol(wall)], FALSE, room$x + ncol(wall) - 1, room$y))
+    room$x <- room$x - 1
+    room$y <- room$y - 1
+    walls[[i]] <- runs(wall, room)
+  }
+  list(interiors = if (length(interiors)) do.call(rbind, interiors) else empty,
+       walls = if (length(walls)) unique(do.call(rbind, walls)) else empty,
+       doors = doors,
+       wall_segments = if (length(segments)) unique(do.call(rbind, segments)) else
+         data.frame(CanvasID = character(), x = numeric(), xend = numeric(), y = numeric(), yend = numeric()),
+       labels = if (length(labels)) do.call(rbind, labels) else
+         data.frame(CanvasID = character(), canvasRoomID = integer(), label_x = numeric(), label_y = numeric()))
+}
+
+postproc_room_mapping <- function(model, mapping) {
+  rooms <- model$roomsINcanvas
+  rooms$canvasRoomID <- rooms$ID
+  floors <- model$floors
+  mapping$CanvasID <- floors$Name[match(mapping$y / 10 + 1, floors$Order)]
+  key <- function(x, y, floor) paste(x, y, floor, sep = ":")
+  exported <- key(mapping$x, mapping$z, mapping$CanvasID)
+  centers <- key(rooms$center_x, rooms$center_y, rooms$CanvasID)
+  entries <- key(rooms$x + 1, rooms$y + 1, rooms$CanvasID)
+  # Recent exports identify rooms by their entry cell; legacy exports use centres.
+  keys <- if (sum(exported %in% entries) > sum(exported %in% centers)) entries else centers
+  ambiguous <- duplicated(keys) | duplicated(keys, fromLast = TRUE)
+  index <- match(keys, exported)
+  index[ambiguous] <- NA_integer_
+  rooms$ID <- mapping$ID[index]
+  rooms$ID[rooms$type == "Fillingroom"] <- -1
+  if (any(ambiguous)) warning("Ambiguous room coordinates in rooms_mapping.txt: ",
+    paste(rooms$Name[ambiguous], collapse = ", "),
+    ". Room statistics cannot be assigned safely; regenerate mapping with unique room identifiers.")
+  rooms
+}
+
+# Twemoji identifiers and Unicode previews share the same validated code points.
+postproc_emoji_code <- function(code) {
+  code <- sub("^#", "23", sub("^\\*", "2a", code))
+  code <- tolower(gsub("\\\\[uU]", "-", code))
+  code <- gsub("^-+|-+$", "", code)
+  if (length(code) != 1L || is.na(code) || !grepl("^[0-9a-f]{1,8}(-[0-9a-f]{1,8})*$", code))
+    stop("Invalid emoji code.")
+  points <- strtoi(strsplit(code, "-", fixed = TRUE)[[1]], 16L)
+  if (anyNA(points) || any(points > 0x10ffff | points >= 0xd800 & points <= 0xdfff))
+    stop("Invalid emoji code points.")
+  # Twemoji omits the presentation selector for non-ZWJ sequences.
+  if (!any(points == 0x200d)) points <- points[points != 0xfe0f]
+  if (!length(points)) stop("Empty emoji code.")
+  paste(sprintf("%x", points), collapse = "-")
+}
+
+postproc_emoji_character <- function(code) {
+  intToUtf8(strtoi(strsplit(postproc_emoji_code(code), "-", fixed = TRUE)[[1]], 16L))
+}
+
+# Cache successes AND failures, so animation and video rendering never fetch images.
+postproc_emoji_cache <- function(fetch = function(code) {
+  file <- tempfile(fileext = ".png")
+  previous <- options(timeout = min(5, getOption("timeout", 60)))
+  on.exit(options(previous), add = TRUE)
+  on.exit(unlink(file), add = TRUE)
+  utils::download.file(paste0("https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/",
+                             code, ".png"), file, mode = "wb", quiet = TRUE)
+  png::readPNG(file)
+}) {
+  cache <- new.env(parent = emptyenv())
+  function(code) {
+    code <- postproc_emoji_code(code)
+    if (!exists(code, cache, inherits = FALSE)) {
+      value <- tryCatch(suppressWarnings(fetch(code)), error = function(e) NULL)
+      assign(code, value, cache)
+    }
+    get(code, cache, inherits = FALSE)
+  }
+}
+
+postproc_emoji_layer <- function(data, assignments, size = 6) {
+  data$EmojiCode[is.na(data$EmojiCode)] <- "unavailable"
+  images <- setNames(assignments$EmojiImage, assignments$EmojiCode)
+  geom <- ggplot2::ggproto(NULL, ggplot2::Geom,
+    required_aes = c("x", "y", "emoji"),
+    default_aes = ggplot2::aes(alpha = 1),
+    draw_key = ggplot2::draw_key_blank,
+    draw_panel = function(data, panel_params, coord) {
+      coords <- coord$transform(data, panel_params)
+      grobs <- lapply(seq_len(nrow(coords)), function(i) {
+        code <- as.character(coords$emoji[i])
+        image <- if (is.na(code)) NULL else images[[code]]
+        if (is.null(image)) {
+          return(grid::pointsGrob(coords$x[i], coords$y[i], default.units = "native",
+            pch = 21, size = grid::unit(size * 0.55, "mm"),
+            gp = grid::gpar(fill = "white", col = "#64748b")))
+        }
+        grid::rasterGrob(image, x = coords$x[i], y = coords$y[i], default.units = "native",
+          width = grid::unit(size, "mm"), height = grid::unit(size, "mm"), interpolate = TRUE)
+      })
+      do.call(grid::grobTree, grobs)
+    })
+  ggplot2::layer(geom = geom, stat = "identity", position = "identity", data = data,
+    mapping = ggplot2::aes(x = x, y = z, emoji = EmojiCode),
+    inherit.aes = FALSE, show.legend = FALSE)
 }
