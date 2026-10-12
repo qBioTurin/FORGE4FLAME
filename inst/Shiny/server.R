@@ -6255,27 +6255,18 @@ server <- function(input, output, session) {
         )
       )
 
-    # Calculate max_time_granular based on simulation_days and granularity
-    max_time_granular <- switch(granularity,
-      "step"   = floor(total_simulation_seconds / step_seconds),
-      "minute" = floor(total_simulation_seconds / 60),
-      "hour"   = floor(total_simulation_seconds / 3600),
-      "day"    = simulation_days,
-      "week"   = floor(simulation_days / 7),
-      "month"  = floor(simulation_days / 30),
-      simulation_days
-    )
+    if (nrow(sim_data) == 0) {
+      return(NULL)
+    }
 
-    # Calculate min_time_granular based on starting time for step/minute/hour granularities
-    min_time_granular <- switch(granularity,
-      "step"   = floor(starting_offset_seconds / step_seconds),
-      "minute" = floor(starting_offset_seconds / 60),
-      "hour"   = floor(starting_offset_seconds / 3600),
-      "day"    = 0,
-      "week"   = 0,
-      "month"  = 0,
+    # Calculate min and max time bounds from actual simulated data
+    # to avoid creating an artificial extra time point at the end filled with 0s
+    min_time_granular <- if (granularity %in% c("day", "week", "month")) {
       0
-    )
+    } else {
+      min(sim_data$time_granular, na.rm = TRUE)
+    }
+    max_time_granular <- max(sim_data$time_granular, na.rm = TRUE)
 
     # Get measure type selection
     measure_type <- input$diseaseEvol_measureType
@@ -6611,62 +6602,29 @@ server <- function(input, output, session) {
     step <- as.numeric(postprocObjects$Model$starting$step)
     if (is.null(step) || is.na(step)) step <- 60
 
-    # Get simulation days to calculate the complete time range
-    simulation_days <- as.numeric(postprocObjects$Model$starting$simulation_days)
-    if (is.null(simulation_days) || is.na(simulation_days)) simulation_days <- 30
+    df_raw <- df_raw %>%
+      mutate(time_granular = case_when(
+        granularity == "step" ~ time,
+        granularity == "minute" ~ floor(time * step / 60),
+        granularity == "hour" ~ floor(time * step / 3600),
+        granularity == "day" ~ floor(time * step / 86400),
+        granularity == "week" ~ floor(time * step / 604800),
+        granularity == "month" ~ floor(time * step / 2592000),
+        TRUE ~ time
+      ))
 
-    # Calculate total simulation time in seconds
-    total_simulation_seconds <- simulation_days * 86400
-
-    # Parse starting time from canvasObjects$starting$time (format "HH:MM" or "HH")
-    starting_time_str <- postprocObjects$Model$starting$time
-    if (is.null(starting_time_str) || is.na(starting_time_str)) starting_time_str <- "00:00"
-
-    # Parse starting time to get offset in seconds from midnight
-    if (grepl(":", starting_time_str)) {
-      time_parts <- strsplit(starting_time_str, ":")[[1]]
-      starting_hour <- as.numeric(time_parts[1])
-      starting_minute <- as.numeric(time_parts[2])
-    } else {
-      starting_hour <- as.numeric(starting_time_str)
-      starting_minute <- 0
-    }
-    starting_offset_seconds <- starting_hour * 3600 + starting_minute * 60
-
-    # Calculate min and max time_granular based on starting time and granularity
-    min_time_granular <- switch(granularity,
-      "step"   = floor(starting_offset_seconds / step),
-      "minute" = floor(starting_offset_seconds / 60),
-      "hour"   = floor(starting_offset_seconds / 3600),
-      "day"    = 0,
-      "week"   = 0,
-      "month"  = 0,
+    # Calculate min and max time bounds from actual data
+    min_time_granular <- if (granularity %in% c("day", "week", "month")) {
       0
-    )
-
-    max_time_granular <- switch(granularity,
-      "step"   = floor(total_simulation_seconds / step),
-      "minute" = floor(total_simulation_seconds / 60),
-      "hour"   = floor(total_simulation_seconds / 3600),
-      "day"    = simulation_days,
-      "week"   = floor(simulation_days / 7),
-      "month"  = floor(simulation_days / 30),
-      simulation_days
-    )
+    } else {
+      min(df_raw$time_granular, na.rm = TRUE)
+    }
+    max_time_granular <- max(df_raw$time_granular, na.rm = TRUE)
 
     # Aggregate data based on metric type
     if (metric_type == "contacts") {
       # Count contacts per time unit
       df <- df_raw %>%
-        mutate(time_granular = case_when(
-          granularity == "step" ~ time,
-          granularity == "minute" ~ floor(time * step / 60),
-          granularity == "hour" ~ floor(time * step / 3600),
-          granularity == "day" ~ floor(time * step / 86400),
-          granularity == "week" ~ floor(time * step / 604800),
-          granularity == "month" ~ floor(time * step / 2592000),
-          TRUE ~ time
-        )) %>%
         group_by(Folder, time_granular) %>%
         summarise(Value = n(), .groups = "drop")
 
@@ -6691,16 +6649,7 @@ server <- function(input, output, session) {
       }
     } else {
       # Aggregate aerosol concentration - group by RoomID if faceting or always to maintain room separation
-      df <- df_raw %>%
-        mutate(time_granular = case_when(
-          granularity == "step" ~ time,
-          granularity == "minute" ~ floor(time * step / 60),
-          granularity == "hour" ~ floor(time * step / 3600),
-          granularity == "day" ~ floor(time * step / 86400),
-          granularity == "week" ~ floor(time * step / 604800),
-          granularity == "month" ~ floor(time * step / 2592000),
-          TRUE ~ time
-        ))
+      df <- df_raw
 
       if (facet_room) {
         # Group by RoomID to keep rooms separate
